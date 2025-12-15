@@ -88,15 +88,14 @@ void canmanager()
                      [](const QString &error) {
         qCritical() << "CAN Error:" << error;
     });
-    QObject::connect(canWorker, &CanWorker::frameReceived,
+    /*QObject::connect(canWorker, &CanWorker::frameReceived,
                      [](quint32 canId, const QByteArray &data, qint64 timestamp) {
         qDebug() << "Received CAN:" << canId << "Data:" << data.toHex() << "time:" << timestamp;
         // 在这里处理接收到的数据
-    });
+    });*/
 
     bool initialized = canWorker->initialize("can0", 1000000);
     if (initialized) {
-        canWorker->startListening();
         canWorker->testLoopback();
 
         // 示例：1秒后发送测试帧
@@ -105,7 +104,7 @@ void canmanager()
             canWorker->sendFrame(0x123, data.mid(0, 8)); // 限制8字节
         });//定时器而非延时*/
         // 2秒后自动退出
-        QTimer::singleShot(2000, QCoreApplication::instance(), &QCoreApplication::quit);
+        //QTimer::singleShot(2000, QCoreApplication::instance(), &QCoreApplication::quit);
     }
 }
 

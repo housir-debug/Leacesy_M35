@@ -27,33 +27,22 @@ public:
     explicit CanWorker(QObject *parent = nullptr);
     ~CanWorker();
 
-    // CAN接口初始化
     bool initialize(const QString &interfaceName = "can0", int bitrate = 1000000);
-
-    // 发送CAN帧
-    bool sendFrame(quint32 canId, const QByteArray &data);
-
-    // 回环速度测试
-    void testLoopback();
-
-    // 启动监听
-    void startListening();
-
-    // 关闭CAN接口
     void closeCan();
 
-    // 获取状态
+    bool sendFrame(quint32 canId, const QByteArray &data);
+
+    void testLoopback();
+
     bool isOpen() const { return m_canSocket >= 0; }
     bool isListening() const { return m_listening; }
     QString getInterfaceName() const { return m_interfaceName; }
 
-
-
 signals:
+    void frameSent(quint32 canId, bool success);
     void frameReceived(quint32 canId, const QByteArray &data, qint64 timestamp);
     void errorOccurred(const QString &error);
     void canClosed();
-    void frameSent(quint32 canId, bool success);
 
 private slots:
     void listenProcessing(quint32 canId, const QByteArray &data, qint64 timestamp);
@@ -61,25 +50,26 @@ private slots:
 private:
     bool initializeSocket();
     bool configureInterface(int bitrate);
+    void startListening();
+
     void listenLoop();
     bool sendFrame(const can_frame &frame);
 
 private:
-    QMutex m_Mutex;        // 互斥锁
-    int m_canSocket;           // CAN套接字描述符
-    QString m_interfaceName;   // 接口名称
-    int m_bitrate;            // 波特率
+    QMutex m_Mutex;
     QElapsedTimer m_testtimer;
 
-    // 线程控制
-    QThread *m_listenThread{nullptr};   // 监听线程
+    int m_canSocket;
+    QString m_interfaceName;
+    int m_bitrate;
+
+    int m_receivedCount{0};
+    int m_sentCount{0};
+
+    QThread *m_listenThread{nullptr};
     std::atomic<bool> m_listening{false};
     std::atomic<bool> m_stopRequested{false};
     std::atomic<bool> m_testing{false};
-
-    // 统计信息（原子操作，无需锁）
-    std::atomic<quint64> m_receivedCount{0};
-    std::atomic<quint64> m_sentCount{0};
 };
 
 #endif // CANWORKER_H
