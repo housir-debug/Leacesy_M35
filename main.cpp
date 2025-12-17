@@ -8,6 +8,79 @@
 #include <signal.h>
 
 
+void canmanager(const QString &cansocket)
+{
+    CanWorker *canWorker = new CanWorker();
+    QThread *canThread = new QThread();
+    canWorker->moveToThread(canThread);
+
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
+                         canWorker, &CanWorker::closeCan);
+    QObject::connect(canWorker, &CanWorker::canClosed,
+                     canWorker, &QObject::deleteLater);
+    QObject::connect(canThread, &QThread::finished,
+                     canWorker, &QObject::deleteLater);
+    QObject::connect(canThread, &QThread::finished,
+                     canThread, &QObject::deleteLater);
+
+    canThread->setObjectName("can_worker");
+    canThread->start();
+
+    //canWorker->initialize("can0", 1000000);
+    //canWorker->testLoopback();
+
+    bool Initialized = false;
+    QMetaObject::invokeMethod(canWorker, [canWorker, &Initialized, &cansocket]() {
+        Initialized = canWorker->initialize(cansocket, 1000000);
+    }, Qt::BlockingQueuedConnection);
+
+    if (Initialized) {
+         QMetaObject::invokeMethod(canWorker, &CanWorker::testLoopback);
+         QTimer::singleShot(1000, QCoreApplication::instance(), &QCoreApplication::quit);
+    }
+}
+
+void Test_eth_can(const QString &cansocket){
+    CanWorker *canWorker = new CanWorker();
+    QThread *canThread = new QThread();
+    canWorker->moveToThread(canThread);
+
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
+                         canWorker, &CanWorker::closeCan);
+    QObject::connect(canWorker, &CanWorker::canClosed,
+                     canWorker, &QObject::deleteLater);
+    QObject::connect(canThread, &QThread::finished,
+                     canWorker, &QObject::deleteLater);
+    QObject::connect(canThread, &QThread::finished,
+                     canThread, &QObject::deleteLater);
+
+    canThread->setObjectName("can_worker");
+    canThread->start();
+
+    //canWorker->initialize("can0", 1000000);
+    //canWorker->testLoopback();
+
+    bool Initialized = false;
+    QMetaObject::invokeMethod(canWorker, [canWorker, &Initialized, &cansocket]() {
+        Initialized = canWorker->initialize(cansocket, 1000000);
+    }, Qt::BlockingQueuedConnection);
+
+
+    TcpServerManager *tcpServer = new TcpServerManager();
+
+    QObject::connect(canWorker, &CanWorker::frameReceived,
+                     tcpServer, &TcpServerManager::forwardCanData);
+    QObject::connect(tcpServer, &TcpServerManager::canSendRequest,
+                     canWorker, &CanWorker::sendFrame);
+
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
+                     tcpServer, &TcpServerManager::stopServer);
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
+                     tcpServer, &QObject::deleteLater);
+
+    tcpServer->startServer();
+}
+
 void SerialManager(const QString &portName)
 {
     SerialWorker *serialWorker = new SerialWorker();
@@ -76,70 +149,36 @@ void SerialManager(const QString &portName)
     }
 }
 
-void canmanager(const QString &cansocket)
-{
-    CanWorker *canWorker = new CanWorker();
-    QThread *canThread = new QThread();
-    canWorker->moveToThread(canThread);
+void Test_eth_Serial(const QString &portName){
+
+    SerialWorker *serialWorker = new SerialWorker();
+    QThread *serialThread = new QThread();
+    serialWorker->moveToThread(serialThread);
 
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                         canWorker, &CanWorker::closeCan);
-    QObject::connect(canWorker, &CanWorker::canClosed,
-                     canWorker, &QObject::deleteLater);
+                     serialWorker, &SerialWorker::closeSerial);
+    QObject::connect(serialWorker, &SerialWorker::finished,
+                     serialThread, &QThread::quit);
+    QObject::connect(serialThread, &QThread::finished,
+                     serialWorker, &QObject::deleteLater);
+    QObject::connect(serialThread, &QThread::finished,
+                     serialThread, &QObject::deleteLater);
 
-    QObject::connect(canWorker, &CanWorker::errorOccurred,
-                     [](const QString &error) {
-        qCritical() << "CAN Error:" << error;
-    });
-    canThread->setObjectName("can_worker");
-    canThread->start();
+    serialThread->setObjectName(QString("%1_worker").arg(portName));
+    serialThread->start();
 
-    //canWorker->initialize("can0", 1000000);
-    //canWorker->testLoopback();
-
-    bool Initialized = false;
-    QMetaObject::invokeMethod(canWorker, [canWorker, &Initialized, &cansocket]() {
-        Initialized = canWorker->initialize(cansocket, 1000000);
-    }, Qt::BlockingQueuedConnection);
-
-    if (Initialized) {
-         QMetaObject::invokeMethod(canWorker, &CanWorker::testLoopback);
-         QTimer::singleShot(1000, QCoreApplication::instance(), &QCoreApplication::quit);
-    }
-}
-
-void Test_eth_can(const QString &cansocket){
-    CanWorker *canWorker = new CanWorker();
-    QThread *canThread = new QThread();
-    canWorker->moveToThread(canThread);
-
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                         canWorker, &CanWorker::closeCan);
-    QObject::connect(canWorker, &CanWorker::canClosed,
-                     canWorker, &QObject::deleteLater);
-
-    QObject::connect(canWorker, &CanWorker::errorOccurred,
-                     [](const QString &error) {
-        qCritical() << "CAN Error:" << error;
-    });
-    canThread->setObjectName("can_worker");
-    canThread->start();
-
-    //canWorker->initialize("can0", 1000000);
-    //canWorker->testLoopback();
-
-    bool Initialized = false;
-    QMetaObject::invokeMethod(canWorker, [canWorker, &Initialized, &cansocket]() {
-        Initialized = canWorker->initialize(cansocket, 1000000);
+    bool serialInitialized = false;
+    QMetaObject::invokeMethod(serialWorker, [serialWorker, &serialInitialized, &portName]() {
+        serialInitialized = serialWorker->initSerialPort(portName, QSerialPort::Baud115200);
     }, Qt::BlockingQueuedConnection);
 
 
     TcpServerManager *tcpServer = new TcpServerManager();
 
-    QObject::connect(canWorker, &CanWorker::frameReceived,
-                     tcpServer, &TcpServerManager::forwardCanData);
-    QObject::connect(tcpServer, &TcpServerManager::canSendRequest,
-                     canWorker, &CanWorker::sendFrame);
+    QObject::connect(serialWorker, &SerialWorker::serialDataReceived,
+                     tcpServer, &TcpServerManager::forwardSerialData);
+    QObject::connect(tcpServer, &TcpServerManager::SerialSendRequest,
+                     serialWorker, &SerialWorker::writeSerialData);
 
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
                      tcpServer, &TcpServerManager::stopServer);
@@ -214,7 +253,8 @@ int main(int argc, char *argv[])
     //canmanager("can0");
     //SerialManager("/dev/ttyS4");
 
-    Test_eth_can("can0");
+    //Test_eth_can("can0");
+    Test_eth_Serial("/dev/ttyS4");
 
     return app.exec();
 }

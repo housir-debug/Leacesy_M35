@@ -21,6 +21,7 @@ public:
     bool startServer();
     void stopServer();
     void forwardCanData(quint32 canId, const QByteArray &data, qint64 timestamp);
+    void forwardSerialData(const QByteArray &data);
 
     bool isRunning() const { return m_running.load(); }
 
@@ -30,6 +31,7 @@ signals:
     void errorOccurred(const QString &error);
 
     void canSendRequest(quint32 canId, const QByteArray &data);
+    void SerialSendRequest(const QByteArray &data);
     void dataSentToClients(int clientCount, int dataSize);
     void test();
 

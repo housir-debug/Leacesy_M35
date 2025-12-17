@@ -184,9 +184,10 @@ void TcpServerManager::processClientData(QTcpSocket *client)
             client->write("HEARTBEAT_RESPONSE\n");
             m_testtimer.start();
             //emit test();
-            quint32 testId = 0x321;
+            //quint32 testId = 0x321;
             const QByteArray &testData = QByteArray::fromHex("1122334455667788");
-            emit canSendRequest(testId, testData);
+            emit SerialSendRequest(testData);
+            //emit canSendRequest(testId, testData);
             buffer.remove(0, 9);
         }
         else if (buffer.trimmed().toUpper() == "STATUS") {// 文本格式的状态查询
@@ -461,6 +462,10 @@ void TcpServerManager::forwardCanData(quint32 canId, const QByteArray &data, qin
     // 发送给所有客户端
     QByteArray packetData(reinterpret_cast<const char*>(&packet), sizeof(packet));
     sendToAllClients(packetData);
+}
+
+void TcpServerManager::forwardSerialData(const QByteArray &data){
+    sendToAllClients(data);
 }
 
 void TcpServerManager::sendToAllClients(const QByteArray &data)

@@ -17,30 +17,25 @@ public:
     explicit SerialWorker(QObject *parent = nullptr);
     ~SerialWorker();
 
-    // 串口初始化函数
     bool initSerialPort(const QString &portName,
                         qint32 baudRate = QSerialPort::Baud115200,
                         QSerialPort::DataBits dataBits = QSerialPort::Data8,
                         QSerialPort::Parity parity = QSerialPort::NoParity,
                         QSerialPort::StopBits stopBits = QSerialPort::OneStop);
 
-    // 串口数据写入函数
     void writeSerialData(const QByteArray &data);
 
-    // 关闭串口
     void closeSerial();
 
-    // ============ 新增：回环测试方法 ============
-    void startLoopbackTest();      // 开始回环测试
-    bool isTesting() const{return m_isTesting.load();}        // 是否正在测试
-    // ==========================================
+    void startLoopbackTest();
+    bool isTesting() const{return m_isTesting.load();}
 
 signals:
     void serialDataReceived(const QByteArray &data);
     void serialErrorOccurred(const QString &error);
     void finished();
 
-private slots:
+private:
     void handleReadyRead();
     void handleError(QSerialPort::SerialPortError error);
 
