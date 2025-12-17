@@ -87,7 +87,6 @@ bool CanWorker::configureInterface(int bitrate)
     commands << QString("ip link set %1 type can loopback on").arg(m_interfaceName);
     commands << QString("ip link set %1 up").arg(m_interfaceName);
 
-    // 打印配置命令
     qDebug() << "Configuring CAN interface:";
     for (const QString &cmd : qAsConst(commands)) {
         qDebug() << cmd;
@@ -98,14 +97,12 @@ bool CanWorker::configureInterface(int bitrate)
         }
     }
 
-    // 等待接口就绪---50ms
-    QThread::msleep(50);
+    QThread::msleep(10);
     return true;
 }
 
 bool CanWorker::initializeSocket()
 {
-    // 创建CAN套接字
     m_canSocket = socket(PF_CAN, SOCK_RAW, CAN_RAW);
     if (m_canSocket < 0) {
         qCritical()<< "Create CAN socket failed:" << strerror(errno);
@@ -213,7 +210,7 @@ bool CanWorker::sendFrame_en(const can_frame &frame)
         QString error = QString("Send failed: %1").arg(strerror(errno));
         qCritical() << "Create CAN socket failed:" << error;
         emit errorOccurred(error);
-        emit frameSent(frame.can_id, false);
+        emit frameSented(frame.can_id, false);
         return false;
     }
 
@@ -225,7 +222,7 @@ bool CanWorker::sendFrame_en(const can_frame &frame)
                 .arg(frame.can_dlc)
                 .arg(m_sentCount);
 
-    emit frameSent(frame.can_id, true);
+    emit frameSented(frame.can_id, true);
     return true;
 }
 
@@ -236,7 +233,6 @@ void CanWorker::listenLoop()
     // 注意：不能直接访问成员变量，需要加锁或使用原子变量
     qDebug() << "Entering listenLoop in thread:" << QThread::currentThread();
 
-    // 获取socket（需要加锁）
     int canSocket = -1;
     {
         QMutexLocker locker(&m_Mutex);
@@ -346,15 +342,14 @@ void CanWorker::listenProcessing(quint32 canId, const QByteArray &data, qint64 t
                 double frameRate = (m_receivedCount * 1000.0) / elapsed;
 
                 QString result = QString(
-                    "\n=====================================\n"
-                    "CAN Loopback Test Result\n"
-                    "=====================================\n"
-                    "Test duration: %1 ms\n"
-                    "Frames sent: %2\n"
-                    "Frames received: %3\n"
-                    "Frame rate: %5 fps\n"
-                    "Packet loss: %8%\n"
-                    "=====================================\n"
+                    "================"
+                    "CAN Loopback Test Result: "
+                    "Test duration: %1 ms  "
+                    "Frames sent: %2  "
+                    "Frames received: %3  "
+                    "Frame rate: %5 fps  "
+                    "Packet loss: %8%  "
+                    "================"
                 ).arg(elapsed)
                  .arg(m_sentCount)
                  .arg(m_receivedCount)
@@ -418,16 +413,14 @@ void CanWorker::testLoopback()
 
 // ============================================================================
 // 调用示例
-// ============================================================================
-
 /*
-// 示例：
-
 #include "canworker.h"
 
-void canmanager()
+void canmanager(const QString &cansocket)
 {
     CanWorker *canWorker = new CanWorker();
+    QThread *canThread = new QThread();
+    canWorker->moveToThread(canThread);
 
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
                          canWorker, &CanWorker::closeCan);
@@ -438,23 +431,19 @@ void canmanager()
                      [](const QString &error) {
         qCritical() << "CAN Error:" << error;
     });
-    QObject::connect(canWorker, &CanWorker::frameReceived,
-                     [](quint32 canId, const QByteArray &data, qint64 timestamp) {
-        qDebug() << "Received CAN:" << canId << "Data:" << data.toHex() << "time:" << timestamp;
-        // 在这里处理接收到的数据
-    });
+    canThread->setObjectName("can_worker");
+    canThread->start();
 
-    bool initialized = canWorker->initialize("can0", 1000000);
-    if (initialized) {
-        canWorker->testLoopback();
+    //canWorker->initialize("can0", 1000000);
+    //canWorker->testLoopback();
 
-        // 示例：1秒后发送测试帧
-        QTimer::singleShot(1000,canWorker,  [canWorker]() {
-            QByteArray data = QByteArray::fromHex("1122334455667788");
-            canWorker->sendFrame(0x123, data.mid(0, 8)); // 限制8字节
-        });/定时器而非延时
-        // 2秒后自动退出
-        QTimer::singleShot(2000, QCoreApplication::instance(), &QCoreApplication::quit);
+    bool Initialized = false;
+    QMetaObject::invokeMethod(canWorker, [canWorker, &Initialized, &cansocket]() {
+        Initialized = canWorker->initialize(cansocket, 1000000);
+    }, Qt::BlockingQueuedConnection);
+
+    if (Initialized) {
+         QMetaObject::invokeMethod(canWorker, &CanWorker::testLoopback);
     }
 }
 */
