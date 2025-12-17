@@ -197,10 +197,10 @@ bool CanWorker::sendFrame(quint32 canId, const QByteArray &data)
     frame.can_dlc = static_cast<quint8>(data.size());
     memcpy(frame.data, data.constData(), data.size());
 
-    return sendFrame(frame);
+    return sendFrame_en(frame);
 }
 
-bool CanWorker::sendFrame(const can_frame &frame)
+bool CanWorker::sendFrame_en(const can_frame &frame)
 {
     if (m_canSocket < 0) {
         qWarning() << "CAN socket not open";

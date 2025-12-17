@@ -30,13 +30,14 @@ public:
     bool initialize(const QString &interfaceName = "can0", int bitrate = 1000000);
     void closeCan();
 
-    bool sendFrame(quint32 canId, const QByteArray &data);
-
     void testLoopback();
 
     bool isOpen() const { return m_canSocket >= 0; }
     bool isListening() const { return m_listening; }
     QString getInterfaceName() const { return m_interfaceName; }
+
+public slots:
+    bool sendFrame(quint32 canId, const QByteArray &data);
 
 signals:
     void frameSent(quint32 canId, bool success);
@@ -53,7 +54,7 @@ private:
     void startListening();
 
     void listenLoop();
-    bool sendFrame(const can_frame &frame);
+    bool sendFrame_en(const can_frame &frame);
 
 private:
     QMutex m_Mutex;

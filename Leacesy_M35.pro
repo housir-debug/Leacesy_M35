@@ -9,7 +9,8 @@ CONFIG += c++11
 SOURCES += \
         canworker.cpp \
         main.cpp \
-        serialworker.cpp
+        serialworker.cpp \
+        tcpserver.cpp
 
 RESOURCES += qml.qrc
 
@@ -26,4 +27,5 @@ else: unix:!android: target.path = /root/$${TARGET}/bin
 
 HEADERS += \
     canworker.h \
-    serialworker.h
+    serialworker.h \
+    tcpserver.h

@@ -4,6 +4,7 @@
 #include <QThread>
 #include "serialworker.h"
 #include "canworker.h"
+#include "tcpserver.h"
 #include <signal.h>
 
 
@@ -75,7 +76,7 @@ void SerialManager(const QString &portName)
     }
 }
 
-void canmanager()
+void canmanager(const QString &cansocket)
 {
     CanWorker *canWorker = new CanWorker();
 
@@ -94,7 +95,7 @@ void canmanager()
         // 在这里处理接收到的数据
     });*/
 
-    bool initialized = canWorker->initialize("can0", 1000000);
+    bool initialized = canWorker->initialize(cansocket, 1000000);
     if (initialized) {
         canWorker->testLoopback();
 
@@ -107,6 +108,48 @@ void canmanager()
         //QTimer::singleShot(2000, QCoreApplication::instance(), &QCoreApplication::quit);
     }
 }
+
+void TcpManager(CanWorker *canWorker)
+{
+    TcpServerManager *tcpServer = new TcpServerManager();
+
+    QObject::connect(canWorker, &CanWorker::frameReceived,
+                     tcpServer, &TcpServerManager::forwardCanData);
+    QObject::connect(tcpServer, &TcpServerManager::canSendRequest,
+                     canWorker, &CanWorker::sendFrame);
+
+
+    /*QObject::connect(tcpServer, &TcpServerManager::test,canWorker,
+                     [canWorker]() {
+                        //qInfo() << "Client connected:" << clientInfo;
+                        quint32 testId = 0x321;
+                        const QByteArray &testData = QByteArray::fromHex("1122334455667788");
+                        canWorker->sendFrame(testId,testData);
+                     });*/
+    /*QObject::connect(tcpServer, &TcpServerManager::clientConnected,canWorker,
+                     [canWorker]() {
+                        //qInfo() << "Client connected:" << clientInfo;
+                     });*/
+    QObject::connect(tcpServer, &TcpServerManager::clientDisconnected,
+                     [](const QString &clientInfo) {
+                         qInfo() << "Client disconnected:" << clientInfo;
+                     });
+    QObject::connect(tcpServer, &TcpServerManager::errorOccurred,
+                     [](const QString &error) {
+                         qCritical() << "TCP Server error:" << error;
+                     });
+
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
+                     tcpServer, &TcpServerManager::stopServer);
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
+                     tcpServer, &QObject::deleteLater);
+
+    bool started = tcpServer->startServer();
+    if (!started) {
+        qCritical() << "Failed to start TCP Server";
+    }
+}
+
 
 void signalHandler(int signal)
 {
@@ -140,11 +183,28 @@ int main(int argc, char *argv[])
     }, Qt::QueuedConnection);
     engine.load(url);*/
 
-    canmanager();
+    //canmanager("can0");
     //SerialManager("/dev/ttyS4");
+
+
+    CanWorker *canWorker = new CanWorker();
+
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
+                         canWorker, &CanWorker::closeCan);
+    QObject::connect(canWorker, &CanWorker::canClosed,
+                     canWorker, &QObject::deleteLater);
+    QObject::connect(canWorker, &CanWorker::errorOccurred,
+                     [](const QString &error) {
+        qCritical() << "CAN Error:" << error;
+    });
+
+    TcpManager(canWorker);
+    canWorker->initialize("can0", 1000000);
+
 
     // Ctrl+C 或 kill -9
     // 1. 直接终止进程，不调用任何析构函数
     // 2. 操作系统强制回收所有资源
     return app.exec();
 }
+
