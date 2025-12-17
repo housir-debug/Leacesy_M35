@@ -79,6 +79,8 @@ void SerialManager(const QString &portName)
 void canmanager(const QString &cansocket)
 {
     CanWorker *canWorker = new CanWorker();
+    QThread *canThread = new QThread();
+    canWorker->moveToThread(canThread);
 
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
                          canWorker, &CanWorker::closeCan);
@@ -89,24 +91,62 @@ void canmanager(const QString &cansocket)
                      [](const QString &error) {
         qCritical() << "CAN Error:" << error;
     });
-    /*QObject::connect(canWorker, &CanWorker::frameReceived,
-                     [](quint32 canId, const QByteArray &data, qint64 timestamp) {
-        qDebug() << "Received CAN:" << canId << "Data:" << data.toHex() << "time:" << timestamp;
-        // 在这里处理接收到的数据
-    });*/
+    canThread->setObjectName("can_worker");
+    canThread->start();
 
-    bool initialized = canWorker->initialize(cansocket, 1000000);
-    if (initialized) {
-        canWorker->testLoopback();
+    //canWorker->initialize("can0", 1000000);
+    //canWorker->testLoopback();
 
-        // 示例：1秒后发送测试帧
-        /*QTimer::singleShot(1000,canWorker,  [canWorker]() {
-            QByteArray data = QByteArray::fromHex("1122334455667788");
-            canWorker->sendFrame(0x123, data.mid(0, 8)); // 限制8字节
-        });//定时器而非延时*/
-        // 2秒后自动退出
-        //QTimer::singleShot(2000, QCoreApplication::instance(), &QCoreApplication::quit);
+    bool Initialized = false;
+    QMetaObject::invokeMethod(canWorker, [canWorker, &Initialized, &cansocket]() {
+        Initialized = canWorker->initialize(cansocket, 1000000);
+    }, Qt::BlockingQueuedConnection);
+
+    if (Initialized) {
+         QMetaObject::invokeMethod(canWorker, &CanWorker::testLoopback);
+         QTimer::singleShot(1000, QCoreApplication::instance(), &QCoreApplication::quit);
     }
+}
+
+void Test_eth_can(const QString &cansocket){
+    CanWorker *canWorker = new CanWorker();
+    QThread *canThread = new QThread();
+    canWorker->moveToThread(canThread);
+
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
+                         canWorker, &CanWorker::closeCan);
+    QObject::connect(canWorker, &CanWorker::canClosed,
+                     canWorker, &QObject::deleteLater);
+
+    QObject::connect(canWorker, &CanWorker::errorOccurred,
+                     [](const QString &error) {
+        qCritical() << "CAN Error:" << error;
+    });
+    canThread->setObjectName("can_worker");
+    canThread->start();
+
+    //canWorker->initialize("can0", 1000000);
+    //canWorker->testLoopback();
+
+    bool Initialized = false;
+    QMetaObject::invokeMethod(canWorker, [canWorker, &Initialized, &cansocket]() {
+        Initialized = canWorker->initialize(cansocket, 1000000);
+    }, Qt::BlockingQueuedConnection);
+
+
+    TcpServerManager *tcpServer = new TcpServerManager();
+
+    QObject::connect(canWorker, &CanWorker::frameReceived,
+                     tcpServer, &TcpServerManager::forwardCanData);
+    QObject::connect(tcpServer, &TcpServerManager::canSendRequest,
+                     canWorker, &CanWorker::sendFrame);
+
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
+                     tcpServer, &TcpServerManager::stopServer);
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
+                     tcpServer, &QObject::deleteLater);
+
+    tcpServer->startServer();
 }
 
 void TcpManager(CanWorker *canWorker)
@@ -118,18 +158,6 @@ void TcpManager(CanWorker *canWorker)
     QObject::connect(tcpServer, &TcpServerManager::canSendRequest,
                      canWorker, &CanWorker::sendFrame);
 
-
-    /*QObject::connect(tcpServer, &TcpServerManager::test,canWorker,
-                     [canWorker]() {
-                        //qInfo() << "Client connected:" << clientInfo;
-                        quint32 testId = 0x321;
-                        const QByteArray &testData = QByteArray::fromHex("1122334455667788");
-                        canWorker->sendFrame(testId,testData);
-                     });*/
-    /*QObject::connect(tcpServer, &TcpServerManager::clientConnected,canWorker,
-                     [canWorker]() {
-                        //qInfo() << "Client connected:" << clientInfo;
-                     });*/
     QObject::connect(tcpServer, &TcpServerManager::clientDisconnected,
                      [](const QString &clientInfo) {
                          qInfo() << "Client disconnected:" << clientInfo;
@@ -186,25 +214,8 @@ int main(int argc, char *argv[])
     //canmanager("can0");
     //SerialManager("/dev/ttyS4");
 
+    Test_eth_can("can0");
 
-    CanWorker *canWorker = new CanWorker();
-
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                         canWorker, &CanWorker::closeCan);
-    QObject::connect(canWorker, &CanWorker::canClosed,
-                     canWorker, &QObject::deleteLater);
-    QObject::connect(canWorker, &CanWorker::errorOccurred,
-                     [](const QString &error) {
-        qCritical() << "CAN Error:" << error;
-    });
-
-    TcpManager(canWorker);
-    canWorker->initialize("can0", 1000000);
-
-
-    // Ctrl+C 或 kill -9
-    // 1. 直接终止进程，不调用任何析构函数
-    // 2. 操作系统强制回收所有资源
     return app.exec();
 }
 

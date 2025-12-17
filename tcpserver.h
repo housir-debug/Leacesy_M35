@@ -20,6 +20,7 @@ public:
 
     bool startServer();
     void stopServer();
+    void forwardCanData(quint32 canId, const QByteArray &data, qint64 timestamp);
 
     bool isRunning() const { return m_running.load(); }
 
@@ -28,22 +29,9 @@ signals:
     void clientDisconnected(const QString &clientInfo);
     void errorOccurred(const QString &error);
 
-    // 控制指令信号（Can发送）
     void canSendRequest(quint32 canId, const QByteArray &data);
-    // TCP发送完成信号
     void dataSentToClients(int clientCount, int dataSize);
     void test();
-
-public slots:
-    // 接收CAN数据并转发给所有TCP客户端
-    void forwardCanData(quint32 canId, const QByteArray &data, qint64 timestamp);
-
-private slots:
-    void cleanupDisconnectedClients();
-    void onNewConnection();
-    void onClientReadyRead();
-    void onClientDisconnected();
-    void onSocketError(QAbstractSocket::SocketError error);
 
 private:
     // 协议相关
@@ -73,6 +61,12 @@ private:
 
     void sendToAllClients(const QByteArray &data);
     void sendToClient(QTcpSocket *client, const QByteArray &data);
+
+    void cleanupDisconnectedClients();
+    void onNewConnection();
+    void onClientReadyRead();
+    void onClientDisconnected();
+    void onSocketError(QAbstractSocket::SocketError error);
 
 private:
     enum ServerState {

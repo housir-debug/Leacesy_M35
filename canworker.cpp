@@ -444,6 +444,7 @@ void canmanager(const QString &cansocket)
 
     if (Initialized) {
          QMetaObject::invokeMethod(canWorker, &CanWorker::testLoopback);
+         QTimer::singleShot(1000, QCoreApplication::instance(), &QCoreApplication::quit);
     }
 }
 */
