@@ -25,10 +25,7 @@ public:
     void closeSerial();
 
     void writeSerialData(const QByteArray &data);
-
     void startLoopbackTest();
-
-    bool isTesting() const{return m_isTesting.load();}
 
 signals:
     void serialDataReceived(const QByteArray &data);

@@ -2,46 +2,8 @@
 
 CanWorker::CanWorker(QObject *parent)
     : QObject(parent)
-    , m_canSocket(-1)
-    , m_interfaceName("can0")
-    , m_bitrate(1000000)
 {
 }
-
-CanWorker::~CanWorker()
-{
-    closeCan();
-    qDebug() << "CAN~ delete finished";
-}
-
-void CanWorker::closeCan()
-{
-    QMutexLocker locker(&m_Mutex);
-
-    if (m_listening.load()) {
-        m_stopRequested.store(true);
-
-       if (m_listenThread && m_listenThread->isRunning()) {
-           m_listenThread->quit();
-           m_listenThread->wait(1000); // 等待1秒
-           m_listenThread->deleteLater();
-           delete m_listenThread;
-           m_listenThread = nullptr;// 内存释放 + 指针安全
-           m_listening.store(false);
-           qDebug() << "CAN listening closed";
-       }
-    }
-
-    if (m_canSocket >= 0) {
-        shutdown(m_canSocket, SHUT_RDWR);
-        close(m_canSocket);
-        m_canSocket = -1;
-        qDebug() << "CAN socket closed";
-        emit canClosed();   //析构函数中不可以发送信号
-    }
-
-}
-
 
 bool CanWorker::initialize(const QString &interfaceName, int bitrate)
 {
@@ -71,7 +33,6 @@ bool CanWorker::initialize(const QString &interfaceName, int bitrate)
     qDebug() << m_interfaceName << "opened successfully";
 
     QObject::connect(this, &CanWorker::frameReceived,this, &CanWorker::listenProcessing);
-
     startListening();
     return true;
 }
@@ -168,62 +129,7 @@ void CanWorker::startListening()
 
     m_listenThread->setObjectName(QString("%1_Listener").arg(m_interfaceName));
     m_listenThread->start();
-}
 
-
-bool CanWorker::sendFrame(quint32 canId, const QByteArray &data)
-{
-    QMutexLocker locker(&m_Mutex);
-
-    if (m_canSocket < 0) {
-        qWarning() << "CAN socket not open";
-        emit errorOccurred("CAN socket not open");
-        return false;
-    }
-
-    if (data.size() > 8) {
-        qWarning() << "CAN data length cannot exceed 8 bytes";
-        emit errorOccurred("Data too long");
-        return false;
-    }
-
-    struct can_frame frame;
-    memset(&frame, 0, sizeof(frame));
-
-    frame.can_id = canId;
-    frame.can_dlc = static_cast<quint8>(data.size());
-    memcpy(frame.data, data.constData(), data.size());
-
-    return sendFrame_en(frame);
-}
-
-bool CanWorker::sendFrame_en(const can_frame &frame)
-{
-    if (m_canSocket < 0) {
-        qWarning() << "CAN socket not open";
-        emit errorOccurred("CAN socket not open");
-        return false;
-    }
-
-    int bytesSent = write(m_canSocket, &frame, sizeof(frame));
-    if (bytesSent != sizeof(frame)) {
-        QString error = QString("Send failed: %1").arg(strerror(errno));
-        qCritical() << "Create CAN socket failed:" << error;
-        emit errorOccurred(error);
-        emit frameSented(frame.can_id, false);
-        return false;
-    }
-
-    m_sentCount++;
-    QByteArray dataArray(reinterpret_cast<const char*>(frame.data), frame.can_dlc);
-    qDebug() << QString("CAN sent - ID: 0x%1, Len: %3, Data: %2, Total received: %4")
-                .arg(frame.can_id, 3, 16, QChar('0'))
-                .arg(QString(dataArray.toHex(' ').toUpper()))
-                .arg(frame.can_dlc)
-                .arg(m_sentCount);
-
-    emit frameSented(frame.can_id, true);
-    return true;
 }
 
 
@@ -408,6 +314,97 @@ void CanWorker::testLoopback()
            qDebug() << QString("  第%1帧: 发送失败").arg(i+1);
        }
     }
+}
+
+
+CanWorker::~CanWorker()
+{
+    closeCan();
+    qDebug() << "CAN~ delete finished";
+}
+
+void CanWorker::closeCan()
+{
+    QMutexLocker locker(&m_Mutex);
+
+    if (m_listening.load()) {
+        m_stopRequested.store(true);
+
+       if (m_listenThread && m_listenThread->isRunning()) {
+           m_listenThread->quit();
+           m_listenThread->wait(1000); // 等待1秒
+           m_listenThread->deleteLater();
+           delete m_listenThread;
+           m_listenThread = nullptr;// 内存释放 + 指针安全
+           m_listening.store(false);
+           qDebug() << "CAN listening closed";
+       }
+    }
+
+    if (m_canSocket >= 0) {
+        shutdown(m_canSocket, SHUT_RDWR);
+        close(m_canSocket);
+        m_canSocket = -1;
+        qDebug() << "CAN socket closed";
+        emit canClosed();   //析构函数中不可以发送信号
+    }
+
+}
+
+
+bool CanWorker::sendFrame(quint32 canId, const QByteArray &data)
+{
+    QMutexLocker locker(&m_Mutex);
+
+    if (m_canSocket < 0) {
+        qWarning() << "CAN socket not open";
+        emit errorOccurred("CAN socket not open");
+        return false;
+    }
+
+    if (data.size() > 8) {
+        qWarning() << "CAN data length cannot exceed 8 bytes";
+        emit errorOccurred("Data too long");
+        return false;
+    }
+
+    struct can_frame frame;
+    memset(&frame, 0, sizeof(frame));
+
+    frame.can_id = canId;
+    frame.can_dlc = static_cast<quint8>(data.size());
+    memcpy(frame.data, data.constData(), data.size());
+
+    return sendFrame_en(frame);
+}
+
+bool CanWorker::sendFrame_en(const can_frame &frame)
+{
+    if (m_canSocket < 0) {
+        qWarning() << "CAN socket not open";
+        emit errorOccurred("CAN socket not open");
+        return false;
+    }
+
+    int bytesSent = write(m_canSocket, &frame, sizeof(frame));
+    if (bytesSent != sizeof(frame)) {
+        QString error = QString("Send failed: %1").arg(strerror(errno));
+        qCritical() << "Create CAN socket failed:" << error;
+        emit errorOccurred(error);
+        emit frameSented(frame.can_id, false);
+        return false;
+    }
+
+    m_sentCount++;
+    QByteArray dataArray(reinterpret_cast<const char*>(frame.data), frame.can_dlc);
+    qDebug() << QString("CAN sent - ID: 0x%1, Len: %3, Data: %2, Total received: %4")
+                .arg(frame.can_id, 3, 16, QChar('0'))
+                .arg(QString(dataArray.toHex(' ').toUpper()))
+                .arg(frame.can_dlc)
+                .arg(m_sentCount);
+
+    emit frameSented(frame.can_id, true);
+    return true;
 }
 
 

@@ -16,8 +16,6 @@ void canmanager(const QString &cansocket)
 
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
                          canWorker, &CanWorker::closeCan);
-    QObject::connect(canWorker, &CanWorker::canClosed,
-                     canWorker, &QObject::deleteLater);
     QObject::connect(canThread, &QThread::finished,
                      canWorker, &QObject::deleteLater);
     QObject::connect(canThread, &QThread::finished,
@@ -25,9 +23,6 @@ void canmanager(const QString &cansocket)
 
     canThread->setObjectName("can_worker");
     canThread->start();
-
-    //canWorker->initialize("can0", 1000000);
-    //canWorker->testLoopback();
 
     bool Initialized = false;
     QMetaObject::invokeMethod(canWorker, [canWorker, &Initialized, &cansocket]() {
@@ -47,8 +42,6 @@ void Test_eth_can(const QString &cansocket){
 
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
                          canWorker, &CanWorker::closeCan);
-    QObject::connect(canWorker, &CanWorker::canClosed,
-                     canWorker, &QObject::deleteLater);
     QObject::connect(canThread, &QThread::finished,
                      canWorker, &QObject::deleteLater);
     QObject::connect(canThread, &QThread::finished,
@@ -56,9 +49,6 @@ void Test_eth_can(const QString &cansocket){
 
     canThread->setObjectName("can_worker");
     canThread->start();
-
-    //canWorker->initialize("can0", 1000000);
-    //canWorker->testLoopback();
 
     bool Initialized = false;
     QMetaObject::invokeMethod(canWorker, [canWorker, &Initialized, &cansocket]() {
@@ -173,6 +163,7 @@ void signalHandler(int signal)
     //signal(SIGTERM, signalHandler);
 }
 
+
 int main(int argc, char *argv[])
 {
     qputenv("QT_IM_MODULE", QByteArray("qtvirtualkeyboard"));
@@ -196,7 +187,7 @@ int main(int argc, char *argv[])
     //SerialManager("/dev/ttyS4");c
 
     //Test_eth_can("can0");
-    Test_eth_Serial("/dev/ttyS4");
+    //Test_eth_Serial("/dev/ttyS4");
 
     return app.exec();
 }
