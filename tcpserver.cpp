@@ -6,8 +6,6 @@
 #include <QElapsedTimer>
 
 
-
-
 TcpServerManager::TcpServerManager( QObject *parent)
     : QObject(parent)
 {
@@ -199,14 +197,12 @@ void TcpServerManager::processClientData(QTcpSocket *client,const QByteArray new
     else if (newdata.trimmed().toUpper() == "STATUS") {// 文本格式的状态查询
             QString status = QString(
                 "=== CAN TCP Server Status ===\n"
-                "Server State: %1\n"
-                "Port: %2\n"
-                "Clients: %3/%4\n"
-                "Bytes Sent: %5\n"
-                "Bytes Received: %6\n"
+                "Port: %1\n"
+                "Clients: %2/%3\n"
+                "Bytes Sent: %4\n"
+                "Bytes Received: %5\n"
                 "=============================\n"
-            ).arg(m_running.load() ? "Running" : "Stopped")
-             .arg(m_port)
+            ).arg(m_port)
              .arg(m_clients.size()).arg(10)  // 当前连接数/最大连接数
              .arg(m_totalBytesSent.load())
              .arg(m_totalBytesReceived.load());
@@ -276,15 +272,13 @@ void TcpServerManager::processClientData(QTcpSocket *client,const QByteArray new
                 // 只响应状态查询，忽略额外参数
                 QString status = QString(
                     "=== CAN TCP Server Status ===\n"
-                    "Server State: %1\n"
-                    "Port: %2\n"
-                    "Clients: %3/%4\n"
-                    "Bytes Sent: %5\n"
-                    "Bytes Received: %6\n"
+                    "Port: %1\n"
+                    "Clients: %2/%3\n"
+                    "Bytes Sent: %4\n"
+                    "Bytes Received: %5\n"
                     "Note: Extra parameters ignored\n"
                     "=============================\n"
-                ).arg(m_running.load() ? "Running" : "Stopped")
-                 .arg(m_port)
+                ).arg(m_port)
                  .arg(m_clients.size()).arg(10)
                  .arg(m_totalBytesSent.load())
                  .arg(m_totalBytesReceived.load());
@@ -537,9 +531,7 @@ void TcpServerManager::forwardSerialData(const QByteArray &data){
 
 void TcpServerManager::sendToClient(QTcpSocket *client, const QByteArray &data)
 {
-    if (!client || client->state() != QAbstractSocket::ConnectedState) {
-        return;
-    }
+    if (!client || client->state() != QAbstractSocket::ConnectedState) {return;}
 
     qint64 bytesWritten = client->write(data);
     if (bytesWritten == -1) {

@@ -174,24 +174,26 @@ void Test_eth_Serial(const QString &portName){
 
 
     TcpServerManager *tcpServer = new TcpServerManager();
+    tcpServer->startServer();
 
     QObject::connect(serialWorker, &SerialWorker::serialDataReceived,
-                     tcpServer, &TcpServerManager::forwardSerialData);
+                     tcpServer, &TcpServerManager::forwardSerialData,
+                     Qt::QueuedConnection);
     QObject::connect(tcpServer, &TcpServerManager::SerialSendRequest,
-                     serialWorker, &SerialWorker::writeSerialData);
+                     serialWorker, &SerialWorker::writeSerialData,
+                     Qt::QueuedConnection);
 
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                     tcpServer, &TcpServerManager::stopServer);
+                     tcpServer, &TcpServerManager::stopServer,
+                     Qt::QueuedConnection);
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                     tcpServer, &QObject::deleteLater);
-
-    tcpServer->startServer();
+                     tcpServer, &QObject::deleteLater,
+                     Qt::QueuedConnection);
 }
 
 void TcpManager(CanWorker *canWorker)
 {
     TcpServerManager *tcpServer = new TcpServerManager();
-
     tcpServer->startServer();
 
     QObject::connect(canWorker, &CanWorker::frameReceived,
@@ -243,7 +245,7 @@ int main(int argc, char *argv[])
     engine.load(url);*/
 
     //canmanager("can0");
-    //SerialManager("/dev/ttyS4");
+    //SerialManager("/dev/ttyS4");c
 
     //Test_eth_can("can0");
     Test_eth_Serial("/dev/ttyS4");
