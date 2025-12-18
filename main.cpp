@@ -192,29 +192,21 @@ void TcpManager(CanWorker *canWorker)
 {
     TcpServerManager *tcpServer = new TcpServerManager();
 
+    tcpServer->startServer();
+
     QObject::connect(canWorker, &CanWorker::frameReceived,
-                     tcpServer, &TcpServerManager::forwardCanData);
+                     tcpServer, &TcpServerManager::forwardCanData,
+                     Qt::QueuedConnection);
     QObject::connect(tcpServer, &TcpServerManager::canSendRequest,
-                     canWorker, &CanWorker::sendFrame);
-
-    QObject::connect(tcpServer, &TcpServerManager::clientDisconnected,
-                     [](const QString &clientInfo) {
-                         qInfo() << "Client disconnected:" << clientInfo;
-                     });
-    QObject::connect(tcpServer, &TcpServerManager::errorOccurred,
-                     [](const QString &error) {
-                         qCritical() << "TCP Server error:" << error;
-                     });
+                     canWorker, &CanWorker::sendFrame,
+                     Qt::QueuedConnection);
 
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                     tcpServer, &TcpServerManager::stopServer);
+                     tcpServer, &TcpServerManager::stopServer,
+                     Qt::QueuedConnection);
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                     tcpServer, &QObject::deleteLater);
-
-    bool started = tcpServer->startServer();
-    if (!started) {
-        qCritical() << "Failed to start TCP Server";
-    }
+                     tcpServer, &QObject::deleteLater,
+                     Qt::QueuedConnection);
 }
 
 

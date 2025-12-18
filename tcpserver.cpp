@@ -551,3 +551,31 @@ void TcpServerManager::sendToClient(QTcpSocket *client, const QByteArray &data)
 }
 
 
+// ============================================================================
+// 调用示例
+/*
+#include "tcpserver.h"
+
+void TcpManager(CanWorker *canWorker)
+{
+    TcpServerManager *tcpServer = new TcpServerManager();
+
+    tcpServer->startServer();
+
+    QObject::connect(canWorker, &CanWorker::frameReceived,
+                     tcpServer, &TcpServerManager::forwardCanData,
+                     Qt::QueuedConnection);
+    QObject::connect(tcpServer, &TcpServerManager::canSendRequest,
+                     canWorker, &CanWorker::sendFrame,
+                     Qt::QueuedConnection);
+
+
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
+                     tcpServer, &TcpServerManager::stopServer,
+                     Qt::QueuedConnection);
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
+                     tcpServer, &QObject::deleteLater,
+                     Qt::QueuedConnection);
+}
+*/
+
