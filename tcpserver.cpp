@@ -9,26 +9,69 @@
 TcpServerManager::TcpServerManager( QObject *parent)
     : QObject(parent)
 {
+}
+
+bool TcpServerManager::startServer()
+{
+    if (m_state.load() != STATE_STOPPED) {
+        qWarning() << "TcpServer is not in stopped state";
+        return false;
+    }
+
+    m_state.store(STATE_STARTING);
+
     m_heartbeatTimer = new QTimer(this);
     m_heartbeatTimer->setInterval(30000); // 30秒心跳
+    m_cleanupTimer = new QTimer(this);
+    m_cleanupTimer->setInterval(5000); // 5秒清理一次
+    m_tcpServer = new QTcpServer(this);
+
+    if (!m_serverThread){
+        m_serverThread = new QThread(this);
+        m_serverThread->setObjectName("TcpServer");
+    }
+    if (thread() != m_serverThread) {
+        this->moveToThread(m_serverThread);
+        m_tcpServer->moveToThread(m_serverThread);
+        m_heartbeatTimer->moveToThread(m_serverThread);
+        m_cleanupTimer->moveToThread(m_serverThread);
+    }
+    if (!m_serverThread->isRunning()) {
+        m_serverThread->start();
+    }
+
     connect(m_heartbeatTimer, &QTimer::timeout, this, [this]() {
         QByteArray heartbeat;
         heartbeat.append("HEARTBEAT");
         sendToAllClients(heartbeat);
     });
-
-    m_cleanupTimer = new QTimer(this);
-    m_cleanupTimer->setInterval(5000); // 5秒清理一次
     connect(m_cleanupTimer, &QTimer::timeout,
             this, &TcpServerManager::cleanupDisconnectedClients);
-
-
-    m_tcpServer = new QTcpServer(this);
     connect(m_tcpServer, &QTcpServer::newConnection,
             this, &TcpServerManager::onNewConnection);
 
-    qDebug() << "TcpServerManager created, port:" << m_port;
+    QMetaObject::invokeMethod(this, [this]() {
+        if (m_tcpServer->listen(QHostAddress::Any, m_port)) {
+            m_state.store(STATE_RUNNING);
+
+            m_heartbeatTimer->start();
+            m_cleanupTimer->start();
+
+            qInfo() << "TcpServer started on port" << m_port
+                   << ", thread:" << QThread::currentThread()->objectName();
+        } else {
+            m_state.store(STATE_STOPPED);
+            QString error = QString("Failed to start TCP server: %1")
+                           .arg(m_tcpServer->errorString());
+            qCritical() << error;
+            emit errorOccurred(error);
+            stopServer();
+        }
+    }, Qt::QueuedConnection);
+
+    return true;
 }
+
 
 void TcpServerManager::sendToAllClients(const QByteArray &data)
 {
@@ -346,8 +389,6 @@ bool TcpServerManager::validatePacket(const ControlPacket &packet)
     return true;
 }
 
-
-
 void TcpServerManager::handleCommand(QTcpSocket *client, const ControlPacket &packet)
 {
     if (!client || client->state() != QAbstractSocket::ConnectedState) {return;}
@@ -410,7 +451,6 @@ void TcpServerManager::handleCommand(QTcpSocket *client, const ControlPacket &pa
 }
 
 
-
 TcpServerManager::~TcpServerManager()
 {
     stopServer();
@@ -453,50 +493,6 @@ void TcpServerManager::stopServer()
 
     m_state.store(STATE_STOPPED);
     qInfo() << "TcpServer stopped";
-}
-
-
-bool TcpServerManager::startServer()
-{
-    if (m_state.load() != STATE_STOPPED) {
-        qWarning() << "TcpServer is not in stopped state";
-        return false;
-    }
-
-    m_state.store(STATE_STARTING);
-
-    if (!m_serverThread){
-        m_serverThread = new QThread(this);
-        m_serverThread->setObjectName("TcpServer");
-    }
-    if (thread() != m_serverThread) {
-        this->moveToThread(m_serverThread);
-        m_tcpServer->moveToThread(m_serverThread);
-    }
-    if (!m_serverThread->isRunning()) {
-        m_serverThread->start();
-    }
-
-    QMetaObject::invokeMethod(this, [this]() {
-        if (m_tcpServer->listen(QHostAddress::Any, m_port)) {
-            m_state.store(STATE_RUNNING);
-
-            m_heartbeatTimer->start();
-            m_cleanupTimer->start();
-
-            qInfo() << "TcpServer started on port" << m_port
-                   << ", thread:" << QThread::currentThread()->objectName();
-        } else {
-            m_state.store(STATE_STOPPED);
-            QString error = QString("Failed to start TCP server: %1")
-                           .arg(m_tcpServer->errorString());
-            qCritical() << error;
-            emit errorOccurred(error);
-            stopServer();
-        }
-    }, Qt::QueuedConnection);
-
-    return true;
 }
 
 

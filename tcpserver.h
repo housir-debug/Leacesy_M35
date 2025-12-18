@@ -27,8 +27,6 @@ public:
 
 signals:
     void errorOccurred(const QString &error);
-    void TcpserverClosed();
-
     void canSendRequest(quint32 canId, const QByteArray &data);
     void SerialSendRequest(const QByteArray &data);
 

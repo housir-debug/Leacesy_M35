@@ -22,34 +22,32 @@ public:
                         QSerialPort::DataBits dataBits = QSerialPort::Data8,
                         QSerialPort::Parity parity = QSerialPort::NoParity,
                         QSerialPort::StopBits stopBits = QSerialPort::OneStop);
+    void closeSerial();
 
     void writeSerialData(const QByteArray &data);
 
-    void closeSerial();
-
     void startLoopbackTest();
+
     bool isTesting() const{return m_isTesting.load();}
 
 signals:
     void serialDataReceived(const QByteArray &data);
     void serialErrorOccurred(const QString &error);
-    void finished();
 
 private:
     void handleReadyRead();
     void handleError(QSerialPort::SerialPortError error);
 
 private:
-    QSerialPort *m_serialPort;
-    bool m_isListening;
     QMutex m_mutex;
+    QElapsedTimer m_testTimer;
+    QByteArray m_testData;
 
-    // ============ 新增：测试相关成员 ============
-    std::atomic<bool> m_isTesting{false};// 测试标志
-    QElapsedTimer m_testTimer;      // 测试计时器
-    QByteArray m_testData;          // 测试数据
-    int m_bytesReceived;           // 接收字节数
-    // ==========================================
+    QThread *m_serialThread{nullptr};
+    QSerialPort *m_serialPort{nullptr};
+    bool m_isListening{false};
+    std::atomic<bool> m_isTesting{false};
+    std::atomic<qint64> m_bytesReceived{0};
 };
 
 #endif // SERIALWORKER_H

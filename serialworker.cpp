@@ -2,10 +2,6 @@
 
 SerialWorker::SerialWorker(QObject *parent)
     : QObject(parent)
-    , m_serialPort(nullptr)
-    , m_isListening(false)
-    , m_isTesting(false)
-    , m_bytesReceived(0)
 {
 }
 
@@ -26,16 +22,16 @@ void SerialWorker::closeSerial()
         }
         delete m_serialPort;
         m_serialPort = nullptr;
-
-        static bool hasEmitted = false;// 只初始化一次
-        if (!hasEmitted) {
-            emit finished();
-            hasEmitted = true;
-        }
     }
-    m_isListening = false;
 
-    // 停止测试
+    if (m_serialThread && m_serialThread->isRunning()) {
+        m_serialThread->quit();
+        m_serialThread->wait(1000);// 等待1秒
+        m_serialThread->deleteLater();
+        delete m_serialThread;
+    }
+
+    m_isListening = false;
     m_isTesting.store(false);
 }
 
@@ -71,7 +67,18 @@ bool SerialWorker::initSerialPort(const QString &portName,
     connect(m_serialPort, &QSerialPort::errorOccurred, this, &SerialWorker::handleError);
     //connect(m_serialPort, &QSerialPort::bytesWritten, this, &SerialWorker::handleBytesWritten);//速度无区别，不用缓冲区，甚至有开销
 
-    //测试串口打开
+    if (!m_serialThread){
+        m_serialThread = new QThread(this);
+        m_serialThread->setObjectName(QString("%1_worker").arg(portName));
+    }
+    if (thread() != m_serialThread) {
+        this->moveToThread(m_serialThread);
+        m_serialPort->moveToThread(m_serialThread);
+    }
+    if (!m_serialThread->isRunning()) {
+        m_serialThread->start();
+    }
+
     if (!m_serialPort->open(QIODevice::ReadWrite)) {
         qWarning() << "Failed to open serial port:"<< portName
                    << "Error:" << m_serialPort->errorString();
