@@ -20,20 +20,17 @@ public:
 
     bool startServer();
     void stopServer();
+
     void forwardCanData(quint32 canId, const QByteArray &data, qint64 timestamp);
     void forwardSerialData(const QByteArray &data);
 
-    bool isRunning() const { return m_running.load(); }
 
 signals:
-    void clientConnected(const QString &clientInfo);
-    void clientDisconnected(const QString &clientInfo);
     void errorOccurred(const QString &error);
+    void TcpserverClosed();
 
     void canSendRequest(quint32 canId, const QByteArray &data);
     void SerialSendRequest(const QByteArray &data);
-    void dataSentToClients(int clientCount, int dataSize);
-    void test();
 
 private:
     // 协议相关
@@ -42,7 +39,6 @@ private:
         quint32 magic;          // 魔法头: 0xCAFE
         quint32 length;         // 数据长度
         qint64 timestamp;       // 时间戳（毫秒）
-        char interface[16];     // 接口名（如"can0"）
         quint32 canId;          // CAN ID
         quint8 data[8];         // CAN数据（最多8字节）
         quint16 crc;            // CRC16校验
@@ -57,47 +53,40 @@ private:
     };//20个字节
     #pragma pack(pop)
 
+    void cleanupDisconnectedClients();
+    void onNewConnection();
+
+    void onSocketError(QAbstractSocket::SocketError error);
+    void onClientDisconnected();
+    void onClientReadyRead();
+
+    void processClientData(QTcpSocket *client,const QByteArray newdata);
     bool validatePacket(const ControlPacket &packet);
-    void processClientData(QTcpSocket *client);
     void handleCommand(QTcpSocket *client, const ControlPacket &packet);
 
     void sendToAllClients(const QByteArray &data);
     void sendToClient(QTcpSocket *client, const QByteArray &data);
 
-    void cleanupDisconnectedClients();
-    void onNewConnection();
-    void onClientReadyRead();
-    void onClientDisconnected();
-    void onSocketError(QAbstractSocket::SocketError error);
-
 private:
+    QMutex m_Mutex;
+    QList<QTcpSocket*> m_clients;
+
+    quint16 m_port{502};
     enum ServerState {
         STATE_STOPPED,
         STATE_STARTING,
         STATE_RUNNING,
         STATE_STOPPING
     };
-
-    mutable QMutex m_clientMutex;
-
-    QTcpServer *m_tcpServer;
-    QList<QTcpSocket*> m_clients;
-    QHash<QTcpSocket*, QByteArray> m_clientBuffers;
-
-    QThread *m_serverThread;
-    std::atomic<bool> m_running{false};
     std::atomic<ServerState> m_state{STATE_STOPPED};
-
-    QTimer *m_heartbeatTimer;
-    QTimer *m_cleanupTimer;
-    QElapsedTimer m_testtimer;
-
-    quint16 m_port;
-    QString m_interfaceName;
-
     std::atomic<qint64> m_totalBytesSent{0};
     std::atomic<qint64> m_totalBytesReceived{0};
-    std::atomic<int> m_totalClients{0};
+
+    QThread *m_serverThread{nullptr};
+    QTcpServer *m_tcpServer{nullptr};
+    QTimer *m_heartbeatTimer{nullptr};
+    QTimer *m_cleanupTimer{nullptr};
+    QElapsedTimer m_testtimer;
 };
 
 #endif // TCPSERVER_H
