@@ -42,6 +42,7 @@ private:
     QMutex m_mutex;
     QElapsedTimer m_testTimer;
     QByteArray m_testData;
+    QString m_postName;
 
     QThread *m_serialThread{nullptr};
     QSerialPort *m_serialPort{nullptr};

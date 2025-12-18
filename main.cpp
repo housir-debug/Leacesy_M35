@@ -81,97 +81,44 @@ void Test_eth_can(const QString &cansocket){
     tcpServer->startServer();
 }
 
+
 void SerialManager(const QString &portName)
 {
     SerialWorker *serialWorker = new SerialWorker();
-    QThread *serialThread = new QThread();
-    serialWorker->moveToThread(serialThread);
+    serialWorker->initSerialPort(portName, QSerialPort::Baud115200);
 
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                     serialWorker, &SerialWorker::closeSerial);
-    QObject::connect(serialWorker, &SerialWorker::finished,
-                     serialThread, &QThread::quit);
-    QObject::connect(serialThread, &QThread::finished,
-                     serialWorker, &QObject::deleteLater);
-    QObject::connect(serialThread, &QThread::finished,
-                     serialThread, &QObject::deleteLater);
+                     serialWorker, &SerialWorker::closeSerial,
+                     Qt::QueuedConnection);
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
+                     serialWorker, &QObject::deleteLater,
+                     Qt::QueuedConnection);
 
-    QObject::connect(serialWorker, &SerialWorker::serialDataReceived,
-                     [](const QByteArray &data) {
-                         qDebug() << "[Normal Data]" << data.size() << "bytes";
-                     });
-    QObject::connect(serialWorker, &SerialWorker::serialErrorOccurred,
-                     [](const QString &error) {
-                         qWarning() << "[Error]" << error;
-                     });
-    serialThread->setObjectName(QString("%1_worker").arg(portName));
-    serialThread->start();
+    //挂起 一秒后执行---在lambda中使用局部变量，但生命周期问题singleShot(1000, [](),所以使用捕获singleShot(1000, [serialWorker]()
+    QTimer::singleShot(1000, serialWorker,[serialWorker]() {
+        qDebug() << "\n=== Starting Loopback Test ===";
+        qDebug() << "Please connect TX and RX pins of the serial port!";
 
-    bool serialInitialized = false;
-    QMetaObject::invokeMethod(serialWorker, [serialWorker, &serialInitialized, &portName]() {
-        serialInitialized = serialWorker->initSerialPort(portName, QSerialPort::Baud115200);
-    }, Qt::BlockingQueuedConnection);
+        QMetaObject::invokeMethod(serialWorker, &SerialWorker::startLoopbackTest);
+    });
 
-    if (serialInitialized) {
-        //挂起 一秒后执行---在lambda中使用局部变量，但生命周期问题singleShot(1000, [](),所以使用捕获singleShot(1000, [serialWorker]()
-        QTimer::singleShot(1000, serialWorker,[serialWorker]() {
-            qDebug() << "\n=== Starting Loopback Test ===";
-            qDebug() << "Please connect TX and RX pins of the serial port!";
+    // 3秒后自动退出
+    //QTimer::singleShot(3000, QCoreApplication::instance(), &QCoreApplication::quit);
 
-            QMetaObject::invokeMethod(serialWorker, &SerialWorker::startLoopbackTest);
-        });
 
-        // 3秒后自动退出
-        QTimer::singleShot(3000, QCoreApplication::instance(), &QCoreApplication::quit);
-
-    } else {
-        qCritical() << "✗ Failed to open any serial port!";
-
-        QStringList portsToTry = {"/dev/ttyS9", "/dev/ttyS8", "/dev/ttyS7", "/dev/ttyS5", "/dev/ttyS5"};
-        bool initialized = false;
-
-        for (const QString &port : portsToTry) {
-            qDebug() << "Trying to open" << port << "...";
-
-            QMetaObject::invokeMethod(serialWorker, [serialWorker, port, &initialized]() {
-                initialized = serialWorker->initSerialPort(port, QSerialPort::Baud115200);
-            }, Qt::BlockingQueuedConnection);
-
-            if (initialized) {
-                qDebug() << "✓ Successfully opened" << port;
-                break;
-            } else {
-                qDebug() << "✗ Failed to open" << port;
-            }
-        }
-
-        QTimer::singleShot(1000, QCoreApplication::instance(), &QCoreApplication::quit);
-    }
 }
 
-void Test_eth_Serial(const QString &portName){
-
+void Test_eth_Serial(const QString &portName)
+{
     SerialWorker *serialWorker = new SerialWorker();
-    QThread *serialThread = new QThread();
-    serialWorker->moveToThread(serialThread);
+    serialWorker->initSerialPort(portName, QSerialPort::Baud115200);
 
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                     serialWorker, &SerialWorker::closeSerial);
-    QObject::connect(serialWorker, &SerialWorker::finished,
-                     serialThread, &QThread::quit);
-    QObject::connect(serialThread, &QThread::finished,
-                     serialWorker, &QObject::deleteLater);
-    QObject::connect(serialThread, &QThread::finished,
-                     serialThread, &QObject::deleteLater);
-
-    serialThread->setObjectName(QString("%1_worker").arg(portName));
-    serialThread->start();
-
-    bool serialInitialized = false;
-    QMetaObject::invokeMethod(serialWorker, [serialWorker, &serialInitialized, &portName]() {
-        serialInitialized = serialWorker->initSerialPort(portName, QSerialPort::Baud115200);
-    }, Qt::BlockingQueuedConnection);
-
+                     serialWorker, &SerialWorker::closeSerial,
+                     Qt::QueuedConnection);
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
+                     serialWorker, &QObject::deleteLater,
+                     Qt::QueuedConnection);
 
     TcpServerManager *tcpServer = new TcpServerManager();
     tcpServer->startServer();
@@ -190,6 +137,7 @@ void Test_eth_Serial(const QString &portName){
                      tcpServer, &QObject::deleteLater,
                      Qt::QueuedConnection);
 }
+
 
 void TcpManager(CanWorker *canWorker)
 {

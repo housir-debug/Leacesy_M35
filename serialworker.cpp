@@ -5,37 +5,6 @@ SerialWorker::SerialWorker(QObject *parent)
 {
 }
 
-SerialWorker::~SerialWorker()
-{
-    closeSerial();
-    qDebug() << "Serial~ delete finished";
-}
-
-void SerialWorker::closeSerial()
-{
-    QMutexLocker locker(&m_mutex);
-
-    if (m_serialPort) {
-        if (m_serialPort->isOpen()) {
-            m_serialPort->close();
-            qDebug() << "Serial port closed";
-        }
-        delete m_serialPort;
-        m_serialPort = nullptr;
-    }
-
-    if (m_serialThread && m_serialThread->isRunning()) {
-        m_serialThread->quit();
-        m_serialThread->wait(1000);// 等待1秒
-        m_serialThread->deleteLater();
-        delete m_serialThread;
-    }
-
-    m_isListening = false;
-    m_isTesting.store(false);
-}
-
-
 bool SerialWorker::initSerialPort(const QString &portName,
                                  qint32 baudRate,
                                  QSerialPort::DataBits dataBits,
@@ -50,7 +19,7 @@ bool SerialWorker::initSerialPort(const QString &portName,
         m_serialPort = nullptr;
     }
 
-
+    m_postName = portName;
     m_serialPort = new QSerialPort(this);
     m_serialPort->setPortName(portName);
     m_serialPort->setBaudRate(baudRate);
@@ -62,33 +31,6 @@ bool SerialWorker::initSerialPort(const QString &portName,
     //m_serialPort->setFlowControl(QSerialPort::SoftwareControl);// 软件流控（无专用线路）
     // 设置超时控制（避免阻塞）
     //m_serialPort->setReadBufferSize(1024 * 1024); // 1MB缓冲区
-
-    connect(m_serialPort, &QSerialPort::readyRead, this, &SerialWorker::handleReadyRead);
-    connect(m_serialPort, &QSerialPort::errorOccurred, this, &SerialWorker::handleError);
-    //connect(m_serialPort, &QSerialPort::bytesWritten, this, &SerialWorker::handleBytesWritten);//速度无区别，不用缓冲区，甚至有开销
-
-    if (!m_serialThread){
-        m_serialThread = new QThread(this);
-        m_serialThread->setObjectName(QString("%1_worker").arg(portName));
-    }
-    if (thread() != m_serialThread) {
-        this->moveToThread(m_serialThread);
-        m_serialPort->moveToThread(m_serialThread);
-    }
-    if (!m_serialThread->isRunning()) {
-        m_serialThread->start();
-    }
-
-    if (!m_serialPort->open(QIODevice::ReadWrite)) {
-        qWarning() << "Failed to open serial port:"<< portName
-                   << "Error:" << m_serialPort->errorString();
-        emit serialErrorOccurred(QStringLiteral("Failed to open serial port %1: %2")
-                                 .arg(portName, m_serialPort->errorString()));
-        delete m_serialPort;
-        m_serialPort = nullptr;
-
-        return false; //返回初始化失败
-    }
     /*// 清空缓冲区
         m_serialPort->clear();
 
@@ -112,34 +54,39 @@ bool SerialWorker::initSerialPort(const QString &portName,
         }
         #endif*/
 
-    qDebug() << "Serial port" << portName << "opened successfully";
-    m_isListening = true;//设置了监听标志，控制handleReadyRead处理数据
-    return true;//返回初始化成功
-}
-
-
-void SerialWorker::writeSerialData(const QByteArray &data)
-{
-    QMutexLocker locker(&m_mutex);
-
-    if (!m_serialPort || !m_serialPort->isOpen()) {
-        qWarning() << "Serial port is not open!";
-        return;
+    if (!m_serialThread){
+        m_serialThread = new QThread(this);
+        m_serialThread->setObjectName(QString("%1_worker").arg(portName));
+    }
+    if (thread() != m_serialThread) {
+        this->moveToThread(m_serialThread);
+        m_serialPort->moveToThread(m_serialThread);
+    }
+    if (!m_serialThread->isRunning()) {
+        m_serialThread->start();
     }
 
-    // write()函数是异步的，写入缓冲区后立即返回
-    qint64 bytesWritten = m_serialPort->write(data);
-    if (bytesWritten == -1){
-        // 写入失败
-        qWarning() << "Failed to write data to serial port:" << m_serialPort->errorString();
-    } else if (bytesWritten != data.size()) {
-        // 部分写入
-        qWarning() << "Partial data written to serial port:" << bytesWritten << "of" << data.size();
-    } else {
-        // 完全写入
-        qDebug() << "Successfully wrote" << bytesWritten << "bytes to serial port";
-    }
-    // 注意：不需要调用推入flush()，QSerialPort会自动处理
+    connect(m_serialPort, &QSerialPort::readyRead, this, &SerialWorker::handleReadyRead);
+    connect(m_serialPort, &QSerialPort::errorOccurred, this, &SerialWorker::handleError);
+    //connect(m_serialPort, &QSerialPort::bytesWritten, this, &SerialWorker::handleBytesWritten);//速度无区别，不用缓冲区，甚至有开销
+
+    QMetaObject::invokeMethod(this, [this]() {
+        if (!m_serialPort->open(QIODevice::ReadWrite)) {
+            qWarning() << "Failed to open serial port:"<< m_postName
+                       << "Error:" << m_serialPort->errorString();
+            emit serialErrorOccurred(QStringLiteral("Failed to open serial port %1: %2")
+                                     .arg(m_postName, m_serialPort->errorString()));
+            delete m_serialPort;
+            m_serialPort = nullptr;
+
+            return; //返回初始化失败
+        }
+
+        qDebug() << "Serial port" << m_postName << "opened successfully";
+        m_isListening = true;//设置了监听标志，控制handleReadyRead处理数据
+     }, Qt::QueuedConnection);
+
+    return true;
 }
 
 
@@ -207,7 +154,62 @@ void SerialWorker::handleError(QSerialPort::SerialPortError error)
     // 如果是NoError
 }
 
-// ============ 新增：回环测试方法 ============
+
+SerialWorker::~SerialWorker()
+{
+    closeSerial();
+    qDebug() << "Serial~ delete finished";
+}
+
+void SerialWorker::closeSerial()
+{
+    QMutexLocker locker(&m_mutex);
+
+    if (m_serialPort) {
+        if (m_serialPort->isOpen()) {
+            m_serialPort->close();
+            qDebug() << "Serial port closed";
+        }
+        delete m_serialPort;
+        m_serialPort = nullptr;
+    }
+
+    if (m_serialThread && m_serialThread->isRunning()) {
+        m_serialThread->quit();
+        m_serialThread->wait(1000);// 等待1秒
+        m_serialThread->deleteLater();
+        delete m_serialThread;
+    }
+
+    m_isListening = false;
+    m_isTesting.store(false);
+}
+
+
+void SerialWorker::writeSerialData(const QByteArray &data)
+{
+    QMutexLocker locker(&m_mutex);
+
+    if (!m_serialPort || !m_serialPort->isOpen()) {
+        qWarning() << "Serial port is not open!";
+        return;
+    }
+
+    // write()函数是异步的，写入缓冲区后立即返回
+    qint64 bytesWritten = m_serialPort->write(data);
+    if (bytesWritten == -1){
+        // 写入失败
+        qWarning() << "Failed to write data to serial port:" << m_serialPort->errorString();
+    } else if (bytesWritten != data.size()) {
+        // 部分写入
+        qWarning() << "Partial data written to serial port:" << bytesWritten << "of" << data.size();
+    } else {
+        // 完全写入
+        qDebug() << "Successfully wrote" << bytesWritten << "bytes to serial port";
+    }
+    // 注意：不需要调用推入flush()，QSerialPort会自动处理
+}
+
 
 void SerialWorker::startLoopbackTest()
 {
