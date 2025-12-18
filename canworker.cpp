@@ -230,9 +230,9 @@ void CanWorker::listenProcessing(quint32 canId, const QByteArray &data, qint64 t
 {
     if (!m_listening.load()) {return;}
 
-    m_receivedCount++;
+    //m_receivedCount++;
     if (m_testing.load()) {
-        qDebug() << QString("Test mode - Received frame %1: ID: 0x%2, Len: %3, data: %7, Total received: %5 frames, Time: %6)")
+        /*qDebug() << QString("Test mode - Received frame %1: ID: 0x%2, Len: %3, data: %7, Total received: %5 frames, Time: %6)")
                     .arg(m_receivedCount)
                     .arg(canId, 0, 16)
                     .arg(data.size())
@@ -265,7 +265,10 @@ void CanWorker::listenProcessing(quint32 canId, const QByteArray &data, qint64 t
                 qDebug() << result;
             }
             m_testing.store(false);
-        }
+        }*/
+
+        qint64 elapsed = m_testtimer.elapsed();
+        qDebug() << "eth-can test time:" <<elapsed;
 
     } else {
         qDebug() << QString("Normal mode - Received: ID: 0x%1, Data: %2, Total received: %3 frames, Time: %4")
@@ -316,6 +319,13 @@ void CanWorker::testLoopback()
     }
 }
 
+void CanWorker::testserialloop(){
+    m_testing.store(true);
+    m_testtimer.start();
+    const QByteArray &testData = QByteArray::fromHex("1122334455667788");
+    emit SerialSendRequest(testData);
+}
+
 
 CanWorker::~CanWorker()
 {
@@ -346,11 +356,16 @@ void CanWorker::closeCan()
         close(m_canSocket);
         m_canSocket = -1;
         qDebug() << "CAN socket closed";
-        emit canClosed();   //析构函数中不可以发送信号
     }
 
 }
 
+
+void CanWorker::forwardSerialData(const QByteArray &data)
+{
+    quint32 testId = 0x123;
+    sendFrame(testId, data);
+}
 
 bool CanWorker::sendFrame(quint32 canId, const QByteArray &data)
 {

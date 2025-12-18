@@ -129,6 +129,47 @@ void Test_eth_Serial(const QString &portName)
 }
 
 
+void Test_can_serial(const QString &cansocket,const QString &portName)
+{
+    CanWorker *canWorker = new CanWorker();
+    QThread *canThread = new QThread();
+    canWorker->moveToThread(canThread);
+
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
+                         canWorker, &CanWorker::closeCan);
+    QObject::connect(canThread, &QThread::finished,
+                     canWorker, &QObject::deleteLater);
+    QObject::connect(canThread, &QThread::finished,
+                     canThread, &QObject::deleteLater);
+
+    canThread->setObjectName("can_worker");
+    canThread->start();
+
+    bool Initialized = false;
+    QMetaObject::invokeMethod(canWorker, [canWorker, &Initialized, &cansocket]() {
+        Initialized = canWorker->initialize(cansocket, 1000000);
+    }, Qt::BlockingQueuedConnection);
+
+    SerialWorker *serialWorker = new SerialWorker();
+    serialWorker->initSerialPort(portName, QSerialPort::Baud115200);
+
+    QObject::connect(serialWorker, &SerialWorker::serialDataReceived,
+                     canWorker, &CanWorker::forwardSerialData,
+                     Qt::QueuedConnection);
+    QObject::connect(canWorker, &CanWorker::SerialSendRequest,
+                     serialWorker, &SerialWorker::writeSerialData,
+                     Qt::QueuedConnection);
+
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
+                     serialWorker, &SerialWorker::closeSerial,
+                     Qt::QueuedConnection);
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
+                     serialWorker, &QObject::deleteLater,
+                     Qt::QueuedConnection);
+
+    QMetaObject::invokeMethod(canWorker, &CanWorker::testserialloop);
+}
+
 void TcpManager(CanWorker *canWorker)
 {
     TcpServerManager *tcpServer = new TcpServerManager();
@@ -188,6 +229,7 @@ int main(int argc, char *argv[])
 
     //Test_eth_can("can0");
     //Test_eth_Serial("/dev/ttyS4");
+    Test_can_serial("can0","/dev/ttyS4");
 
     return app.exec();
 }
