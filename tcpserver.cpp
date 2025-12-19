@@ -231,10 +231,10 @@ void TcpServerManager::processClientData(QTcpSocket *client,const QByteArray new
             client->write("HEARTBEAT_RESPONSE\n");
             m_testtimer.start();
             //emit test();
-            //quint32 testId = 0x321;
+            quint32 testId = 0x321;
             const QByteArray &testData = QByteArray::fromHex("1122334455667788");
-            emit SerialSendRequest(testData);
-            //emit canSendRequest(testId, testData);
+            //emit SerialSendRequest(testData);
+            emit canSendRequest(testId, testData);
             return;
         }
     else if (newdata.trimmed().toUpper() == "STATUS") {// 文本格式的状态查询

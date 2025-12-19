@@ -27,11 +27,13 @@ void canmanager(const QString &cansocket)
     bool Initialized = false;
     QMetaObject::invokeMethod(canWorker, [canWorker, &Initialized, &cansocket]() {
         Initialized = canWorker->initialize(cansocket, 1000000);
-    }, Qt::BlockingQueuedConnection);
+    }, Qt::QueuedConnection);//Blocking
+
+    sleep(5);
 
     if (Initialized) {
          QMetaObject::invokeMethod(canWorker, &CanWorker::testLoopback);
-         QTimer::singleShot(1000, QCoreApplication::instance(), &QCoreApplication::quit);
+         QTimer::singleShot(6000, QCoreApplication::instance(), &QCoreApplication::quit);
     }
 }
 
@@ -57,6 +59,7 @@ void Test_eth_can(const QString &cansocket){
 
 
     TcpServerManager *tcpServer = new TcpServerManager();
+    tcpServer->startServer();
 
     QObject::connect(canWorker, &CanWorker::frameReceived,
                      tcpServer, &TcpServerManager::forwardCanData);
@@ -67,8 +70,6 @@ void Test_eth_can(const QString &cansocket){
                      tcpServer, &TcpServerManager::stopServer);
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
                      tcpServer, &QObject::deleteLater);
-
-    tcpServer->startServer();
 }
 
 
@@ -78,11 +79,9 @@ void SerialManager(const QString &portName)
     serialWorker->initSerialPort(portName, QSerialPort::Baud115200);
 
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                     serialWorker, &SerialWorker::closeSerial,
-                     Qt::QueuedConnection);
+                     serialWorker, &SerialWorker::closeSerial);
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                     serialWorker, &QObject::deleteLater,
-                     Qt::QueuedConnection);
+                     serialWorker, &QObject::deleteLater);
 
     //挂起 一秒后执行---在lambda中使用局部变量，但生命周期问题singleShot(1000, [](),所以使用捕获singleShot(1000, [serialWorker]()
     QTimer::singleShot(1000, serialWorker,[serialWorker]() {
@@ -104,28 +103,22 @@ void Test_eth_Serial(const QString &portName)
     serialWorker->initSerialPort(portName, QSerialPort::Baud115200);
 
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                     serialWorker, &SerialWorker::closeSerial,
-                     Qt::QueuedConnection);
+                     serialWorker, &SerialWorker::closeSerial);
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                     serialWorker, &QObject::deleteLater,
-                     Qt::QueuedConnection);
+                     serialWorker, &QObject::deleteLater);
 
     TcpServerManager *tcpServer = new TcpServerManager();
     tcpServer->startServer();
 
     QObject::connect(serialWorker, &SerialWorker::serialDataReceived,
-                     tcpServer, &TcpServerManager::forwardSerialData,
-                     Qt::QueuedConnection);
+                     tcpServer, &TcpServerManager::forwardSerialData);
     QObject::connect(tcpServer, &TcpServerManager::SerialSendRequest,
-                     serialWorker, &SerialWorker::writeSerialData,
-                     Qt::QueuedConnection);
+                     serialWorker, &SerialWorker::writeSerialData);
 
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                     tcpServer, &TcpServerManager::stopServer,
-                     Qt::QueuedConnection);
+                     tcpServer, &TcpServerManager::stopServer);
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                     tcpServer, &QObject::deleteLater,
-                     Qt::QueuedConnection);
+                     tcpServer, &QObject::deleteLater);
 }
 
 
@@ -148,26 +141,24 @@ void Test_can_serial(const QString &cansocket,const QString &portName)
     bool Initialized = false;
     QMetaObject::invokeMethod(canWorker, [canWorker, &Initialized, &cansocket]() {
         Initialized = canWorker->initialize(cansocket, 1000000);
-    }, Qt::BlockingQueuedConnection);
+    }, Qt::QueuedConnection);//Blocking
+
+    //sleep(1);
 
     SerialWorker *serialWorker = new SerialWorker();
     serialWorker->initSerialPort(portName, QSerialPort::Baud115200);
 
     QObject::connect(serialWorker, &SerialWorker::serialDataReceived,
-                     canWorker, &CanWorker::forwardSerialData,
-                     Qt::QueuedConnection);
+                     canWorker, &CanWorker::forwardSerialData);
     QObject::connect(canWorker, &CanWorker::SerialSendRequest,
-                     serialWorker, &SerialWorker::writeSerialData,
-                     Qt::QueuedConnection);
+                     serialWorker, &SerialWorker::writeSerialData);
 
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                     serialWorker, &SerialWorker::closeSerial,
-                     Qt::QueuedConnection);
+                     serialWorker, &SerialWorker::closeSerial);
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                     serialWorker, &QObject::deleteLater,
-                     Qt::QueuedConnection);
+                     serialWorker, &QObject::deleteLater);
 
-    QMetaObject::invokeMethod(canWorker, &CanWorker::testserialloop);
+    QMetaObject::invokeMethod(canWorker, &CanWorker::testserialloop);//事件循环问题
 }
 
 void TcpManager(CanWorker *canWorker)
@@ -215,21 +206,21 @@ int main(int argc, char *argv[])
 
     QGuiApplication app(argc, argv);
 
-    /*QQmlApplicationEngine engine;
+    QQmlApplicationEngine engine;
     const QUrl url(QStringLiteral("qrc:/main.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
                      &app, [url](QObject *obj, const QUrl &objUrl) {
         if (!obj && url == objUrl)
             QCoreApplication::exit(-1);
     }, Qt::QueuedConnection);
-    engine.load(url);*/
+    engine.load(url);
 
     //canmanager("can0");
     //SerialManager("/dev/ttyS4");c
 
     //Test_eth_can("can0");
     //Test_eth_Serial("/dev/ttyS4");
-    Test_can_serial("can0","/dev/ttyS4");
+    //Test_can_serial("can0","/dev/ttyS4");
 
     return app.exec();
 }

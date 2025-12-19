@@ -68,6 +68,7 @@ private:
 private:
     QMutex m_Mutex;
     QList<QTcpSocket*> m_clients;
+    QElapsedTimer m_testtimer;
 
     quint16 m_port{502};
     enum ServerState {
@@ -84,7 +85,6 @@ private:
     QTcpServer *m_tcpServer{nullptr};
     QTimer *m_heartbeatTimer{nullptr};
     QTimer *m_cleanupTimer{nullptr};
-    QElapsedTimer m_testtimer;
 };
 
 #endif // TCPSERVER_H

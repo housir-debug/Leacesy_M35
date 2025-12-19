@@ -52,8 +52,8 @@ private:
 
 private:
     QMutex m_Mutex;
-    QElapsedTimer m_testtimer;
     QString m_interfaceName;
+    QElapsedTimer m_testtimer;
 
     int m_bitrate{0};
     int m_canSocket{-1};

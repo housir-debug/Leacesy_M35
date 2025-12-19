@@ -1,5 +1,8 @@
 <RCC>
     <qresource prefix="/">
         <file>main.qml</file>
+        <file>Gauge.qml</file>
+        <file>DigitalDisplay.qml</file>
+        <file>WaveformDisplay.qml</file>
     </qresource>
 </RCC>

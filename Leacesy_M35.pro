@@ -1,4 +1,4 @@
-QT += quick virtualkeyboard core serialport serialbus
+QT += quick quickcontrols2 virtualkeyboard core serialport serialbus
 
 CONFIG += c++11
 
