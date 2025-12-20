@@ -158,7 +158,7 @@ void Test_can_serial(const QString &cansocket,const QString &portName)
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
                      serialWorker, &QObject::deleteLater);
 
-    QMetaObject::invokeMethod(canWorker, &CanWorker::testserialloop);//事件循环问题
+    QMetaObject::invokeMethod(canWorker, &CanWorker::testserialloop);//存在异步析构耗时开销事件循环问题导致延时
 }
 
 void TcpManager(CanWorker *canWorker)
@@ -206,14 +206,14 @@ int main(int argc, char *argv[])
 
     QGuiApplication app(argc, argv);
 
-    QQmlApplicationEngine engine;
+    /*QQmlApplicationEngine engine;
     const QUrl url(QStringLiteral("qrc:/main.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
                      &app, [url](QObject *obj, const QUrl &objUrl) {
         if (!obj && url == objUrl)
             QCoreApplication::exit(-1);
     }, Qt::QueuedConnection);
-    engine.load(url);
+    engine.load(url);*/
 
     //canmanager("can0");
     //SerialManager("/dev/ttyS4");c

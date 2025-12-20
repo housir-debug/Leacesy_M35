@@ -37,6 +37,9 @@ bool CanWorker::initialize(const QString &interfaceName, int bitrate)
 
     //sleep(1);
     //testserialloop();
+    /*QTimer::singleShot(16000,this,[this]() {
+        QMetaObject::invokeMethod(this, &CanWorker::testserialloop);
+    });*/
     return true;
 }
 

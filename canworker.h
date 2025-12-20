@@ -1,6 +1,7 @@
 #ifndef CANWORKER_H
 #define CANWORKER_H
 
+//#include <QTimer>
 #include <QObject>
 #include <QMutex>
 #include <QThread>
