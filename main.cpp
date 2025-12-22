@@ -220,7 +220,7 @@ int main(int argc, char *argv[])
 
     //Test_eth_can("can0");
     //Test_eth_Serial("/dev/ttyS4");
-    //Test_can_serial("can0","/dev/ttyS4");
+    Test_can_serial("can0","/dev/ttyS4");
 
     return app.exec();
 }

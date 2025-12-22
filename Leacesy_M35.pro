@@ -1,4 +1,4 @@
-QT += quick quickcontrols2 virtualkeyboard core serialport serialbus
+QT += quick quickcontrols2 virtualkeyboard core serialport
 
 CONFIG += c++11
 
@@ -10,6 +10,7 @@ SOURCES += \
         canworker.cpp \
         main.cpp \
         serialworker.cpp \
+        simple_logger.cpp \
         tcpserver.cpp
 
 RESOURCES += qml.qrc
@@ -28,4 +29,5 @@ else: unix:!android: target.path = /root/$${TARGET}/bin
 HEADERS += \
     canworker.h \
     serialworker.h \
+    simple_logger.h \
     tcpserver.h
