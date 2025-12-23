@@ -8,6 +8,10 @@
 #include <QDebug>
 #include <QMutex>
 #include <QElapsedTimer>
+#include <QLoggingCategory>
+
+
+Q_DECLARE_LOGGING_CATEGORY(uart)
 
 class SerialWorker : public QObject
 {
@@ -25,6 +29,7 @@ public:
     void closeSerial();
 
     void writeSerialData(const QByteArray &data);
+
     void startLoopbackTest();
 
 signals:

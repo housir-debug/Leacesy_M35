@@ -6,6 +6,8 @@
 #include <QElapsedTimer>
 
 
+Q_LOGGING_CATEGORY(tcp, "tcp:")
+
 TcpServerManager::TcpServerManager( QObject *parent)
     : QObject(parent)
 {
@@ -14,7 +16,7 @@ TcpServerManager::TcpServerManager( QObject *parent)
 bool TcpServerManager::startServer()
 {
     if (m_state.load() != STATE_STOPPED) {
-        qWarning() << "TcpServer is not in stopped state";
+        qCWarning(tcp) << "TcpServer is not in stopped state";
         return false;
     }
 
@@ -57,13 +59,13 @@ bool TcpServerManager::startServer()
             m_heartbeatTimer->start();
             m_cleanupTimer->start();
 
-            qInfo() << "TcpServer started on port" << m_port
+            qCInfo(tcp) << "TcpServer started on port" << m_port
                    << ", thread:" << QThread::currentThread()->objectName();
         } else {
             m_state.store(STATE_STOPPED);
             QString error = QString("Failed to start TCP server: %1")
                            .arg(m_tcpServer->errorString());
-            qCritical() << error;
+            qCCritical(tcp) << error;
             emit errorOccurred(error);
             stopServer();
         }
@@ -84,7 +86,7 @@ void TcpServerManager::sendToAllClients(const QByteArray &data)
         if (client->state() == QAbstractSocket::ConnectedState) {
             qint64 bytesWritten = client->write(data);
             if (bytesWritten == -1) {
-                qWarning() << "Failed to send data to client" << client->objectName();
+                qCWarning(tcp) << "Failed to send data to client" << client->objectName();
                 failedCount++;
             } else {
                 successCount++;
@@ -99,10 +101,10 @@ void TcpServerManager::sendToAllClients(const QByteArray &data)
     if (successCount == m_clients.size()) {
         if (data != "HEARTBEAT"){
             qint64 elapsed = m_testtimer.elapsed();
-            qDebug() << "eth-can test time:" <<elapsed;
+            qCDebug(tcp) << "eth-can test time:" <<elapsed;
         }
     }else{
-        qDebug() << "tcpsendclient failcount:" <<failedCount<< "clients,"<< successCount << "clients";
+        qCDebug(tcp) << "tcpsendclient failcount:" <<failedCount<< "clients,"<< successCount << "clients";
     }
 }
 
@@ -119,7 +121,7 @@ void TcpServerManager::cleanupDisconnectedClients()
     for (QTcpSocket *client : toRemove) {
         m_clients.removeOne(client);
         client->deleteLater();
-        qDebug() << "Cleaned up disconnected client:" << client->objectName();
+        qCDebug(tcp) << "Cleaned up disconnected client:" << client->objectName();
     }
 }
 
@@ -131,7 +133,7 @@ void TcpServerManager::onNewConnection()
     {
         QMutexLocker locker(&m_Mutex);
         if (m_clients.size() >= 10) {
-            qWarning() << "Max client limit reached, rejecting connection from"
+            qCWarning(tcp) << "Max client limit reached, rejecting connection from"
                       << client->peerAddress().toString();
             client->disconnectFromHost();
             delete client;
@@ -154,7 +156,7 @@ void TcpServerManager::onNewConnection()
     connect(client, QOverload<QAbstractSocket::SocketError>::of(&QTcpSocket::errorOccurred),
             this, &TcpServerManager::onSocketError);
 
-    qInfo() << "New client connected:" << clientInfo
+    qCInfo(tcp) << "New client connected:" << clientInfo
            << ", total clients:" << m_clients.size();;
 
     QByteArray welcome = QString("Welcome to Meacesy Server (Clients: %1)\n")
@@ -170,7 +172,7 @@ void TcpServerManager::onSocketError(QAbstractSocket::SocketError error)
         return;
     }
 
-    qWarning() << "Socket error from" << client->objectName()
+    qCWarning(tcp) << "Socket error from" << client->objectName()
               << ":" << client->errorString() << "|" << error;
 }
 
@@ -190,7 +192,7 @@ void TcpServerManager::onClientDisconnected()
 
     client->deleteLater();
 
-    qInfo() << "Client disconnected:" << clientInfo
+    qCInfo(tcp) << "Client disconnected:" << clientInfo
            << ", remaining clients:" << m_clients.size();
 }
 
@@ -201,7 +203,7 @@ void TcpServerManager::onClientReadyRead()
 
     QByteArray rawData = client->readAll();
     m_totalBytesReceived += rawData.size();
-    qDebug() << "Received from" << client->objectName()<< "size:" << rawData.size()<< "hex:" << rawData.toHex();
+    qCDebug(tcp) << "Received from" << client->objectName()<< "size:" << rawData.size()<< "hex:" << rawData.toHex();
 
     QTimer::singleShot(0, this, [this, client,rawData]() {
         // 异步处理，立即放入事件队列，不阻塞事件循环
@@ -212,7 +214,7 @@ void TcpServerManager::onClientReadyRead()
 
 void TcpServerManager::processClientData(QTcpSocket *client,const QByteArray newdata)
 {
-    qDebug() << "Processing buffer for" << client->objectName()<< "size:" << newdata.size();
+    qCDebug(tcp) << "Processing buffer for" << client->objectName()<< "size:" << newdata.size();
 
     if (newdata.size() == static_cast<int>(sizeof(ControlPacket))) {//二进制控制指令包
             ControlPacket packet;
@@ -221,7 +223,7 @@ void TcpServerManager::processClientData(QTcpSocket *client,const QByteArray new
             if (validatePacket(packet)) {
                 handleCommand(client, packet);
             } else {
-                qWarning() << "Invalid packet from" << client->objectName();
+                qCWarning(tcp) << "Invalid packet from" << client->objectName();
                 QByteArray errorMsg = "ERROR: Invalid packet format\n";
                 client->write(errorMsg);
             }
@@ -254,14 +256,14 @@ void TcpServerManager::processClientData(QTcpSocket *client,const QByteArray new
             return;
         }
     else if(newdata.size() >= static_cast<int>(sizeof(ControlPacket))){
-            qDebug() << "Data larger than packet size from" << client->objectName()
+            qCDebug(tcp) << "Data larger than packet size from" << client->objectName()
                              << "expected max:" << sizeof(ControlPacket)
                              << "actual:" << newdata.size();
 
             // 多个数据包
             if (newdata.size() % sizeof(ControlPacket) == 0) {
                 int packetCount = newdata.size() / sizeof(ControlPacket);
-                qDebug() << "Detected" << packetCount << "binary packets in stream";
+                qCDebug(tcp) << "Detected" << packetCount << "binary packets in stream";
 
                 const char* dataPtr = newdata.constData();
                 for (int i = 0; i < packetCount; i++) {
@@ -271,7 +273,7 @@ void TcpServerManager::processClientData(QTcpSocket *client,const QByteArray new
                     if (validatePacket(packet)) {
                         handleCommand(client, packet);
                     } else {
-                        qWarning() << "Invalid packet" << i << "in batch from" << client->objectName();
+                        qCWarning(tcp) << "Invalid packet" << i << "in batch from" << client->objectName();
                         client->write("ERROR: Batch packet validation failed\n");
                         break;
                     }
@@ -283,7 +285,7 @@ void TcpServerManager::processClientData(QTcpSocket *client,const QByteArray new
             ControlPacket packet;
             memcpy(&packet, newdata.constData(), sizeof(packet));
             if (validatePacket(packet)) {
-                qDebug() << "Valid packet found at beginning, extra data:"
+                qCDebug(tcp) << "Valid packet found at beginning, extra data:"
                          << newdata.size() - sizeof(ControlPacket) << "bytes";
 
                 // 处理有效的包
@@ -294,7 +296,7 @@ void TcpServerManager::processClientData(QTcpSocket *client,const QByteArray new
                 extraData = extraData.trimmed();  // 移除可能的换行符/空格
 
                 if (!extraData.isEmpty()) {
-                    qDebug() << "Processing extra data:" << extraData;
+                    qCDebug(tcp) << "Processing extra data:" << extraData;
                     // 递归处理剩余数据（会进入文本命令分支）
                     processClientData(client, extraData);
                 }
@@ -305,13 +307,13 @@ void TcpServerManager::processClientData(QTcpSocket *client,const QByteArray new
             QByteArray trimmed = newdata.trimmed();
             QByteArray upperTrimmed = trimmed.toUpper();
             if (upperTrimmed.startsWith("HEARTBEAT")) {
-                qDebug() << "HEARTBEAT command with extra data:" << trimmed;
+                qCDebug(tcp) << "HEARTBEAT command with extra data:" << trimmed;
                 // 只响应基本心跳，忽略额外数据
                 client->write("HEARTBEAT_RESPONSE\n");
                 return;
             }
             else if (upperTrimmed.startsWith("STATUS")) {
-                qDebug() << "STATUS command with extra data:" << trimmed;
+                qCDebug(tcp) << "STATUS command with extra data:" << trimmed;
                 // 只响应状态查询，忽略额外参数
                 QString status = QString(
                     "=== CAN TCP Server Status ===\n"
@@ -331,13 +333,13 @@ void TcpServerManager::processClientData(QTcpSocket *client,const QByteArray new
             }
 
             // 情况D：未知的大数据格式
-            qWarning() << "Unrecognized large data from" << client->objectName()
+            qCWarning(tcp) << "Unrecognized large data from" << client->objectName()
                       << "size:" << newdata.size() << "content: " << newdata;
             client->write("ERROR: Data format not recognized\n");
             return;
         }
     else{
-            qWarning() << "Invalid brief inform!Throw!" ;
+            qCWarning(tcp) << "Invalid brief inform!Throw!" ;
             return;
         }
 }
@@ -365,13 +367,13 @@ bool TcpServerManager::validatePacket(const ControlPacket &packet)
 {
     // 检查魔法头
     if (packet.magic != 0xBEEF) {
-        qWarning() << "Invalid magic header:" << QString::number(packet.magic, 16);
+        qCWarning(tcp) << "Invalid magic header:" << QString::number(packet.magic, 16);
         return false;
     }
 
     // 检查数据长度
     if (packet.dataLength > 8) {
-        qWarning() << "Invalid data length:" << packet.dataLength;
+        qCWarning(tcp) << "Invalid data length:" << packet.dataLength;
         return false;
     }
 
@@ -381,7 +383,7 @@ bool TcpServerManager::validatePacket(const ControlPacket &packet)
     quint16 calculatedCrc = crc16(reinterpret_cast<const quint8*>(crcData.constData()), crcData.size());
 
     if (calculatedCrc != packet.crc) {
-        qWarning() << "CRC mismatch: expected" << QString::number(packet.crc, 16)
+        qCWarning(tcp) << "CRC mismatch: expected" << QString::number(packet.crc, 16)
                   << "got" << QString::number(calculatedCrc, 16);
         return false;
     }
@@ -395,7 +397,7 @@ void TcpServerManager::handleCommand(QTcpSocket *client, const ControlPacket &pa
 
     switch (packet.command) {
         case 0x01:{// 心跳包
-            qDebug() << "Heartbeat from" << client->objectName();
+            qCDebug(tcp) << "Heartbeat from" << client->objectName();
             QByteArray response;
             response.append("HEARTBEAT_OK\n");
             client->write(response);
@@ -404,7 +406,7 @@ void TcpServerManager::handleCommand(QTcpSocket *client, const ControlPacket &pa
 
         case 0x02: {// 发送CAN帧
             QByteArray canData(reinterpret_cast<const char*>(packet.data), packet.dataLength);
-            qDebug() << "CAN send request from" << client->objectName()
+            qCDebug(tcp) << "CAN send request from" << client->objectName()
                     << "ID:" << QString::number(packet.canId, 16)
                     << "Data:" << canData.toHex();
 
@@ -419,7 +421,7 @@ void TcpServerManager::handleCommand(QTcpSocket *client, const ControlPacket &pa
         }
 
         case 0x03:{// 查询状态
-            qDebug() << "Status query from" << client->objectName();
+            qCDebug(tcp) << "Status query from" << client->objectName();
             QString status = QString(
                 "=== CAN TCP Server Status ===\n"
                 "Port: %1\n"
@@ -439,7 +441,7 @@ void TcpServerManager::handleCommand(QTcpSocket *client, const ControlPacket &pa
         }
 
         default:{//未知命令
-        qWarning() << "Unknown command type:" << packet.command
+        qCWarning(tcp) << "Unknown command type:" << packet.command
                   << "from" << client->objectName();
 
         QByteArray error = QString("ERROR: Unknown command 0x%1\n")
@@ -454,7 +456,7 @@ void TcpServerManager::handleCommand(QTcpSocket *client, const ControlPacket &pa
 TcpServerManager::~TcpServerManager()
 {
     stopServer();
-    qDebug() << "TcpServerManager destroyed";
+    qCDebug(tcp) << "TcpServerManager destroyed";
 }
 
 void TcpServerManager::stopServer()
@@ -492,7 +494,7 @@ void TcpServerManager::stopServer()
     }
 
     m_state.store(STATE_STOPPED);
-    qInfo() << "TcpServer stopped";
+    qCInfo(tcp) << "TcpServer stopped";
 }
 
 
@@ -531,7 +533,7 @@ void TcpServerManager::sendToClient(QTcpSocket *client, const QByteArray &data)
 
     qint64 bytesWritten = client->write(data);
     if (bytesWritten == -1) {
-        qWarning() << "Failed to send to client" << client->objectName();
+        qCWarning(tcp) << "Failed to send to client" << client->objectName();
     } else {
         m_totalBytesSent += bytesWritten;
         //client->flush();

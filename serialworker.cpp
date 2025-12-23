@@ -1,5 +1,7 @@
 #include "serialworker.h"
 
+Q_LOGGING_CATEGORY(uart, "uart:")
+
 SerialWorker::SerialWorker(QObject *parent)
     : QObject(parent)
 {
@@ -72,7 +74,7 @@ bool SerialWorker::initSerialPort(const QString &portName,
 
     QMetaObject::invokeMethod(this, [this]() {
         if (!m_serialPort->open(QIODevice::ReadWrite)) {
-            qWarning() << "Failed to open serial port:"<< m_postName
+            qCWarning(uart) << "Failed to open serial port:"<< m_postName
                        << "Error:" << m_serialPort->errorString();
             emit serialErrorOccurred(QStringLiteral("Failed to open serial port %1: %2")
                                      .arg(m_postName, m_serialPort->errorString()));
@@ -81,11 +83,10 @@ bool SerialWorker::initSerialPort(const QString &portName,
 
             return; //返回初始化失败
         }
-
-        qDebug() << "Serial port" << m_postName << "opened successfully";
         m_isListening = true;//设置了监听标志，控制handleReadyRead处理数据
      }, Qt::QueuedConnection);
 
+    qCInfo(uart) << m_postName << "opened successfully";
     return true;
 }
 
@@ -102,7 +103,7 @@ void SerialWorker::handleReadyRead()
         if (m_isTesting.load()) {
             m_bytesReceived += data.size();
 
-            qDebug() << "Received" << data.size() << "bytes during test"
+            qCDebug(uart) << "Received" << data.size() << "bytes during test"
                      << "Total received:" << m_bytesReceived << "bytes";
 
             if (m_bytesReceived >= m_testData.size()) {
@@ -121,7 +122,7 @@ void SerialWorker::handleReadyRead()
                  .arg(speedKBps, 0, 'f', 2)
                  .arg(speedBps * 8, 0, 'f', 0);
 
-                qDebug() << "\n" << result;
+                qCDebug(uart) << "\n" << result;
 
                 m_isTesting.store(false);
             }else {
@@ -132,7 +133,7 @@ void SerialWorker::handleReadyRead()
             // 正常模式
             emit serialDataReceived(data);
             // 打印接收到的数据（十六进制格式）
-            qDebug() << "Serial received:" << data.toHex(' ');
+            qCDebug(uart) << "Serial received:" << data.toHex(' ');
         }
     }
     // 如果没有数据
@@ -144,7 +145,7 @@ void SerialWorker::handleError(QSerialPort::SerialPortError error)
     if (error != QSerialPort::NoError) {
         QString errorMsg = QString("Serial port error: %1").arg(m_serialPort->errorString());
         emit serialErrorOccurred(errorMsg);
-        qWarning() << errorMsg;
+        qCWarning(uart) << errorMsg;
 
         // 测试中遇到错误，停止测试
         if (m_isTesting.load()) {
@@ -158,7 +159,7 @@ void SerialWorker::handleError(QSerialPort::SerialPortError error)
 SerialWorker::~SerialWorker()
 {
     closeSerial();
-    qDebug() << "Serial~ delete finished";
+    qCDebug(uart) << "Serial~ delete finished";
 }
 
 void SerialWorker::closeSerial()
@@ -168,7 +169,7 @@ void SerialWorker::closeSerial()
     if (m_serialPort) {
         if (m_serialPort->isOpen()) {
             m_serialPort->close();
-            qDebug() << "Serial port closed";
+            qCDebug(uart) << "Serial port closed";
         }
         delete m_serialPort;
         m_serialPort = nullptr;
@@ -191,7 +192,7 @@ void SerialWorker::writeSerialData(const QByteArray &data)
     QMutexLocker locker(&m_mutex);
 
     if (!m_serialPort || !m_serialPort->isOpen()) {
-        qWarning() << "Serial port is not open!";
+        qCWarning(uart) << "Serial port is not open!";
         return;
     }
 
@@ -199,13 +200,13 @@ void SerialWorker::writeSerialData(const QByteArray &data)
     qint64 bytesWritten = m_serialPort->write(data);
     if (bytesWritten == -1){
         // 写入失败
-        qWarning() << "Failed to write data to serial port:" << m_serialPort->errorString();
+        qCWarning(uart) << "Failed to write data to serial port:" << m_serialPort->errorString();
     } else if (bytesWritten != data.size()) {
         // 部分写入
-        qWarning() << "Partial data written to serial port:" << bytesWritten << "of" << data.size();
+        qCWarning(uart) << "Partial data written to serial port:" << bytesWritten << "of" << data.size();
     } else {
         // 完全写入
-        qDebug() << "Successfully wrote" << bytesWritten << "bytes to serial port";
+        qCDebug(uart) << "Successfully wrote" << bytesWritten << "bytes to serial port";
     }
     // 注意：不需要调用推入flush()，QSerialPort会自动处理
 }
@@ -216,7 +217,7 @@ void SerialWorker::startLoopbackTest()
     QMutexLocker locker(&m_mutex);
 
     if (m_isTesting.load()) {
-        qWarning() << "Test is already running!";
+        qCWarning(uart) << "Test is already running!";
         return;
     }
 
@@ -234,13 +235,13 @@ void SerialWorker::startLoopbackTest()
         m_testData[i] = i % 256;  // 填充0-255的序列
     }
 
-    qDebug() << "Starting loopback test (connect TX to RX for testing)...";
-    qDebug() << "Sending" << m_testData.size() << "bytes of test data";
+    qCDebug(uart) << "Starting loopback test (connect TX to RX for testing)...";
+    qCDebug(uart) << "Sending" << m_testData.size() << "bytes of test data";
     locker.unlock();  // 显式解锁
     m_testTimer.start();
 
     writeSerialData(m_testData);
-    qDebug() << "Sending success!";
+    qCDebug(uart) << "Sending success!";
 }
 
 /**********************************************************************

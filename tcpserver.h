@@ -9,6 +9,10 @@
 #include <QTimer>
 #include <atomic>
 #include <memory>
+#include <QLoggingCategory>
+
+
+Q_DECLARE_LOGGING_CATEGORY(tcp)
 
 class TcpServerManager : public QObject
 {

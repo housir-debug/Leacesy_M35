@@ -1,13 +1,13 @@
 #ifndef CANWORKER_H
 #define CANWORKER_H
 
-//#include <QTimer>
 #include <QObject>
 #include <QMutex>
 #include <QThread>
 #include <QDebug>
 #include <QDateTime>
 #include <QAtomicInteger>
+#include <QLoggingCategory>
 
 // Linux SocketCAN头文件
 #include <linux/can.h>
@@ -19,6 +19,8 @@
 #include <net/if.h>
 #include <fcntl.h>
 #include <cstring>
+
+Q_DECLARE_LOGGING_CATEGORY(can);
 
 class CanWorker : public QObject
 {
@@ -33,14 +35,15 @@ public:
 
     bool sendFrame(quint32 canId, const QByteArray &data);
     void forwardSerialData(const QByteArray &data);
+
     void testLoopback();
     void testserialloop();
 
 signals:
-    void SerialSendRequest(const QByteArray &data);
-    void errorOccurred(const QString &error);
-    void frameSented(quint32 canId, bool success);
     void frameReceived(quint32 canId, const QByteArray &data, qint64 timestamp);
+    void errorOccurred(const QString &error);
+    void frameSenterror(quint32 canId, const QString &error);
+    void SerialSendRequest(const QByteArray &data);
 
 private:
     bool initializeSocket();

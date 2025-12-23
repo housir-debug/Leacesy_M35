@@ -2,11 +2,29 @@
 #include <QQmlApplicationEngine>
 #include <QTimer>
 #include <QThread>
+#include <QLoggingCategory>
 #include "serialworker.h"
 #include "canworker.h"
 #include "tcpserver.h"
-#include <signal.h>
+#include "simple_logger.h"
 
+
+void loggermanage(const QString &loglevel){
+    QString rules;
+    if (loglevel == "debug") {
+        rules = "*.debug=true\n*.info=true\n*.warning=true";
+    } else if (loglevel == "info") {
+        rules = "*.debug=false\n*.info=true\n*.warning=true";
+    } else if (loglevel == "warning") {
+        rules = "*.debug=false\n*.info=false\n*.warning=true";
+    } else {
+        rules = "*.debug=false\n*.info=true\n*.warning=true";
+    }
+    QLoggingCategory::setFilterRules(rules);
+
+    //格式化加时间，比直接时间戳延时更多
+    //qSetMessagePattern("[%{time HH:mm:ss.zzzzzz}] [%{category}] %{message}");
+}
 
 void canmanager(const QString &cansocket)
 {
@@ -85,8 +103,8 @@ void SerialManager(const QString &portName)
 
     //挂起 一秒后执行---在lambda中使用局部变量，但生命周期问题singleShot(1000, [](),所以使用捕获singleShot(1000, [serialWorker]()
     QTimer::singleShot(1000, serialWorker,[serialWorker]() {
-        qDebug() << "\n=== Starting Loopback Test ===";
-        qDebug() << "Please connect TX and RX pins of the serial port!";
+        qCDebug(app) << "\n=== Starting Loopback Test ===";
+        qCDebug(app) << "Please connect TX and RX pins of the serial port!";
 
         QMetaObject::invokeMethod(serialWorker, &SerialWorker::startLoopbackTest);
     });
@@ -182,20 +200,6 @@ void TcpManager(CanWorker *canWorker)
 }
 
 
-void signalHandler(int signal)
-{
-    qDebug() << "收到信号:" << signal;
-    if (signal == SIGINT) {
-        qDebug() << "Ctrl+C 被按下，开始清理...";
-        // 调用清理函数
-        QCoreApplication::quit();  // 优雅退出
-    }
-
-    // 注册信号处理函数-IDE结束信号
-    //signal(SIGTERM, signalHandler);
-}
-
-
 int main(int argc, char *argv[])
 {
     qputenv("QT_IM_MODULE", QByteArray("qtvirtualkeyboard"));
@@ -206,6 +210,8 @@ int main(int argc, char *argv[])
 
     QGuiApplication app(argc, argv);
 
+    //loggermanage("info");
+
     /*QQmlApplicationEngine engine;
     const QUrl url(QStringLiteral("qrc:/main.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
@@ -215,12 +221,12 @@ int main(int argc, char *argv[])
     }, Qt::QueuedConnection);
     engine.load(url);*/
 
-    //canmanager("can0");
+    canmanager("can0");
     //SerialManager("/dev/ttyS4");c
 
     //Test_eth_can("can0");
     //Test_eth_Serial("/dev/ttyS4");
-    Test_can_serial("can0","/dev/ttyS4");
+    //Test_can_serial("can0","/dev/ttyS4");
 
     return app.exec();
 }
