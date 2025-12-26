@@ -221,8 +221,8 @@ int main(int argc, char *argv[])
     }, Qt::QueuedConnection);
     engine.load(url);*/
 
-    canmanager("can0");
-    //SerialManager("/dev/ttyS4");c
+    //canmanager("can0");
+    //SerialManager("/dev/ttyS4");
 
     //Test_eth_can("can0");
     //Test_eth_Serial("/dev/ttyS4");

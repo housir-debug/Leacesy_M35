@@ -17,7 +17,8 @@ Rectangle {//ApplicationWindow
         color: "#1a1a2e"
 
         Text {
-            text: "⚡ 高精度电源测量系统"
+            id: text1
+            text: "高精度电源测量系统"
             color: "#ffffff"
             font.pixelSize: 24
             font.bold: true
@@ -51,6 +52,10 @@ Rectangle {//ApplicationWindow
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
+        anchors.rightMargin: 0
+        anchors.bottomMargin: -6
+        anchors.leftMargin: 0
+        anchors.topMargin: 6
         color: "transparent"
 
         GridLayout {
@@ -65,7 +70,7 @@ Rectangle {//ApplicationWindow
                 Layout.column: 0
                 Layout.row: 0
                 Layout.rowSpan: 2
-                spacing: 20
+                spacing: 30
 
                 Gauge {
                     id: voltageGauge
@@ -96,10 +101,10 @@ Rectangle {//ApplicationWindow
             ColumnLayout {
                 Layout.column: 1
                 Layout.row: 0
-                spacing: 15
+                spacing: 66
 
                 RowLayout {
-                    spacing: 15
+                    spacing: 60
 
                     DigitalDisplay {
                         Layout.preferredWidth: 180
@@ -127,7 +132,7 @@ Rectangle {//ApplicationWindow
                 }
 
                 WaveformDisplay {
-                    Layout.preferredHeight: 200
+                    Layout.preferredHeight: 300
                     Layout.fillWidth: true
                     dataPoints: generateSampleData()
                     waveColor: "#00b4d8"
@@ -143,6 +148,10 @@ Rectangle {//ApplicationWindow
                     ColumnLayout {
                         anchors.fill: parent
                         anchors.margins: 15
+                        anchors.rightMargin: 15
+                        anchors.bottomMargin: 15
+                        anchors.leftMargin: 15
+                        anchors.topMargin: 15
 
                         Text {
                             text: "控制设置"
@@ -243,3 +252,9 @@ Rectangle {//ApplicationWindow
         return data
     }
 }
+
+/*##^##
+Designer {
+    D{i:0;formeditorZoom:0.75}
+}
+##^##*/

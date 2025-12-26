@@ -6,9 +6,9 @@ Rectangle {
     id: display
     width: 200
     height: 80
-    radius: 10
+    radius: 88
     color: "#0f3460"
-    border.width: 2
+    border.width: 3
     border.color: "#00b4d8"
 
     property string label: "电流"
@@ -35,6 +35,7 @@ Rectangle {
             text: label
             color: "#cccccc"
             font.pixelSize: 14
+            anchors.horizontalCenter: parent.horizontalCenter
         }
 
         Row {

@@ -7,6 +7,7 @@ Rectangle {
     height: 200
     color: "#1a1a2e"
     radius: 8
+    border.color: "#000000"
 
     property var dataPoints: []
     property color waveColor: "#00b4d8"
