@@ -10,6 +10,8 @@
 #include <atomic>
 #include <memory>
 #include <QLoggingCategory>
+#include <QMap>
+#include <QRegularExpression>
 
 
 Q_DECLARE_LOGGING_CATEGORY(tcp)
@@ -53,7 +55,61 @@ private:
         quint8 data[8];         // 指令数据
         quint16 crc;            // CRC16校验
     };//20个字节
+    // SCPI命令回调函数类型
+        typedef std::function<QString(const QStringList&)> ScpiHandler;
+
+        // SCPI命令树节点
+        struct ScpiNode {
+            QString key;
+            QMap<QString, ScpiNode*> children;
+            ScpiHandler handler;
+            QString description;
+
+            ScpiNode(const QString& k = "", ScpiHandler h = nullptr,
+                     const QString& desc = "")
+                : key(k), handler(h), description(desc) {}
+
+            ~ScpiNode() {
+                qDeleteAll(children);
+            }
+        };
+
+        // 错误代码
+        enum ScpiError {
+            NO_ERROR = 0,
+            COMMAND_ERROR = -100,
+            EXECUTION_ERROR = -200,
+            DEVICE_SPECIFIC_ERROR = -300,
+            QUERY_ERROR = -400,
+            PARAMETER_ERROR = -500
+        };
     #pragma pack(pop)
+
+    // 初始化SCPI命令树
+        void initScpiCommandTree();
+
+        // 注册SCPI命令
+        void registerScpiCommand(const QString& command, ScpiHandler handler,
+                                const QString& description = "");
+
+        // 解析和处理SCPI命令
+        void processScpiCommand(QTcpSocket* client, const QString& command);
+
+        // 遍历执行SCPI命令
+        QString executeScpiCommand(const QString& command);
+
+        // 支持的通配符模式匹配
+        bool matchScpiPattern(const QString& pattern, const QString& command);
+
+        // SCPI命令处理器
+        QString handleScpiIdentify(const QStringList& args);
+        QString handleScpiSystemReset(const QStringList& args);
+        QString handleScpiNetworkInterface(const QStringList& args);
+
+        // 生成SCPI响应
+        QString generateScpiResponse(const QString& response);
+
+        QString getScpiErrors();
 
     void cleanupDisconnectedClients();
     void onNewConnection();
@@ -70,6 +126,20 @@ private:
     void sendToClient(QTcpSocket *client, const QByteArray &data);
 
 private:
+    // SCPI命令树
+        ScpiNode* m_scpiRoot;
+
+        // SCPI查询符号
+        static const QString SCPI_QUERY_SYMBOL;
+
+        // 添加SCPI错误队列
+        QList<QPair<int, QString>> m_scpiErrors;
+        void addScpiError(int code, const QString& message);
+
+
+        // SCPI支持状态
+        bool m_scpiEnabled{true};
+
     QMutex m_Mutex;
     QList<QTcpSocket*> m_clients;
     QElapsedTimer m_testtimer;

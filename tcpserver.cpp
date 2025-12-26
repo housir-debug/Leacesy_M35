@@ -7,11 +7,287 @@
 
 
 Q_LOGGING_CATEGORY(tcp, "tcp:")
+const QString TcpServerManager::SCPI_QUERY_SYMBOL = "?";
 
 TcpServerManager::TcpServerManager( QObject *parent)
     : QObject(parent)
 {
+     initScpiCommandTree();
 }
+
+void TcpServerManager::initScpiCommandTree()
+{
+    m_scpiRoot = new ScpiNode("ROOT");
+
+    // *IDN? 查询设备标识
+    registerScpiCommand("*IDN",
+        [this](const QStringList& args) { return handleScpiIdentify(args); },
+        "Query device identification");
+
+    // *RST 系统复位
+    registerScpiCommand("*RST",
+        [this](const QStringList& args) { return handleScpiSystemReset(args); },
+        "Reset system to default state");
+
+    // *CLS 清除状态
+    registerScpiCommand("*CLS",
+        [this](const QStringList& args) {
+            Q_UNUSED(args);
+            m_scpiErrors.clear();
+            return "0";
+        },
+        "Clear status");
+
+    // *ESR? 事件状态寄存器查询
+    registerScpiCommand("*ESR",
+        [this](const QStringList& /*args*/) {
+            return QString::number(m_scpiErrors.isEmpty() ? 0 : 1);
+        },
+        "Event status register query");
+
+    // NETWORK子系统
+    registerScpiCommand("NETWork:INTERFace",
+        [this](const QStringList& args) { return handleScpiNetworkInterface(args); },
+        "Query network interfaces");
+
+    registerScpiCommand("NETWork:IP",
+        [](const QStringList& /*args*/) {
+            QList<QHostAddress> addresses = QNetworkInterface::allAddresses();
+            QStringList ipList;
+            for (const QHostAddress &address : qAsConst(addresses)) {
+                if (address.protocol() == QAbstractSocket::IPv4Protocol &&
+                    address != QHostAddress::LocalHost) {
+                    ipList.append(address.toString());
+                }
+            }
+            return ipList.join(",");
+        },
+        "Query IP addresses");
+
+    qCInfo(tcp) << "SCPI command tree initialized with commands";
+}
+
+void TcpServerManager::registerScpiCommand(const QString& command,
+                                          ScpiHandler handler,
+                                          const QString& description)
+{
+    QStringList parts = command.split(':');
+    ScpiNode* current = m_scpiRoot;
+
+    for (const QString& part : qAsConst(parts)) {
+        QString key = part.toUpper();
+        if (!current->children.contains(key)) {
+            current->children[key] = new ScpiNode(key);
+        }
+        current = current->children[key];
+    }
+
+    current->handler = handler;
+    current->description = description;
+}
+
+void TcpServerManager::processScpiCommand(QTcpSocket* client, const QString& command)
+{
+    if (!m_scpiEnabled) {
+        QString response = generateScpiResponse("ERROR:SCPI disabled");
+        client->write(response.toUtf8());
+        return;
+    }
+
+    QString trimmedCmd = command.trimmed();
+    if (trimmedCmd.isEmpty()) {
+        return;
+    }
+
+    qCDebug(tcp) << "Processing SCPI command:" << trimmedCmd
+                 << "from" << client->objectName();
+
+    QString result = executeScpiCommand(trimmedCmd);
+    QString response = generateScpiResponse(result);
+
+    client->write(response.toUtf8());
+}
+
+QString TcpServerManager::executeScpiCommand(const QString& command)
+{
+    QString cmd = command.trimmed().toUpper();
+    bool isQuery = cmd.endsWith(SCPI_QUERY_SYMBOL);
+
+    if (isQuery) {
+        cmd = cmd.left(cmd.length() - 1); // 移除查询符号
+    }
+
+    // 检查是否为通用命令（以*开头）
+    if (cmd.startsWith("*")) {
+        // 处理通用SCPI命令
+        if (cmd == "*IDN" && isQuery) {
+            return handleScpiIdentify(QStringList());
+        }
+        else if (cmd == "*RST" && !isQuery) {
+            return handleScpiSystemReset(QStringList());
+        }
+        else if (cmd == "*CLS" && !isQuery) {
+            m_scpiErrors.clear();
+            return "0";
+        }
+        else if (cmd == "*ESR" && isQuery) {
+            return QString::number(m_scpiErrors.isEmpty() ? 0 : 1);
+        }
+        else {
+            addScpiError(COMMAND_ERROR, QString("Unknown generic command: %1").arg(cmd));
+            return "ERROR:Undefined header";
+        }
+    }
+
+    // 解析层级命令
+    QStringList parts = cmd.split(':');
+    ScpiNode* current = m_scpiRoot;
+
+    for (const QString& part : qAsConst(parts)) {
+        QString key = part.toUpper();
+
+        // 检查是否有精确匹配
+        if (current->children.contains(key)) {
+            current = current->children[key];
+        }
+        // 检查通配符匹配
+        else {
+            bool matched = false;
+            for (const QString& pattern : current->children.keys()) {
+                if (matchScpiPattern(pattern, key)) {
+                    current = current->children[pattern];
+                    matched = true;
+                    break;
+                }
+            }
+            if (!matched) {
+                addScpiError(COMMAND_ERROR, QString("Unknown command: %1").arg(cmd));
+                return "ERROR:Undefined header";
+            }
+        }
+    }
+
+    if (!current->handler) {
+        addScpiError(COMMAND_ERROR, QString("No handler for: %1").arg(cmd));
+        return "ERROR:Undefined header";
+    }
+
+    // 执行命令
+    try {
+        return current->handler(QStringList());
+    } catch (const std::exception& e) {
+        addScpiError(EXECUTION_ERROR, QString("Execution error: %1").arg(e.what()));
+        return QString("ERROR:Execution error: %1").arg(e.what());
+    }
+}
+
+bool TcpServerManager::matchScpiPattern(const QString& pattern, const QString& command)
+{
+    // 支持简单的通配符匹配
+    // 例如：PATtern 匹配 PAT, PATT, PATTERN
+    if (pattern.length() > command.length()) {
+        return false;
+    }
+
+    for (int i = 0; i < pattern.length(); ++i) {
+        if (pattern[i] != command[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+QString TcpServerManager::generateScpiResponse(const QString& response)
+{
+    if (response.startsWith("ERROR:")) {
+        return response + "\n";
+    } else {
+        return response + "\n";
+    }
+}
+
+void TcpServerManager::addScpiError(int code, const QString& message)
+{
+    m_scpiErrors.append(qMakePair(code, message));
+
+    // 保持错误队列大小
+    if (m_scpiErrors.size() > 10) {
+        m_scpiErrors.removeFirst();
+    }
+
+    qCWarning(tcp) << "SCPI Error [" << code << "]: " << message;
+}
+
+QString TcpServerManager::getScpiErrors()
+{
+    if (m_scpiErrors.isEmpty()) {
+        return "0,\"No error\"";
+    }
+
+    auto error = m_scpiErrors.takeLast();
+    return QString("%1,\"%2\"")
+           .arg(error.first)
+           .arg(error.second);
+}
+
+
+QString TcpServerManager::handleScpiIdentify(const QStringList& args)
+{
+    Q_UNUSED(args);
+
+    QString manufacturer = "YourCompany";
+    QString model = "RK3568-CAN-Gateway";
+    QString serial = "SN-001";
+    QString firmware = "1.0.0";
+
+    return QString("%1,%2,%3,%4")
+           .arg(manufacturer, model, serial, firmware);
+}
+
+QString TcpServerManager::handleScpiSystemReset(const QStringList& args)
+{
+    Q_UNUSED(args);
+
+    // 停止服务器
+    stopServer();
+
+    // 清空数据
+    m_totalBytesSent.store(0);
+    m_totalBytesReceived.store(0);
+    m_scpiErrors.clear();
+
+    // 重新启动
+    QTimer::singleShot(1000, this, [this]() {
+        startServer();
+    });
+
+    return "0";
+}
+
+QString TcpServerManager::handleScpiNetworkInterface(const QStringList& args)
+{
+    Q_UNUSED(args);
+
+    QStringList interfaces;
+    QList<QNetworkInterface> allInterfaces = QNetworkInterface::allInterfaces();
+
+    for (const QNetworkInterface &interface :  qAsConst(allInterfaces)) {
+        if (interface.flags() & QNetworkInterface::IsUp &&
+            !(interface.flags() & QNetworkInterface::IsLoopBack)) {
+            QString info = QString("%1|%2|%3")
+                          .arg(interface.name(),interface.humanReadableName(),interface.hardwareAddress());
+            interfaces.append(info);
+        }
+    }
+
+    return interfaces.join(";");
+}
+
+
+
+
+
+
 
 bool TcpServerManager::startServer()
 {
@@ -215,6 +491,19 @@ void TcpServerManager::onClientReadyRead()
 void TcpServerManager::processClientData(QTcpSocket *client,const QByteArray newdata)
 {
     qCDebug(tcp) << "Processing buffer for" << client->objectName()<< "size:" << newdata.size();
+
+    // 检查是否是SCPI命令（文本格式）
+    QString dataStr = QString::fromUtf8(newdata).trimmed();
+
+    // SCPI命令通常以*或大写字母开头
+    if (m_scpiEnabled && !dataStr.isEmpty() &&
+        (dataStr.startsWith('*') ||
+         (dataStr.length() >= 2 && dataStr[0].isUpper() && dataStr[1].isUpper()))) {
+
+        // 处理SCPI命令
+        processScpiCommand(client, dataStr);
+        return;
+    }
 
     if (newdata.size() == static_cast<int>(sizeof(ControlPacket))) {//二进制控制指令包
             ControlPacket packet;

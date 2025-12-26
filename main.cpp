@@ -224,7 +224,7 @@ int main(int argc, char *argv[])
     //canmanager("can0");
     //SerialManager("/dev/ttyS4");
 
-    //Test_eth_can("can0");
+    Test_eth_can("can0");
     //Test_eth_Serial("/dev/ttyS4");
     //Test_can_serial("can0","/dev/ttyS4");
 
