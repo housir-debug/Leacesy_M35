@@ -12,6 +12,7 @@
 #include <QLoggingCategory>
 #include <QMap>
 #include <QRegularExpression>
+#include <QUdpSocket>  // 新增：用于VXI-11发现
 
 
 Q_DECLARE_LOGGING_CATEGORY(tcp)
@@ -103,13 +104,28 @@ private:
 
         // SCPI命令处理器
         QString handleScpiIdentify(const QStringList& args);
-        QString handleScpiSystemReset(const QStringList& args);
+        void handleScpiSystemReset(const QStringList& args);
         QString handleScpiNetworkInterface(const QStringList& args);
 
         // 生成SCPI响应
         QString generateScpiResponse(const QString& response);
 
         QString getScpiErrors();
+
+    // VXI-11/NI MAX自动发现功能
+    void initVxi11Discovery();
+    void registerWithRpcbind();
+    void handleRpcDiscovery();
+    void handleVxi11RpcCall(QTcpSocket* client, const QByteArray &data);
+    QByteArray buildVxi11Response(quint32 xid, quint32 procedure, quint32 result = 0);
+    bool isVxi11RpcCall(const QByteArray &data);
+
+    // NI MAX设备信息
+    QString getNIMaxResourceString() const;
+    QString getManufacturer() const { return "National Instruments"; }
+    QString getModel() const { return "RK3568-CAN-Gateway"; }
+    QString getSerialNumber() const { return "SN-001"; }
+    QString getFirmwareVersion() const { return "1.0.0"; }
 
     void cleanupDisconnectedClients();
     void onNewConnection();
@@ -139,6 +155,13 @@ private:
 
         // SCPI支持状态
         bool m_scpiEnabled{true};
+
+    // VXI-11/NI MAX发现相关
+    QUdpSocket* m_vxi11UdpSocket;
+    QTimer* m_discoveryTimer;
+    QHostAddress m_deviceAddress;
+    QString m_deviceIp;
+    bool m_vxi11Enabled{true};
 
     QMutex m_Mutex;
     QList<QTcpSocket*> m_clients;
