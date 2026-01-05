@@ -12,7 +12,6 @@
 #include <QLoggingCategory>
 #include <QMap>
 #include <QRegularExpression>
-#include <QUdpSocket>  // 新增：用于VXI-11发现
 
 
 Q_DECLARE_LOGGING_CATEGORY(tcp)
@@ -30,7 +29,6 @@ public:
 
     void forwardCanData(quint32 canId, const QByteArray &data, qint64 timestamp);
     void forwardSerialData(const QByteArray &data);
-
 
 signals:
     void errorOccurred(const QString &error);
@@ -66,7 +64,6 @@ private:
             qDeleteAll(children);
         }
     };
-
 
     void initScpiCommandTree();
     void registerScpiCommand(const QString& command, ScpiHandler handler,const QString& description = "");
@@ -128,10 +125,8 @@ private:
     ScpiNode* m_scpiRoot{nullptr};
     QThread *m_serverThread{nullptr};
     QTcpServer *m_tcpServer{nullptr};
-    QUdpSocket* m_vxi11UdpSocket{nullptr};
     QTimer *m_heartbeatTimer{nullptr};
     QTimer *m_cleanupTimer{nullptr};
-    QTimer* m_discoveryTimer{nullptr};
 };
 
 #endif // TCPSERVER_H

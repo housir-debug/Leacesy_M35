@@ -5,7 +5,6 @@
 #include <QCoreApplication>
 #include <QElapsedTimer>
 #include <QRandomGenerator>
-#include <QUdpSocket>
 #include <QHostInfo>
 #include <QtEndian>
 #include <sys/socket.h>
@@ -364,7 +363,7 @@ void TcpServerManager::registerWithRpcbind()
     call.rpcvers = htonl(2);         // RPC版本2
     call.prog = htonl(100000);       // PORTMAP
     call.vers = htonl(2);            // PORTMAP版本2
-    call.proc = htonl(1);            // SET过程
+    call.proc = htonl(3);            // SET过程
     call.map_prog = htonl(395183);   // VXI-11程序号
     call.map_vers = htonl(1);        // VXI-11版本1
     call.map_prot = htonl(6);        // TCP协议
