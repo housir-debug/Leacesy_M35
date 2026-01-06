@@ -11,7 +11,8 @@ SOURCES += \
         main.cpp \
         serialworker.cpp \
         simple_logger.cpp \
-        tcpserver.cpp
+        tcpserver.cpp \
+        tirpcloader.cpp
 
 RESOURCES += qml.qrc
 

@@ -1,11 +1,11 @@
 #include "tcpserver.h"
 #include "canworker.h"
 #include <QNetworkInterface>
-#include <QDateTime>
 #include <QCoreApplication>
 #include <QElapsedTimer>
 #include <QRandomGenerator>
 #include <QHostInfo>
+#include <QDataStream>
 #include <QtEndian>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -35,6 +35,26 @@ TcpServerManager::TcpServerManager(QObject *parent)
     if (m_deviceIp.isEmpty()) {
         m_deviceIp = "127.0.0.1";
     }
+
+    m_linkCleanupTimer = new QTimer(this);
+    m_linkCleanupTimer->setInterval(60000); // 1分钟清理一次过期链接
+    connect(m_linkCleanupTimer, &QTimer::timeout, this, [this]() {
+        QMutexLocker locker(&m_linkMutex);
+        QDateTime now = QDateTime::currentDateTime();
+        QList<quint32> toRemove;
+
+        for (auto it = m_deviceLinks.begin(); it != m_deviceLinks.end(); ++it) {
+            // 清理创建超过1小时的链接
+            if (it->createTime.secsTo(now) > 3600) {
+                toRemove.append(it.key());
+            }
+        }
+
+        for (quint32 linkId : toRemove) {
+            qCDebug(tcp) << "清理过期VXI-11链接:" << linkId;
+            m_deviceLinks.remove(linkId);
+        }
+    });
 
     qCInfo(tcp) << "Device IP:" << m_deviceIp;
 }
@@ -318,12 +338,33 @@ void TcpServerManager::onNewConnection()
     client->write(welcome);
 }
 
-void TcpServerManager::registerWithRpcbind()
+bool TcpServerManager::registerWithRpcbind()
 {
+    if (TirpcDynamicLoader::instance().load()) {
+        qCDebug(tcp) << "使用 libtirpc 注册 VXI-11 服务";
+
+        bool result = TirpcDynamicLoader::instance().pmap_set(   //pmap_unset
+            Vxi11::DEVICE_CORE,      // VXI-11程序号
+            Vxi11::DEVICE_CORE_VERSION, // 版本
+            IPPROTO_TCP,             // TCP协议
+            m_port                   // 端口
+        );
+
+        if (result) {
+            qCInfo(tcp) << "✅ 使用 libtirpc 成功注册 VXI-11 服务到端口" << m_port;
+            return true;
+        } else {
+            qCWarning(tcp) << "❌ 使用 libtirpc 注册失败，尝试手动注册";
+        }
+    }
+
+    qCDebug(tcp) << "使用手动RPC注册 VXI-11 服务";
+
     // 创建RPC SET请求：注册VXI-11服务
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0) {
-        return;
+        qCWarning(tcp) << "创建socket失败:" << strerror(errno);
+        return false;
     }
 
     struct sockaddr_in addr;
@@ -363,7 +404,7 @@ void TcpServerManager::registerWithRpcbind()
     call.rpcvers = htonl(2);         // RPC版本2
     call.prog = htonl(100000);       // PORTMAP
     call.vers = htonl(2);            // PORTMAP版本2
-    call.proc = htonl(3);            // SET过程
+    call.proc = htonl(1);            // SET过程
     call.map_prog = htonl(395183);   // VXI-11程序号
     call.map_vers = htonl(1);        // VXI-11版本1
     call.map_prot = htonl(6);        // TCP协议
@@ -374,7 +415,9 @@ void TcpServerManager::registerWithRpcbind()
            (struct sockaddr*)&addr, sizeof(addr));
 
     close(sockfd);
-    qCDebug(tcp) << "Registered VXI-11 service on port" << m_port;
+    qCDebug(tcp) << "手动注册 VXI-11 服务到端口" << m_port;
+    // 由于是UDP发送，不等待响应
+    return true;
 }
 
 // ===================== 信息处理部分 =================================
@@ -427,11 +470,36 @@ void TcpServerManager::onClientReadyRead()
 
 void TcpServerManager::processClientData(QTcpSocket *client,const QByteArray newdata)
 {
-    qCDebug(tcp) << "Processing buffer for" << client->objectName()<< "size:" << newdata.size();
-
     if (m_vxi11Enabled && isVxi11RpcCall(newdata)) {
         qCDebug(tcp) << "VXI-11 RPC call detected";
         handleVxi11RpcCall(client, newdata);
+        return;
+    }
+
+    QString message = QString::fromUtf8(newdata).trimmed();
+    QString trimmed = message.toUpper();
+
+    if (findScpiNode(message) != nullptr) {
+        qCDebug(tcp) << "SCPI command detected:" << message;
+
+        ScpiNode* node = findScpiNode(message);
+        if (!node->handler) {
+            qCritical(tcp) <<"ERROR: Not a query command";
+            return;
+        }
+
+        QStringList args = extractScpiArguments(message);
+        try {
+            QString result = node->handler(args);
+            if (client && client->state() == QAbstractSocket::ConnectedState) {
+                QByteArray respData = result.toUtf8();
+                if (!result.endsWith("\n")) {respData.append("\n");}
+                client->write(respData);
+                qCDebug(tcp) << "SCPI response sent:" << result.trimmed();
+            }
+        } catch (const std::exception& e) {
+            qCritical(tcp) << QString("Query error: %1").arg(e.what());
+        }
         return;
     }
 
@@ -448,6 +516,53 @@ void TcpServerManager::processClientData(QTcpSocket *client,const QByteArray new
         qCWarning(tcp) << "Invalid brief inform!Throw!" ;
         return;
     }
+}
+
+TcpServerManager::ScpiNode* TcpServerManager::findScpiNode(const QString &command)
+{
+    QStringList parts = command.trimmed().toUpper().split(':');
+    ScpiNode* current = m_scpiRoot;
+
+    // 移除查询符号(?)
+    for (int i = 0; i < parts.size(); ++i) {
+        parts[i] = parts[i].replace(SCPI_QUERY_SYMBOL, "");
+    }
+
+    for (const QString& part : qAsConst(parts)) {
+        if (!current->children.contains(part)) {
+            return nullptr;  // 命令不存在
+        }
+        current = current->children[part];
+    }
+
+    return current;
+}
+
+QStringList TcpServerManager::extractScpiArguments(const QString &command)
+{
+    QStringList args;
+    QString cmd = command.trimmed();
+
+    // 查找参数部分（通常以空格开头）
+    int spacePos = cmd.indexOf(' ');
+    if (spacePos > 0) {
+        QString params = cmd.mid(spacePos + 1).trimmed();
+
+        // 根据逗号分割参数
+        args = params.split(',', Qt::SkipEmptyParts);
+
+        // 移除每个参数的空格
+        for (int i = 0; i < args.size(); ++i) {
+            args[i] = args[i].trimmed();
+
+            // 移除引号
+            if (args[i].startsWith('"') && args[i].endsWith('"')) {
+                args[i] = args[i].mid(1, args[i].length() - 2);
+            }
+        }
+    }
+
+    return args;
 }
 
 bool TcpServerManager::isVxi11RpcCall(const QByteArray &data)
@@ -474,41 +589,42 @@ void TcpServerManager::handleVxi11RpcCall(QTcpSocket* client, const QByteArray &
         return;
     }
 
-    const uchar* rawData = reinterpret_cast<const uchar*>(data.constData());
+    quint32 procedure = extractProcedure(data);
+    quint32 xid = extractXid(data);
 
-    // 提取XID（前4字节）
-    quint32 xid = qFromBigEndian<quint32>(rawData);
-
-    // 提取过程号（偏移24字节）
-    quint32 procedure = 0;
-    if (data.size() >= 28) {
-        procedure = qFromBigEndian<quint32>(rawData + 24);
-    }
-
-    qCDebug(tcp) << "VXI-11 RPC call, procedure:" << procedure;
-
-    QByteArray response;
+    qCDebug(tcp) << "VXI-11 RPC调用, XID:" << xid << "过程:" << procedure;
 
     switch (procedure) {
-        case 3:  // CREATE_LINK
-            response = buildVxi11Response(xid, procedure, 0);
+        case Vxi11::GETPORT:
+                handleGetPort(client, data);
+                break;
+
+        case Vxi11::CREATE_LINK:
+            handleCreateLink(client, data);
             break;
 
-        case 10: // DEVICE_WRITE
-        case 11: // DEVICE_READ
-            // 对于NI MAX发现，返回成功即可
-            response = buildVxi11Response(xid, procedure, 0);
+        case Vxi11::DEVICE_WRITE:
+            handleDeviceWrite(client, data);
+            break;
+
+        case Vxi11::DEVICE_READ:
+            handleDeviceRead(client, data);
+            break;
+
+        case Vxi11::DEVICE_DOCMD:
+            handleDeviceDocmd(client, data);
+            break;
+
+        case Vxi11::DESTROY_LINK:
+            handleDestroyLink(client, data);
             break;
 
         default:
             // 返回程序不可用
-            response = buildVxi11Response(xid, procedure, 1);
+            qCWarning(tcp) << "未知的VXI-11过程:" << procedure;
+            QByteArray response = buildVxi11Response(xid, procedure, Vxi11::PROC_UNAVAIL);
+            client->write(response);
             break;
-    }
-
-    if (!response.isEmpty()) {
-        client->write(response);
-        qCDebug(tcp) << "Sent VXI-11 response, size:" << response.size();
     }
 }
 
@@ -551,10 +667,330 @@ QByteArray TcpServerManager::buildVxi11Response(quint32 xid, quint32 procedure, 
     return response;
 }
 
+// ===================== VXI-11 RPC处理 =================================
+
+quint32 TcpServerManager::extractXid(const QByteArray &data)
+{
+    if (data.size() < 4) return 0;
+    const quint32* ptr = reinterpret_cast<const quint32*>(data.constData());
+    return qFromBigEndian<quint32>(ptr);
+}
+
+quint32 TcpServerManager::extractProcedure(const QByteArray &data)
+{
+    if (data.size() < 24) return 0;
+    const quint32* ptr = reinterpret_cast<const quint32*>(data.constData() + 20);
+    return qFromBigEndian<quint32>(ptr);
+}
+
+QByteArray TcpServerManager::createErrorResponse(quint32 xid, quint32 error)
+{
+    QByteArray response;
+    response.reserve(28);
+
+    QDataStream stream(&response, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::BigEndian);
+
+    // RPC回复头部
+    stream << xid;                      // xid
+    stream << quint32(1);               // msg_type: REPLY
+    stream << quint32(0);               // reply_stat: MSG_ACCEPTED
+
+    // AUTH_NULL验证器
+    stream << quint32(0);               // verf_flavor: AUTH_NULL
+    stream << quint32(0);               // verf_length: 0
+
+    // 接受状态和错误
+    stream << quint32(0);               // accept_stat: SUCCESS
+    stream << error;                    // 具体错误码
+
+    return response;
+}
+
+TcpServerManager::DeviceLink* TcpServerManager::findLinkByClient(QTcpSocket* client)
+{
+    QMutexLocker locker(&m_linkMutex);
+
+    if (!client) {
+        qCWarning(tcp) << "findLinkByClient: 无效的client指针";
+        return nullptr;
+    }
+
+    // 遍历所有链接查找匹配的client
+    for (auto it = m_deviceLinks.begin(); it != m_deviceLinks.end(); ++it) {
+        if (it->client == client) {
+            qCDebug(tcp) << "找到链接:" << it->id << "对应的client:" << client->objectName();
+            return &(*it); // 返回引用
+        }
+    }
+
+    qCDebug(tcp) << "未找到client:" << client->objectName() << "对应的链接";
+    return nullptr;
+}
+
+TcpServerManager::DeviceLink* TcpServerManager::createLink(QTcpSocket* client)
+{
+    QMutexLocker locker(&m_linkMutex);
+
+    if (!client) {
+        qCWarning(tcp) << "createLink: 无效的client指针";
+        return nullptr;
+    }
+
+    // 检查是否已存在该client的链接
+    for (auto it = m_deviceLinks.begin(); it != m_deviceLinks.end(); ++it) {
+        if (it->client == client) {
+            qCWarning(tcp) << "client:" << client->objectName() << "已存在链接:" << it->id;
+            return &(*it);
+        }
+    }
+
+    // 创建新链接
+    DeviceLink link;
+    link.id = m_nextLinkId++;
+    link.client = client;
+    link.createTime = QDateTime::currentDateTime();
+    link.lock = 0;  // 初始未锁定
+    link.aborted = false;
+
+    // 插入到映射表中
+    m_deviceLinks.insert(link.id, link);
+
+    qCInfo(tcp) << "✅ 创建VXI-11链接:" << link.id
+               << "for client:" << client->objectName()
+               << "(IP:" << client->peerAddress().toString()
+               << ":" << client->peerPort() << ")";
+
+    // 返回新创建的链接（注意：这是map中对象的引用）
+    return &m_deviceLinks[link.id];
+}
+
+void TcpServerManager::destroyLink(quint32 linkId)
+{
+    QMutexLocker locker(&m_linkMutex);
+
+    if (!m_deviceLinks.contains(linkId)) {
+        qCWarning(tcp) << "destroyLink: 链接" << linkId << "不存在";
+        return;
+    }
+
+    DeviceLink& link = m_deviceLinks[linkId];
+    QString clientInfo = link.client ? link.client->objectName() : "null";
+
+    // 从映射表中移除
+    m_deviceLinks.remove(linkId);
+
+    qCInfo(tcp) << "✅ 销毁VXI-11链接:" << linkId << "client:" << clientInfo;
+
+    // 如果client仍然连接，可以发送断开通知
+    if (link.client && link.client->state() == QAbstractSocket::ConnectedState) {
+        qCDebug(tcp) << "链接" << linkId << "的client仍然连接，保持TCP连接";
+    }
+}
+
+void TcpServerManager::handleGetPort(QTcpSocket* client, const QByteArray &data)
+{
+    quint32 xid = extractXid(data);
+
+    qCDebug(tcp) << "处理 GETPORT 请求, XID:" << xid
+                 << "client:" << (client ? client->objectName() : "null");
+
+    // GETPORT请求应该返回我们的端口号
+    QByteArray response;
+    response.reserve(32);
+
+    QDataStream stream(&response, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::BigEndian);
+
+    // RPC回复头部
+    stream << xid;                      // xid
+    stream << quint32(Vxi11::REPLY);    // msg_type: REPLY
+    stream << quint32(Vxi11::MSG_ACCEPTED); // reply_stat: MSG_ACCEPTED
+
+    // AUTH_NULL验证器
+    stream << quint32(AUTH_NULL);       // verf_flavor: AUTH_NULL
+    stream << quint32(0);               // verf_length: 0
+
+    // 接受状态
+    stream << quint32(Vxi11::SUCCESS);  // accept_stat: SUCCESS
+    stream << quint32(m_port);          // 返回端口号
+
+    if (client) {
+        client->write(response);
+        qCDebug(tcp) << "GETPORT: 返回端口" << m_port << "给client:" << client->objectName();
+    }
+}
+
+void TcpServerManager::handleCreateLink(QTcpSocket* client, const QByteArray &data)
+{
+    quint32 xid = extractXid(data);
+
+    // 检查是否已存在链接
+    DeviceLink* existingLink = findLinkByClient(client);
+    if (existingLink) {
+        // 如果已存在，返回现有链接ID
+        QByteArray response = createErrorResponse(xid, existingLink->id);
+        client->write(response);
+        qCDebug(tcp) << "CREATE_LINK: 使用现有链接" << existingLink->id;
+        return;
+    }
+
+    // 创建新链接
+    DeviceLink* link = createLink(client);
+    if (!link) {
+        // 创建失败，返回错误
+        QByteArray response = createErrorResponse(xid, Vxi11::OUT_OF_RESOURCES);
+        client->write(response);
+        qCWarning(tcp) << "CREATE_LINK: 创建链接失败";
+        return;
+    }
+
+    // 返回成功响应
+    QByteArray response = createErrorResponse(xid, link->id);
+    client->write(response);
+    qCDebug(tcp) << "CREATE_LINK: 创建新链接" << link->id;
+}
+
+void TcpServerManager::handleDeviceWrite(QTcpSocket* client, const QByteArray &data)
+{
+    quint32 xid = extractXid(data);
+
+    // 查找链接
+    DeviceLink* link = findLinkByClient(client);
+    if (!link) {
+        // 无有效链接，返回错误
+        QByteArray response = createErrorResponse(xid, Vxi11::INVALID_LINK_IDENTIFIER);
+        client->write(response);
+        qCWarning(tcp) << "DEVICE_WRITE: 无有效链接";
+        return;
+    }
+
+    // 解析写入参数（简化处理）
+    // 在实际实现中，这里应该解析XDR编码的参数
+    if (data.size() >= 32) {
+        // 从数据中提取写入的内容（简化版本）
+        // 实际应该使用XDR解码
+
+        qCDebug(tcp) << "DEVICE_WRITE: 链接" << link->id << "收到数据，大小:" << data.size();
+
+        // 返回成功响应
+        QByteArray response = createErrorResponse(xid, Vxi11::NO_ERROR);
+        client->write(response);
+    } else {
+        QByteArray response = createErrorResponse(xid, Vxi11::PARAMETER_ERROR);
+        client->write(response);
+        qCWarning(tcp) << "DEVICE_WRITE: 参数错误";
+    }
+}
+
+void TcpServerManager::handleDeviceRead(QTcpSocket* client, const QByteArray &data)
+{
+    quint32 xid = extractXid(data);
+
+    // 查找链接
+    DeviceLink* link = findLinkByClient(client);
+    if (!link) {
+        QByteArray response = createErrorResponse(xid, Vxi11::INVALID_LINK_IDENTIFIER);
+        client->write(response);
+        qCWarning(tcp) << "DEVICE_READ: 无有效链接";
+        return;
+    }
+
+    // 构建读取响应
+    // 这里可以返回一些设备状态信息
+    QByteArray response;
+    response.reserve(40);
+
+    QDataStream stream(&response, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::BigEndian);
+
+    // RPC回复头部
+    stream << xid;                      // xid
+    stream << quint32(1);               // msg_type: REPLY
+    stream << quint32(0);               // reply_stat: MSG_ACCEPTED
+
+    // AUTH_NULL验证器
+    stream << quint32(0);               // verf_flavor: AUTH_NULL
+    stream << quint32(0);               // verf_length: 0
+
+    // 接受状态
+    stream << quint32(0);               // accept_stat: SUCCESS
+
+    // 读取响应数据
+    stream << quint32(0);               // error: NO_ERROR
+
+    // 返回模拟的设备信息
+    QString deviceInfo = QString("*IDN? response: %1,%2,%3,%4")
+                         .arg(getManufacturer, getModel, getSerialNumber, getFirmwareVersion);
+    QByteArray infoData = deviceInfo.toUtf8();
+
+    stream << quint32(infoData.size());  // 数据长度
+    stream.writeRawData(infoData.constData(), infoData.size());
+
+    client->write(response);
+    qCDebug(tcp) << "DEVICE_READ: 返回设备信息，大小:" << response.size();
+}
+
+void TcpServerManager::handleDeviceDocmd(QTcpSocket* client, const QByteArray &data)
+{
+    quint32 xid = extractXid(data);
+
+    // 查找链接
+    DeviceLink* link = findLinkByClient(client);
+    if (!link) {
+        QByteArray response = createErrorResponse(xid, Vxi11::INVALID_LINK_IDENTIFIER);
+        client->write(response);
+        qCWarning(tcp) << "DEVICE_DOCMD: 无有效链接";
+        return;
+    }
+
+    // 处理设备命令（这里处理SCPI命令）
+    // 简化实现：返回成功
+    QByteArray response = createErrorResponse(xid, Vxi11::NO_ERROR);
+    client->write(response);
+    qCDebug(tcp) << "DEVICE_DOCMD: 处理设备命令";
+}
+
+void TcpServerManager::handleDestroyLink(QTcpSocket* client, const QByteArray &data)
+{
+    quint32 xid = extractXid(data);
+
+    // 查找链接
+    DeviceLink* link = findLinkByClient(client);
+    if (!link) {
+        // 即使没有找到链接，也返回成功
+        QByteArray response = createErrorResponse(xid, Vxi11::NO_ERROR);
+        client->write(response);
+        qCDebug(tcp) << "DESTROY_LINK: 无链接可销毁";
+        return;
+    }
+
+    // 销毁链接
+    quint32 linkId = link->id;
+    destroyLink(linkId);
+
+    // 返回成功响应
+    QByteArray response = createErrorResponse(xid, Vxi11::NO_ERROR);
+    client->write(response);
+    qCDebug(tcp) << "DESTROY_LINK: 销毁链接" << linkId;
+}
+
 // ==================== 销毁部分 ====================
 
 TcpServerManager::~TcpServerManager()
 {
+    // 停止链接清理定时器
+    if (m_linkCleanupTimer) {
+        m_linkCleanupTimer->stop();
+        delete m_linkCleanupTimer;
+        m_linkCleanupTimer = nullptr;
+    }
+    // 清理所有链接
+    {
+        QMutexLocker locker(&m_linkMutex);
+        m_deviceLinks.clear();
+    }
+
     stopServer();
     qCDebug(tcp) << "TcpServerManager destroyed";
 }
@@ -566,19 +1002,6 @@ void TcpServerManager::stopServer()
     if (m_state.load() == STATE_STOPPED) {return;}
 
     m_state.store(STATE_STOPPING);
-
-    // 停止VXI-11发现服务
-    if (m_discoveryTimer) {
-        m_discoveryTimer->stop();
-        delete m_discoveryTimer;
-        m_discoveryTimer = nullptr;
-    }
-
-    if (m_vxi11UdpSocket) {
-        m_vxi11UdpSocket->close();
-        delete m_vxi11UdpSocket;
-        m_vxi11UdpSocket = nullptr;
-    }
 
     m_heartbeatTimer->stop();
     m_cleanupTimer->stop();
