@@ -20,7 +20,19 @@ const QString TcpServerManager::SCPI_QUERY_SYMBOL = "?";
 TcpServerManager::TcpServerManager(QObject *parent)
     : QObject(parent)
 {
-    initScpiCommandTree();
+    m_scpiManager = new ScpiManager(this);
+    bool initSuccess = m_scpiManager->init(
+        getManufacturer,
+        getModel,
+        getSerialNumber,
+        getFirmwareVersion
+    );
+
+    if (initSuccess) {
+        qCInfo(tcp) << "SCPI管理器初始化成功";
+    } else {
+        qCCritical(tcp) << "SCPI管理器初始化失败";
+    }
 
     QList<QHostAddress> addresses = QNetworkInterface::allAddresses();
     for (const QHostAddress &address :qAsConst(addresses)) {
@@ -31,7 +43,6 @@ TcpServerManager::TcpServerManager(QObject *parent)
             break;
         }
     }
-
     if (m_deviceIp.isEmpty()) {
         m_deviceIp = "127.0.0.1";
     }
@@ -58,88 +69,6 @@ TcpServerManager::TcpServerManager(QObject *parent)
 
     qCInfo(tcp) << "Device IP:" << m_deviceIp;
 }
-
-void TcpServerManager::initScpiCommandTree()
-{
-    m_scpiRoot = new ScpiNode("ROOT");
-
-    registerScpiCommand("*IDN",
-        [this](const QStringList& args) {
-            Q_UNUSED(args);
-            return QString("%1,%2,%3,%4")
-                   .arg(getManufacturer,getModel,getSerialNumber,getFirmwareVersion);
-        },
-        "Query device identification - NI MAX compatible");
-
-    registerScpiCommand("*RST",
-        [this](const QStringList& args) {
-        handleScpiSystemReset(args);
-        return "0";
-        },
-        "Reset system to default state");
-
-    registerScpiCommand("*CLS",
-        [this](const QStringList& args) {
-            Q_UNUSED(args);
-            m_scpiErrors.clear();
-            return "0";
-        },
-        "Clear status");
-
-    // *ESR? 事件状态寄存器查询
-    registerScpiCommand("*ESR",
-        [this](const QStringList& /*args*/) {
-            return QString::number(m_scpiErrors.isEmpty() ? 0 : 1);
-        },
-        "Event status register query");
-
-
-    registerScpiCommand("NETWork:IP",
-        [this](const QStringList& /*args*/) {
-            return m_deviceIp;
-        },
-        "Query IP address");
-
-    qCInfo(tcp) << "SCPI command tree initialized with NI MAX compatible commands";
-}
-
-void TcpServerManager::registerScpiCommand(const QString& command,ScpiHandler handler,const QString& description)
-{
-    QStringList parts = command.split(':');
-    ScpiNode* current = m_scpiRoot;
-
-    for (const QString& part : qAsConst(parts)) {
-        QString key = part.toUpper();
-        if (!current->children.contains(key)) {
-            current->children[key] = new ScpiNode(key);
-        }
-        current = current->children[key];
-    }
-
-    current->handler = handler;
-    current->description = description;
-}
-
-void TcpServerManager::handleScpiSystemReset(const QStringList& args)
-{
-    Q_UNUSED(args);
-
-    // 停止服务器
-    stopServer();
-
-    // 清空数据
-    m_totalBytesSent.store(0);
-    m_totalBytesReceived.store(0);
-    m_scpiErrors.clear();
-
-    // 重新启动
-    QTimer::singleShot(1000, this, [this]() {
-        startServer();
-    });
-
-    qCInfo(tcp) << "System reset performed, VXI-11 discovery will restart";
-}
-
 
 static quint16 crc16(const quint8 *data, int length)
 {
@@ -330,12 +259,7 @@ void TcpServerManager::onNewConnection()
     connect(client, &QTcpSocket::readyRead,
             this, &TcpServerManager::onClientReadyRead);
 
-    qCInfo(tcp) << "New client connected:" << clientInfo
-           << ", total clients:" << m_clients.size();;
-
-    QByteArray welcome = QString("Welcome to Meacesy Server (Clients: %1)\n")
-                        .arg(m_clients.size()).toUtf8();
-    client->write(welcome);
+    qCInfo(tcp) << "New client connected:" << clientInfo<< ", total clients:" << m_clients.size();;
 }
 
 bool TcpServerManager::registerWithRpcbind()
@@ -477,28 +401,23 @@ void TcpServerManager::processClientData(QTcpSocket *client,const QByteArray new
     }
 
     QString message = QString::fromUtf8(newdata).trimmed();
-    QString trimmed = message.toUpper();
-
-    if (findScpiNode(message) != nullptr) {
+    if (message.startsWith("*") || message.contains(":")) {
         qCDebug(tcp) << "SCPI command detected:" << message;
 
-        ScpiNode* node = findScpiNode(message);
-        if (!node->handler) {
-            qCritical(tcp) <<"ERROR: Not a query command";
-            return;
-        }
+        QByteArray response = m_scpiManager->processCommand(newdata);
 
-        QStringList args = extractScpiArguments(message);
-        try {
-            QString result = node->handler(args);
-            if (client && client->state() == QAbstractSocket::ConnectedState) {
-                QByteArray respData = result.toUtf8();
-                if (!result.endsWith("\n")) {respData.append("\n");}
-                client->write(respData);
-                qCDebug(tcp) << "SCPI response sent:" << result.trimmed();
+        if (!response.isEmpty() && client->state() == QAbstractSocket::ConnectedState) {
+            if (!response.endsWith("\n")) {
+                response.append("\n");
             }
-        } catch (const std::exception& e) {
-            qCritical(tcp) << QString("Query error: %1").arg(e.what());
+
+            client->write(response);
+            m_totalBytesSent += response.size();
+
+            qCDebug(tcp) << "SCPI响应发送:" << response.trimmed()
+                      << "长度:" << response.size() << "bytes";
+        } else {
+            qCDebug(tcp) << "SCPI响应为空或客户端未连接";
         }
         return;
     }
@@ -516,53 +435,6 @@ void TcpServerManager::processClientData(QTcpSocket *client,const QByteArray new
         qCWarning(tcp) << "Invalid brief inform!Throw!" ;
         return;
     }
-}
-
-TcpServerManager::ScpiNode* TcpServerManager::findScpiNode(const QString &command)
-{
-    QStringList parts = command.trimmed().toUpper().split(':');
-    ScpiNode* current = m_scpiRoot;
-
-    // 移除查询符号(?)
-    for (int i = 0; i < parts.size(); ++i) {
-        parts[i] = parts[i].replace(SCPI_QUERY_SYMBOL, "");
-    }
-
-    for (const QString& part : qAsConst(parts)) {
-        if (!current->children.contains(part)) {
-            return nullptr;  // 命令不存在
-        }
-        current = current->children[part];
-    }
-
-    return current;
-}
-
-QStringList TcpServerManager::extractScpiArguments(const QString &command)
-{
-    QStringList args;
-    QString cmd = command.trimmed();
-
-    // 查找参数部分（通常以空格开头）
-    int spacePos = cmd.indexOf(' ');
-    if (spacePos > 0) {
-        QString params = cmd.mid(spacePos + 1).trimmed();
-
-        // 根据逗号分割参数
-        args = params.split(',', Qt::SkipEmptyParts);
-
-        // 移除每个参数的空格
-        for (int i = 0; i < args.size(); ++i) {
-            args[i] = args[i].trimmed();
-
-            // 移除引号
-            if (args[i].startsWith('"') && args[i].endsWith('"')) {
-                args[i] = args[i].mid(1, args[i].length() - 2);
-            }
-        }
-    }
-
-    return args;
 }
 
 bool TcpServerManager::isVxi11RpcCall(const QByteArray &data)

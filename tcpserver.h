@@ -15,7 +15,7 @@
 #include <QRegularExpression>
 #include <QLibrary>
 #include <unistd.h>
-#include "scpi/scpi.h"
+#include "scpimanager.h"
 
 Q_DECLARE_LOGGING_CATEGORY(tcp)
 
@@ -211,26 +211,8 @@ private:
         DeviceLink() : id(0), lock(0), client(nullptr), aborted(false) {}
     };
 
-    // SCPI命令回调函数类型
-    typedef std::function<QString(const QStringList&)> ScpiHandler;
-    struct ScpiNode {
-        QString key;
-        QMap<QString, ScpiNode*> children;
-        ScpiHandler handler;
-        QString description;
-
-        ScpiNode(const QString& k = "", ScpiHandler h = nullptr,
-                 const QString& desc = "")
-            : key(k), handler(h), description(desc) {}
-
-        ~ScpiNode() {
-            qDeleteAll(children);
-        }
-    };
-
-    void initScpiCommandTree();
-    void registerScpiCommand(const QString& command, ScpiHandler handler,const QString& description = "");
-    void handleScpiSystemReset(const QStringList& args);
+    ScpiManager* m_scpiManager{nullptr};
+    QString handleScpiCommand(const QByteArray& command);
 
     void sendToAllClients(const QByteArray &data);
     void cleanupDisconnectedClients();
@@ -241,8 +223,6 @@ private:
     void onClientDisconnected();
     void onClientReadyRead();
     void processClientData(QTcpSocket *client,const QByteArray newdata);
-    ScpiNode* findScpiNode(const QString &command);
-    QStringList extractScpiArguments(const QString &command);
     void handleVxi11RpcCall(QTcpSocket* client, const QByteArray &data);
     QByteArray buildVxi11Response(quint32 xid, quint32 procedure, quint32 result = 0);
     bool isVxi11RpcCall(const QByteArray &data);
@@ -287,7 +267,6 @@ private:
 
     QMutex m_Mutex;
     QList<QTcpSocket*> m_clients;
-    QList<QPair<int, QString>> m_scpiErrors;
     QElapsedTimer m_testtimer;
 
     const QString getManufacturer{"National Instruments"};
@@ -307,7 +286,6 @@ private:
     quint32 m_nextLinkId{1};
     QMutex m_linkMutex;
 
-    ScpiNode* m_scpiRoot{nullptr};
     QThread *m_serverThread{nullptr};
     QTcpServer *m_tcpServer{nullptr};
     QTimer *m_heartbeatTimer{nullptr};

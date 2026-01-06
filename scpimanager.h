@@ -32,25 +32,9 @@ public:
     QByteArray processCommand(const QByteArray &command);
 
     scpi_t* context() { return &m_scpiContext; } // 获取SCPI上下文（用于调试等）
-
-    static ScpiManager* instance();
+    static ScpiManager* instance(){return s_instance;};
 
 private:
-    static ScpiManager* s_instance;
-
-    scpi_t m_scpiContext;
-    static const scpi_command_t m_scpiCommands[];
-
-    // 响应缓冲区
-    QByteArray m_responseBuffer;
-    QMutex m_bufferMutex;
-
-    // 仪器信息
-    QByteArray m_idnManufacturer;
-    QByteArray m_idnModel;
-    QByteArray m_idnSerial;
-    QByteArray m_idnVersion;
-
     // ===== 静态回调函数（C接口）=====
     static size_t staticWriteCallback(scpi_t* context, const char* data, size_t len);
     static int staticErrorCallback(scpi_t* context, int_fast16_t err);
@@ -70,6 +54,23 @@ private:
     static scpi_result_t scpiCls(scpi_t* context);
     static scpi_result_t scpiEsrQ(scpi_t* context);
     static scpi_result_t scpiNetworkIpQ(scpi_t* context);
+
+private:
+    static ScpiManager* s_instance;
+
+    scpi_t m_scpiContext;
+    scpi_interface_t interface;
+    static const scpi_command_t m_scpiCommands[];
+
+    // 响应缓冲区
+    QByteArray m_responseBuffer;
+    QMutex m_bufferMutex;
+
+    // 仪器信息
+    QByteArray m_idnManufacturer;
+    QByteArray m_idnModel;
+    QByteArray m_idnSerial;
+    QByteArray m_idnVersion;
 };
 
 #endif // SCPIMANAGER_H
