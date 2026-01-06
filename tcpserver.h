@@ -15,6 +15,7 @@
 #include <QRegularExpression>
 #include <QLibrary>
 #include <unistd.h>
+#include "scpi/scpi.h"
 
 Q_DECLARE_LOGGING_CATEGORY(tcp)
 

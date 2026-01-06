@@ -975,7 +975,7 @@ void TcpServerManager::handleDestroyLink(QTcpSocket* client, const QByteArray &d
     qCDebug(tcp) << "DESTROY_LINK: 销毁链接" << linkId;
 }
 
-// ==================== 销毁部分 ====================
+// ==================== 析构部分 ====================
 
 TcpServerManager::~TcpServerManager()
 {

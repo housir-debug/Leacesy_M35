@@ -6,9 +6,20 @@ CONFIG += c++11
 # In order to do so, uncomment the following line.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
+INCLUDEPATH += $$PWD/thirdparty/scpi/inc
+LIBS += -L$$PWD/thirdparty/scpi/lib -lscpi -lm
+
+HEADERS += \
+    canworker.h \
+    scpimanager.h \
+    serialworker.h \
+    simple_logger.h \
+    tcpserver.h
+
 SOURCES += \
         canworker.cpp \
         main.cpp \
+        scpimanager.cpp \
         serialworker.cpp \
         simple_logger.cpp \
         tcpserver.cpp \
@@ -27,8 +38,4 @@ qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /root/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
-HEADERS += \
-    canworker.h \
-    serialworker.h \
-    simple_logger.h \
-    tcpserver.h
+
