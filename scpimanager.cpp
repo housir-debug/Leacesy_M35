@@ -77,7 +77,7 @@ size_t ScpiManager::staticWriteCallback(scpi_t* context, const char* data, size_
 size_t ScpiManager::handleWrite(const char* data, size_t len) {
     QMutexLocker locker(&m_bufferMutex);
     m_responseBuffer.append(data, len);
-    qCDebug(scpi) << "SCPI write:" << len << "bytes，"<< "connent" << data;
+    qCDebug(scpi) << "SCPI write:" << len << "bytes，"<< "connent:" << data;
     return len;
 }
 
@@ -201,9 +201,7 @@ QByteArray ScpiManager::processCommand(const QByteArray &command) {
     m_responseBuffer.clear();
 
     QByteArray cmd = command;
-    if (!cmd.endsWith('\n')) {
-        cmd.append('\n');
-    }
+    if (!cmd.endsWith('\n')) {cmd.append('\n');}
 
     SCPI_Input(&m_scpiContext, cmd.constData(), cmd.size());
     return m_responseBuffer;

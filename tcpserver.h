@@ -183,7 +183,6 @@ public:
     void forwardSerialData(const QByteArray &data);
 
 signals:
-    void errorOccurred(const QString &error);
     void canSendRequest(quint32 canId, const QByteArray &data);
     void SerialSendRequest(const QByteArray &data);
 
@@ -259,7 +258,6 @@ private:
         STATE_STOPPING
     };
 
-
     static const QString SCPI_QUERY_SYMBOL;
 
     QHostAddress m_deviceAddress;
@@ -269,18 +267,15 @@ private:
     QList<QTcpSocket*> m_clients;
     QElapsedTimer m_testtimer;
 
-    const QString getManufacturer{"National Instruments"};
-    const QString getModel{"RK3568-CAN-Gateway"};
+    const QString getManufacturer{"Leacesy"};
+    const QString getModel{"M35-Current-Measuring"};
     const QString getSerialNumber{"SN-001"};
     const QString getFirmwareVersion{ "1.0.0" };
 
     quint16 m_port{5025};
-    bool m_scpiEnabled{true};
     bool m_vxi11Enabled{true};
 
     std::atomic<ServerState> m_state{STATE_STOPPED};
-    std::atomic<qint64> m_totalBytesSent{0};
-    std::atomic<qint64> m_totalBytesReceived{0};
 
     QMap<quint32, DeviceLink> m_deviceLinks;
     quint32 m_nextLinkId{1};
@@ -288,7 +283,6 @@ private:
 
     QThread *m_serverThread{nullptr};
     QTcpServer *m_tcpServer{nullptr};
-    QTimer *m_heartbeatTimer{nullptr};
     QTimer *m_cleanupTimer{nullptr};
     QTimer *m_linkCleanupTimer{nullptr};
 };
