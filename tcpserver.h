@@ -20,6 +20,7 @@
 Q_DECLARE_LOGGING_CATEGORY(tcp)
 
 // ===================== 动态加载所需类型定义 =====================
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -73,70 +74,11 @@ enum xdr_op {
 }
 #endif
 
-// XDR 函数指针类型（前向声明）
 struct XDR;
 typedef bool_t (*xdrproc_t)(XDR*, void*);
 
-// VXI-11 RPC相关定义
-namespace Vxi11 {
-    // VXI-11核心程序号
-    constexpr quint32 DEVICE_CORE = 395183;
-    constexpr quint32 DEVICE_CORE_VERSION = 1;
-
-    // VXI-11设备错误码
-    enum ErrorCode : quint32 {
-        NO_ERROR = 0,
-        OPERATION_IN_PROGRESS = 1,
-        OPERATION_IN_QUEUE = 2,
-        OPERATION_COMPLETED = 3,
-        OPERATION_ABORTED = 4,
-        OPERATION_FAILED = 5,
-        DEVICE_LOCKED = 6,
-        DEVICE_UNLOCKED = 7,
-        DEVICE_NOT_FOUND = 8,
-        PARAMETER_ERROR = 9,
-        CHANNEL_NOT_ESTABLISHED = 10,
-        OPERATION_NOT_SUPPORTED = 11,
-        OUT_OF_RESOURCES = 12,
-        DEVICE_DEAD = 13,
-        INVALID_LINK_IDENTIFIER = 14
-    };
-
-    // RPC消息类型
-    enum RpcMsgType : quint32 {
-        CALL = 0,
-        REPLY = 1
-    };
-
-    // RPC回复状态
-    enum RpcReplyStat : quint32 {
-        MSG_ACCEPTED = 0,
-        MSG_DENIED = 1
-    };
-
-    // 接受状态
-    enum RpcAcceptStat : quint32 {
-        SUCCESS = 0,
-        PROG_UNAVAIL = 1,
-        PROG_MISMATCH = 2,
-        PROC_UNAVAIL = 3,
-        GARBAGE_ARGS = 4,
-        SYSTEM_ERR = 5
-    };
-
-    enum Procedure : quint32 {
-        GET_PORT = 3,
-        CREATE_LINK = 10,
-        DEVICE_WRITE = 11,
-        DEVICE_READ = 12,
-        DEVICE_DOCMD = 15,
-        DESTROY_LINK = 23
-    };
-}
-
 class TirpcDynamicLoader
 {
-
 public:
     static TirpcDynamicLoader& instance();
 
@@ -166,6 +108,89 @@ private:
     pmap_set_t m_pmap_set = nullptr;
     pmap_unset_t m_pmap_unset = nullptr;
 };
+
+namespace Vxi11 {
+    constexpr quint32 DEVICE_CORE = 395183;    //->device
+    constexpr quint32 DEVICE_ASYNC = 395184;   //->device
+    constexpr quint32 DEVICE_INTR = 395185;    //<-device
+
+    constexpr quint32 DEVICE_CORE_VERSION = 1;
+    constexpr quint32 DEVICE_ASYNC_VERSION  = 1;
+    constexpr quint32 DEVICE_INTR_VERSION = 1;
+
+    enum ErrorCode : quint32 {
+        NO_ERROR                        = 0,    // 无错误
+        SYNTAX_ERROR                    = 1,    // 语法错误
+        DEVICE_NOT_ACCESSIBLE           = 3,    // 设备不可访问
+        INVALID_LINK_IDENTIFIER         = 4,    // 无效链接标识符
+        PARAMETER_ERROR                 = 5,    // 参数错误
+        CHANNEL_NOT_ESTABLISHED         = 6,    // 通道未建立
+        OPERATION_NOT_SUPPORTED         = 8,    // 操作不支持
+        OUT_OF_RESOURCES                = 9,    // 资源不足
+        DEVICE_LOCKED_BY_ANOTHER_LINK   = 11,   // 设备被其他链接锁定
+        NO_LOCK_HELD_BY_THIS_LINK       = 12,   // 此链接未持有锁
+        IO_TIMEOUT                      = 15,   // I/O超时
+        IO_ERROR                        = 17,   // I/O错误
+        INVALID_ADDRESS                 = 21,   // 无效地址
+        ABORT                           = 23,   // 操作被中止
+        CHANNEL_ALREADY_ESTABLISHED     = 29    // 通道已建立
+        // 2,7,10,13,14,16,18,19,20,22,24-28,30+ 为保留值
+    };
+
+    enum CoreProcedure : quint32 {
+        GET_PORT              = 3,    // 获取端口号（通常由RPC端口映射器使用）
+        CREATE_LINK           = 10,   // 创建与设备的链接，返回链接标识符
+        DEVICE_WRITE          = 11,   // 向设备写入数据（ASCII消息）
+        DEVICE_READ           = 12,   // 从设备读取数据
+        DEVICE_READSTB        = 13,   // 读取设备状态字节（Status Byte）
+        DEVICE_TRIGGER        = 14,   // 向设备发送触发信号
+        DEVICE_CLEAR          = 15,   // 发送设备清除命令
+        DEVICE_REMOTE         = 16,   // 将设备设置为远程模式（禁用前面板）
+        DEVICE_LOCAL          = 17,   // 将设备设置为本地模式（启用前面板）
+        DEVICE_LOCK           = 18,   // 锁定设备（独占访问）
+        DEVICE_UNLOCK         = 19,   // 解锁设备
+        DEVICE_ENABLE_SRQ     = 20,   // 启用/禁用服务请求（SRQ）中断
+        DEVICE_DOCMD          = 22,   // 执行设备特定命令（通用扩展接口）
+        DESTROY_LINK          = 23,   // 销毁与设备的链接，释放资源
+        CREATE_INTR_CHAN      = 25,   // 创建中断通道（用于SRQ通知）
+        DESTROY_INTR_CHAN     = 26    // 销毁中断通道
+        // 0-2,4-9,21,24,27+ 为保留值
+    };
+
+    enum AsyncProcedure : quint32 {
+        DEVICE_ABORT        = 1     // 中止正在执行的操作
+    };
+
+    enum IntrProcedure : quint32 {
+        DEVICE_INTR_SRQ     = 30    // 设备发送服务请求（SRQ）中断
+    };
+
+
+    enum Rpc_MsgType : quint32 {
+        CALL  = 0,     // 调用远程过程
+        REPLY = 1      // 远程过程回复
+    };
+
+    enum Rpc_ReplyStat : quint32 {
+        MSG_ACCEPTED = 0,   // 消息被接受
+        MSG_DENIED   = 1    // 消息被拒绝
+    };
+
+    enum Rpc_AcceptStat : quint32 {
+        SUCCESS       = 0,  // RPC 调用成功执行
+        PROG_UNAVAIL  = 1,  // 远程程序不可用
+        PROG_MISMATCH = 2,  // 程序版本不匹配
+        PROC_UNAVAIL  = 3,  // 远程过程不可用
+        GARBAGE_ARGS  = 4,  // 参数无法解码（垃圾参数）
+        SYSTEM_ERR    = 5   // 系统错误（如内存不足）
+    };
+
+    enum Rpc_RejectStat : quint32 {
+        RPC_MISMATCH  = 0,  // RPC 版本不匹配（必须为2）
+        AUTH_ERROR    = 1   // 认证错误
+    };
+}
+
 
 class TcpServerManager : public QObject
 {
@@ -198,7 +223,6 @@ private:
     //20个字节
     #pragma pack(pop)
 
-    // VXI-11链接管理
     struct DeviceLink {
         quint32 id;
         quint32 lock;

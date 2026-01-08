@@ -423,7 +423,7 @@ void TcpServerManager::handleVxi11RpcCall(QTcpSocket* client, const QByteArray &
             break;
 
         case Vxi11::DESTROY_LINK:
-            handleDestroyLink(client, data);
+            //handleDestroyLink(client, data);
             break;
 
         default:
@@ -540,21 +540,18 @@ void TcpServerManager::destroyLink(quint32 linkId)
     DeviceLink& link = m_deviceLinks[linkId];
     QString clientInfo = link.client ? link.client->objectName() : "null";
 
-    // 从映射表中移除
     m_deviceLinks.remove(linkId);
 
     qCDebug(tcp) << "✅ 销毁VXI-11链接:" << linkId << "client:" << clientInfo;
 
-    // 如果client仍然连接，可以发送断开通知
-    /*if (link.client && link.client->state() == QAbstractSocket::ConnectedState) {
+    if (link.client && link.client->state() == QAbstractSocket::ConnectedState) {
         qCDebug(tcp) << "链接" << linkId << "的client仍然连接，保持TCP连接";
-    }*/
+    }
 }
 
 void TcpServerManager::handleCreateLink(QTcpSocket* client, const QByteArray &data)
 {
     quint32 xid = extractXid(data);
-    qCDebug(tcp)<<"当前xid："<<xid;
 
     DeviceLink* link = createLink(client);
     if (!link) {
