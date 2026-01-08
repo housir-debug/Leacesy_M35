@@ -1,166 +1,39 @@
 #include "tcpserver.h"
-#include "canworker.h"
-#include <QNetworkInterface>
-#include <QCoreApplication>
 #include <QElapsedTimer>
 #include <QRandomGenerator>
-#include <QHostInfo>
 #include <QDataStream>
 #include <QtEndian>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include <unistd.h>
 
 // ===================== 初始化部分 =================================
 
 Q_LOGGING_CATEGORY(tcp, "tcp:")
-const QString TcpServerManager::SCPI_QUERY_SYMBOL = "?";
 
 TcpServerManager::TcpServerManager(QObject *parent)
     : QObject(parent)
 {
     m_scpiManager = new ScpiManager(this);
-    bool initSuccess = m_scpiManager->init(
-        getManufacturer,
-        getModel,
-        getSerialNumber,
-        getFirmwareVersion
-    );
 
-    if (initSuccess) {
+    if (m_scpiManager->init(getManufacturer,getModel,getSerialNumber,getFirmwareVersion)) {
         qCDebug(tcp) << "SCPI管理器初始化成功";
-    } else {
-        qCCritical(tcp) << "SCPI管理器初始化失败";
-    }
-
-    QList<QHostAddress> addresses = QNetworkInterface::allAddresses();
-    for (const QHostAddress &address :qAsConst(addresses)) {
-        if (address.protocol() == QAbstractSocket::IPv4Protocol &&
-            address != QHostAddress::LocalHost) {
-            m_deviceIp = address.toString();
-            m_deviceAddress = address;
-            break;
-        }
-    }
-    if (m_deviceIp.isEmpty()) {
-        m_deviceIp = "127.0.0.1";
-    }
-
-    m_linkCleanupTimer = new QTimer(this);
-    m_linkCleanupTimer->setInterval(60000); // 1分钟清理一次过期链接
-    connect(m_linkCleanupTimer, &QTimer::timeout, this, [this]() {
-        QMutexLocker locker(&m_linkMutex);
-        QDateTime now = QDateTime::currentDateTime();
-        QList<quint32> toRemove;
-
-        for (auto it = m_deviceLinks.begin(); it != m_deviceLinks.end(); ++it) {
-            // 清理创建超过1小时的链接
-            if (it->createTime.secsTo(now) > 3600) {
-                toRemove.append(it.key());
-            }
-        }
-
-        for (quint32 linkId : toRemove) {
-            qCDebug(tcp) << "清理过期VXI-11链接:" << linkId;
-            m_deviceLinks.remove(linkId);
-        }
-    });
-}
-
-static quint16 crc16(const quint8 *data, int length)
-{
-    quint16 crc = 0xFFFF;
-
-    for (int i = 0; i < length; i++) {
-        crc ^= (quint16)data[i] << 8;
-
-        for (int j = 0; j < 8; j++) {
-            if (crc & 0x8000) {
-                crc = (crc << 1) ^ 0x1021;
-            } else {
-                crc <<= 1;
-            }
-        }
-    }
-
-    return crc;
+    } else {qCCritical(tcp) << "SCPI管理器初始化失败";}
 }
 
 void TcpServerManager::forwardCanData(quint32 canId, const QByteArray &data, qint64 timestamp)
 {
     if (m_state.load() != STATE_RUNNING) {return;}
 
-    CanDataPacket packet;
-    memset(&packet, 0, sizeof(packet));
+    Q_UNUSED(canId)
+    Q_UNUSED(timestamp)
 
-    packet.magic = 0xCAFE;
-    packet.length = sizeof(packet) - sizeof(packet.magic) - sizeof(packet.length);
-    packet.timestamp = timestamp;
-
-    packet.canId = canId;
-    int dataSize = qMin(data.size(), 8);
-    packet.data[0] = static_cast<quint8>(dataSize);
-    memcpy(packet.data + 1, data.constData(), dataSize);
-
-    QByteArray crcData(reinterpret_cast<const char*>(&packet.timestamp),
-                      sizeof(packet) - offsetof(CanDataPacket, timestamp) - sizeof(packet.crc));
-    packet.crc = crc16(reinterpret_cast<const quint8*>(crcData.constData()), crcData.size());
-
-    QByteArray packetData(reinterpret_cast<const char*>(&packet), sizeof(packet));
-    sendToAllClients(packetData);
-}
-
-void TcpServerManager::forwardSerialData(const QByteArray &data){
     sendToAllClients(data);
 }
 
-// ===================== 启动部分 =================================
+void TcpServerManager::forwardSerialData(const QByteArray &data){
+    if (m_state.load() != STATE_RUNNING) {return;}
 
-bool TcpServerManager::startServer()
-{
-    if (m_state.load() != STATE_STOPPED) {
-        qCWarning(tcp) << "TcpServer is not in stopped state";
-        return false;
-    }
-
-    m_state.store(STATE_STARTING);
-
-    m_cleanupTimer = new QTimer(this);
-    m_cleanupTimer->setInterval(5000); // 5秒清理一次
-    m_tcpServer = new QTcpServer(this);
-
-    if (!m_serverThread){
-        m_serverThread = new QThread(this);
-        m_serverThread->setObjectName("TcpServer");
-    }
-    if (thread() != m_serverThread) {
-        this->moveToThread(m_serverThread);
-        m_tcpServer->moveToThread(m_serverThread);
-        m_cleanupTimer->moveToThread(m_serverThread);
-    }
-    if (!m_serverThread->isRunning()) {
-        m_serverThread->start();
-    }
-
-    connect(m_cleanupTimer, &QTimer::timeout,
-            this, &TcpServerManager::cleanupDisconnectedClients);
-    connect(m_tcpServer, &QTcpServer::newConnection,
-            this, &TcpServerManager::onNewConnection);
-
-    QMetaObject::invokeMethod(this, [this]() {
-        if (m_tcpServer->listen(QHostAddress::Any, m_port)) {
-            m_state.store(STATE_RUNNING);
-            m_cleanupTimer->start();
-            qCDebug(tcp) << "TcpServer started on port" << m_port;
-        } else {
-            m_state.store(STATE_STOPPED);
-            stopServer();
-            qCCritical(tcp) << QString("Failed to start TCP server: %1").arg(m_tcpServer->errorString());
-        }
-    }, Qt::QueuedConnection);
-
-    QTimer::singleShot(1000, this, &TcpServerManager::registerWithRpcbind);
-    return true;
+    sendToAllClients(data);
 }
 
 void TcpServerManager::sendToAllClients(const QByteArray &data)
@@ -176,13 +49,8 @@ void TcpServerManager::sendToAllClients(const QByteArray &data)
             if (bytesWritten == -1) {
                 qCWarning(tcp) << "Failed to send data to client" << client->objectName();
                 failedCount++;
-            } else {
-                successCount++;
-                //client->flush();
-            }
-        } else {
-            failedCount++;
-        }
+            } else {successCount++;}   //client->flush();
+        } else {failedCount++;}
     }
 
     if (successCount == m_clients.size()) {
@@ -190,9 +58,55 @@ void TcpServerManager::sendToAllClients(const QByteArray &data)
             qint64 elapsed = m_testtimer.elapsed();
             qCDebug(tcp) << "eth-can test time:" <<elapsed;
         }
-    }else{
-        qCDebug(tcp) << "tcpsendclient failcount:" <<failedCount<< "clients,"<< successCount << "clients";
+    }else{qCDebug(tcp) << "tcpsendclient failcount:" <<failedCount<< "clients,"<< successCount << "clients";}
+}
+
+// ===================== 启动部分 =================================
+
+bool TcpServerManager::startServer()
+{
+    if (m_state.load() != STATE_STOPPED) {return false;}
+
+    if (!m_serverThread){
+        m_cleanupTimer = new QTimer(this);
+        m_cleanupTimer->setInterval(5000); // 5秒
+
+        m_tcpServer = new QTcpServer(this);
+        m_serverThread = new QThread(this);
+        m_serverThread->setObjectName("TcpServer");
     }
+
+    if (thread() != m_serverThread) {
+        m_state.store(STATE_STARTING);
+        this->moveToThread(m_serverThread);
+        m_tcpServer->moveToThread(m_serverThread);
+        m_cleanupTimer->moveToThread(m_serverThread);
+    }
+
+    if (!m_serverThread->isRunning()) {
+        m_serverThread->start();
+
+        connect(m_cleanupTimer, &QTimer::timeout,
+                this, &TcpServerManager::cleanupDisconnectedClients);
+        connect(m_tcpServer, &QTcpServer::newConnection,
+                this, &TcpServerManager::onNewConnection);
+
+        QMetaObject::invokeMethod(this, [this]() {
+            if (m_tcpServer->listen(QHostAddress::Any, m_port)) {
+                m_state.store(STATE_RUNNING);
+                m_cleanupTimer->start();
+                qCDebug(tcp) << "TcpServer started on port" << m_port;
+            } else {
+                m_state.store(STATE_STOPPED);
+                stopServer();
+                qCCritical(tcp) << QString("Failed to start TCP server: %1").arg(m_tcpServer->errorString());
+            }
+        }, Qt::QueuedConnection);
+
+        //QTimer::singleShot(1000, this, &TcpServerManager::registerWithRpcbind);
+        return true;
+    }
+    return false;
 }
 
 void TcpServerManager::cleanupDisconnectedClients()
@@ -233,12 +147,27 @@ void TcpServerManager::onNewConnection()
     QString clientInfo = QString("%1:%2").arg(client->peerAddress().toString()).arg(client->peerPort());
     client->setObjectName(clientInfo);
 
-    connect(client, QOverload<QAbstractSocket::SocketError>::of(&QTcpSocket::errorOccurred),
-            this, &TcpServerManager::onSocketError);
-    connect(client, &QTcpSocket::disconnected,
-            this, &TcpServerManager::onClientDisconnected);
-    connect(client, &QTcpSocket::readyRead,
-            this, &TcpServerManager::onClientReadyRead);
+    //connect(client, QOverload<QAbstractSocket::SocketError>::of(&QTcpSocket::errorOccurred),
+    //        this, &TcpServerManager::onSocketError);
+    connect(client, &QTcpSocket::errorOccurred,this, [client](QAbstractSocket::SocketError error){
+         qCWarning(tcp) << "Socket error from" << client->objectName()<< ":" << client->errorString() << "|" << error;
+    });
+    connect(client, &QTcpSocket::disconnected,this, [this, client](){
+        this->m_clients.removeOne(client);
+        client->deleteLater();
+        qCDebug(tcp) << "Client disconnected:" << client->objectName()<< ", remaining clients:" << m_clients.size();
+        for (auto it = this->m_deviceLinks.begin(); it != this->m_deviceLinks.end(); ++it) {
+            if (it->client == client) {
+                m_deviceLinks.remove(it->id);
+                qCWarning(tcp) << "client:" << client->objectName() << "已断开连接，删除存在链接号:" << it->id;
+            }
+        }
+    });
+    connect(client, &QTcpSocket::readyRead,this, [this, client](){
+        QByteArray rawData = client->readAll();
+        this->processClientData(client,rawData);
+        qCDebug(tcp) << "RECEIVED FROM" << client->objectName()<< "size:" << rawData.size()<< "hex:" << rawData.toHex(' ');
+    });
 
     qCDebug(tcp) << "New client connected:" << clientInfo<< ", total clients:" << m_clients.size();;
 }
@@ -253,11 +182,8 @@ bool TcpServerManager::registerWithRpcbind()
             m_port                   // 端口
         );
 
-        if (result) {
-            qCDebug(tcp) << "✅ 使用 libtirpc 成功注册 VXI-11 服务到端口" << m_port;
-        } else {
-            qCWarning(tcp) << "❌ 使用 libtirpc 注册失败，尝试手动注册";
-
+        if (result) {qCDebug(tcp) << "✅ 使用 libtirpc 成功注册 VXI-11 服务到端口" << m_port;}
+        else {qCWarning(tcp) << "❌ 使用 libtirpc 注册失败，尝试手动注册";
             int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
             if (sockfd < 0) {
                 qCWarning(tcp) << "创建socket失败:" << strerror(errno);
@@ -267,7 +193,7 @@ bool TcpServerManager::registerWithRpcbind()
             struct sockaddr_in addr;
             memset(&addr, 0, sizeof(addr));
             addr.sin_family = AF_INET;
-            addr.sin_port = htons(111); // rpcbind端口
+            addr.sin_port = htons(111);
             inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
 
             #pragma pack(push, 1)
@@ -301,10 +227,9 @@ bool TcpServerManager::registerWithRpcbind()
             call.map_prog = htonl(395183);   // VXI-11程序号
             call.map_vers = htonl(1);        // VXI-11版本1
             call.map_prot = htonl(6);        // TCP协议
-            call.map_port = htonl(m_port);   // 我们的端口
+            call.map_port = htonl(m_port);   //
 
             sendto(sockfd, &call, sizeof(call), 0,(struct sockaddr*)&addr, sizeof(addr));
-
             close(sockfd);
             qCDebug(tcp) << "手动注册 VXI-11 服务到端口" << m_port;
         }
@@ -317,22 +242,15 @@ bool TcpServerManager::registerWithRpcbind()
 void TcpServerManager::onSocketError(QAbstractSocket::SocketError error)
 {
     QTcpSocket *client = qobject_cast<QTcpSocket*>(sender());
-    if (!client) {
-        return;
-    }
+    if (!client) {return;}
 
-    qCWarning(tcp) << "Socket error from" << client->objectName()
-              << ":" << client->errorString() << "|" << error;
+    qCWarning(tcp) << "Socket error from" << client->objectName()<< ":" << client->errorString() << "|" << error;
 }
 
 void TcpServerManager::onClientDisconnected()
 {
     QTcpSocket *client = qobject_cast<QTcpSocket*>(sender());
-    if (!client) {
-        return;
-    }
-
-    QString clientInfo = client->objectName();
+    if (!client) {return;}
 
     {
         QMutexLocker locker(&m_Mutex);
@@ -340,8 +258,7 @@ void TcpServerManager::onClientDisconnected()
     }
 
     client->deleteLater();
-    qCDebug(tcp) << "Client disconnected:" << clientInfo
-           << ", remaining clients:" << m_clients.size();
+    qCDebug(tcp) << "Client disconnected:" << client->objectName()<< ", remaining clients:" << m_clients.size();
 }
 
 void TcpServerManager::onClientReadyRead()
@@ -350,80 +267,65 @@ void TcpServerManager::onClientReadyRead()
     if (!client) {return;}
 
     QByteArray rawData = client->readAll();
-    qCDebug(tcp) << "Received from" << client->objectName()<< "size:" << rawData.size()<< "hex:" << rawData.toHex();
+    qCDebug(tcp) << "RECEIVED FROM" << client->objectName()<< "size:" << rawData.size()<< "hex:" << rawData.toHex(' ');
 
-    QTimer::singleShot(0, this, [this, client,rawData]() {
-        // 异步处理，立即放入事件队列，不阻塞事件循环
-        processClientData(client,rawData);
-    });
+    QTimer::singleShot(0, this, [this, client,rawData]() { processClientData(client,rawData);});// 异步处理，立即放入事件队列
 }
 
 void TcpServerManager::processClientData(QTcpSocket *client,const QByteArray newdata)
 {
-    if (m_vxi11Enabled && isVxi11RpcCall(newdata)) {
-        qCDebug(tcp) << "VXI-11 RPC call detected";
-        handleVxi11RpcCall(client, newdata);
-        return;
+    if (newdata.size() >= 20) {   // VXI-11
+        const uchar* rawData = reinterpret_cast<const uchar*>(newdata.constData());
+        quint32 progNum = qFromBigEndian<quint32>(rawData + 16);
+        if(progNum == Vxi11::DEVICE_CORE){
+            qCDebug(tcp) << "VXI-11 RPC call detected";
+            handleVxi11RpcCall(client, newdata);
+            return;
+        }
     }
 
     QString message = QString::fromUtf8(newdata).trimmed();
-    if (message.startsWith("*") || message.contains(":")) {
+    if (message.startsWith("*") || message.contains(":")) {   // SCPI-ASCAL
         qCDebug(tcp) << "SCPI command detected:" << message;
 
         QByteArray response = m_scpiManager->processCommand(newdata);
         if (!response.isEmpty() && client->state() == QAbstractSocket::ConnectedState) {
             client->write(response);
             qCDebug(tcp) << "SCPI响应发送:" << response << ",长度:" << response.size() << "bytes";
-        } else {
-            qCDebug(tcp) << "SCPI响应为空或客户端未连接";
-        }
+        } else {qCDebug(tcp) << "SCPI响应为空或客户端未连接";}
         return;
     }
 
-    qCWarning(tcp) << "Invalid brief inform!Throw!" ;
+    qCWarning(tcp) << "Invalid brief inform!----Throw!" ;
     return;
-}
-
-bool TcpServerManager::isVxi11RpcCall(const QByteArray &data)
-{
-    if (data.size() < 24) {return false;}
-
-    const uchar* rawData = reinterpret_cast<const uchar*>(data.constData());
-
-    if (data.size() >= 20) {
-        quint32 progNum = qFromBigEndian<quint32>(rawData + 16);
-        return (progNum == 395183); // VXI-11程序号
-    }
-
-    return false;
 }
 
 void TcpServerManager::handleVxi11RpcCall(QTcpSocket* client, const QByteArray &data)
 {
     if (!client || data.size() < 28) {return;}
 
-    quint32 procedure = extractProcedure(data);
-    qCDebug(tcp) << "VXI-11 RPC调用,过程:" << procedure;
+    const quint32* ptr = reinterpret_cast<const quint32*>(data.constData() + 4);
+    quint32 xid = qFromBigEndian<quint32>(ptr);
+
+    const quint32* ptr_d = reinterpret_cast<const quint32*>(data.constData() + 24);
+    quint32 procedure = qFromBigEndian<quint32>(ptr_d);
+    qCDebug(tcp) << "VXI-11 RPC调用,过程:" << procedure << ",XID:"<<xid;
 
     switch (procedure) {
         case Vxi11::CREATE_LINK:
-            handleCreateLink(client, data);
-            break;
+            handleCreateLink(client, data, xid);break;
 
         case Vxi11::DEVICE_WRITE:
-            handleDeviceWrite(client, data);
-            break;
+            handleDeviceWrite(client, data, xid);break;
 
         case Vxi11::DEVICE_READ:
-            handleDeviceRead(client, data);
-            break;
+            handleDeviceRead(client, data, xid);break;
 
         case Vxi11::DEVICE_DOCMD:
-            handleDeviceDocmd(client, data);
-            break;
+            handleDeviceDocmd(client, data, xid);break;
 
         case Vxi11::DESTROY_LINK:
-            //handleDestroyLink(client, data);
+            //handleDestroyLink(client, data, xid);
             break;
 
         default:
@@ -434,18 +336,127 @@ void TcpServerManager::handleVxi11RpcCall(QTcpSocket* client, const QByteArray &
 
 // ===================== VXI-11 RPC处理 =================================
 
-quint32 TcpServerManager::extractXid(const QByteArray &data)
+void TcpServerManager::handleCreateLink(QTcpSocket* client, const QByteArray &data,const quint32 &xid)
 {
-    if (data.size() < 4) return 0;
-    const quint32* ptr = reinterpret_cast<const quint32*>(data.constData() + 4);
-    return qFromBigEndian<quint32>(ptr);
+    Q_UNUSED(data)
+
+    for (auto it = m_deviceLinks.begin(); it != m_deviceLinks.end(); ++it) {
+        if (it->client->peerAddress() == client->peerAddress()) {
+            qCWarning(tcp) << "client:" << client->objectName() << "已存在链接号:" << it->id<< "拒绝创建新连接";
+            QByteArray response = createErrorResponse(xid, Vxi11::OUT_OF_RESOURCES);
+            client->write(response);
+            return;
+        }
+    }
+
+    DeviceLink link;
+    link.id = m_nextLinkId++;
+    link.lock = 0;
+    link.createTime = QDateTime::currentDateTime();
+    link.client = client;
+    link.aborted = false;
+    m_deviceLinks.insert(link.id, link);
+    qCDebug(tcp) << "✅ 创建VXI-11链接:" << link.id<< "for client:" << client->objectName();
+
+    DeviceLink* D_link = &m_deviceLinks[link.id];
+    QByteArray response = createLinkResponse(xid, D_link->id);
+    client->write(response);
+    qCDebug(tcp) << "CREATE_LINK: " << D_link->id << "Response:" << response.toHex(' ');
 }
 
-quint32 TcpServerManager::extractProcedure(const QByteArray &data)
+void TcpServerManager::handleDeviceWrite(QTcpSocket* client, const QByteArray &data,const quint32 &xid)
 {
-    if (data.size() < 24) return 0;
-    const quint32* ptr = reinterpret_cast<const quint32*>(data.constData() + 24);
-    return qFromBigEndian<quint32>(ptr);
+    for (auto it = m_deviceLinks.begin(); it != m_deviceLinks.end(); ++it) {
+        if (it->client == client) {
+            // 解析写入参数（简化处理）
+            // 在实际实现中，这里应该解析XDR编码的参数
+            if (data.size() >= 32) {
+                // 从数据中提取写入的内容（简化版本）
+                // 实际应该使用XDR解码
+
+                qCDebug(tcp) << "DEVICE_WRITE: 链接" << it->id << "收到数据，大小:" << data.size();
+
+                // 返回成功响应
+                QByteArray response = createErrorResponse(xid, Vxi11::NO_ERROR);
+                client->write(response);
+            } else {
+                QByteArray response = createErrorResponse(xid, Vxi11::PARAMETER_ERROR);
+                client->write(response);
+                qCWarning(tcp) << "DEVICE_WRITE: 参数错误";
+            }
+        }
+    }
+}
+
+void TcpServerManager::handleDeviceRead(QTcpSocket* client, const QByteArray &data,const quint32 &xid)
+{
+    Q_UNUSED(data)
+    for (auto it = m_deviceLinks.begin(); it != m_deviceLinks.end(); ++it) {
+        if (it->client == client) {
+            // 构建读取响应
+            // 这里可以返回一些设备状态信息
+            QByteArray response;
+            response.reserve(40);
+
+            QDataStream stream(&response, QIODevice::WriteOnly);
+            stream.setByteOrder(QDataStream::BigEndian);
+
+            // RPC回复头部
+            stream << xid;                      // xid
+            stream << quint32(1);               // msg_type: REPLY
+            stream << quint32(0);               // reply_stat: MSG_ACCEPTED
+
+            // AUTH_NULL验证器
+            stream << quint32(0);               // verf_flavor: AUTH_NULL
+            stream << quint32(0);               // verf_length: 0
+
+            // 接受状态
+            stream << quint32(0);               // accept_stat: SUCCESS
+
+            // 读取响应数据
+            stream << quint32(0);               // error: NO_ERROR
+
+            // 返回模拟的设备信息
+            QString deviceInfo = QString("*IDN? response: %1,%2,%3,%4")
+                                 .arg(getManufacturer, getModel, getSerialNumber, getFirmwareVersion);
+            QByteArray infoData = deviceInfo.toUtf8();
+
+            stream << quint32(infoData.size());  // 数据长度
+            stream.writeRawData(infoData.constData(), infoData.size());
+
+            client->write(response);
+            qCDebug(tcp) << "DEVICE_READ: 返回设备信息，大小:" << response.size();
+        }
+    }
+}
+
+void TcpServerManager::handleDeviceDocmd(QTcpSocket* client, const QByteArray &data,const quint32 &xid)
+{
+    Q_UNUSED(data)
+    for (auto it = m_deviceLinks.begin(); it != m_deviceLinks.end(); ++it) {
+        if (it->client == client) {
+            // 处理设备命令（这里处理SCPI命令）
+            // 简化实现：返回成功
+            QByteArray response = createErrorResponse(xid, Vxi11::NO_ERROR);
+            client->write(response);
+            qCDebug(tcp) << "DEVICE_DOCMD: 处理设备命令";
+        }
+    }
+}
+
+void TcpServerManager::handleDestroyLink(QTcpSocket* client, const QByteArray &data,const quint32 &xid)
+{
+    Q_UNUSED(data)
+    for (auto it = m_deviceLinks.begin(); it != m_deviceLinks.end(); ++it) {
+        if (it->client == client) {
+            // 销毁链接
+            quint32 linkId = it->id;
+            destroyLink(linkId);
+
+            createErrorResponse(xid, Vxi11::NO_ERROR);
+            qCDebug(tcp) << "DESTROY_LINK: 销毁链接" << linkId;
+        }
+    }
 }
 
 QByteArray TcpServerManager::createErrorResponse(quint32 xid, quint32 error)
@@ -498,36 +509,6 @@ QByteArray TcpServerManager::createLinkResponse(quint32 xid, quint32 lid)
     return response;
 }
 
-TcpServerManager::DeviceLink* TcpServerManager::createLink(QTcpSocket* client)
-{
-    QMutexLocker locker(&m_linkMutex);
-
-    if (!client) {
-        qCWarning(tcp) << "createLink: 无效的client指针";
-        return nullptr;
-    }
-
-    for (auto it = m_deviceLinks.begin(); it != m_deviceLinks.end(); ++it) {
-        if (it->client == client) {
-            qCWarning(tcp) << "client:" << client->objectName() << "已存在链接:" << it->id;
-            return &(*it);
-        }
-    }
-
-    DeviceLink link;
-    link.id = m_nextLinkId++;
-    link.client = client;
-    link.createTime = QDateTime::currentDateTime();
-    link.lock = 0;  // 初始未锁定
-    link.aborted = false;
-
-    m_deviceLinks.insert(link.id, link);
-    qCInfo(tcp) << "✅ 创建VXI-11链接:" << link.id<< "for client:" << client->objectName()
-               << "(IP:" << client->peerAddress().toString()<< ":" << client->peerPort() << ")";
-
-    return &m_deviceLinks[link.id];
-}
-
 void TcpServerManager::destroyLink(quint32 linkId)
 {
     QMutexLocker locker(&m_linkMutex);
@@ -549,136 +530,11 @@ void TcpServerManager::destroyLink(quint32 linkId)
     }
 }
 
-void TcpServerManager::handleCreateLink(QTcpSocket* client, const QByteArray &data)
-{
-    quint32 xid = extractXid(data);
-
-    DeviceLink* link = createLink(client);
-    if (!link) {
-        QByteArray response = createErrorResponse(xid, Vxi11::OUT_OF_RESOURCES);
-        client->write(response);
-        qCWarning(tcp) << "CREATE_LINK: 创建链接失败";
-        return;
-    }
-
-    QByteArray response = createLinkResponse(xid, link->id);
-    client->write(response);
-    qCDebug(tcp) << "CREATE_LINK: " << link->id << "Response:" << response.toHex(' ');
-}
-
-void TcpServerManager::handleDeviceWrite(QTcpSocket* client, const QByteArray &data)
-{
-    quint32 xid = extractXid(data);
-
-    for (auto it = m_deviceLinks.begin(); it != m_deviceLinks.end(); ++it) {
-        if (it->client == client) {
-            // 解析写入参数（简化处理）
-            // 在实际实现中，这里应该解析XDR编码的参数
-            if (data.size() >= 32) {
-                // 从数据中提取写入的内容（简化版本）
-                // 实际应该使用XDR解码
-
-                qCDebug(tcp) << "DEVICE_WRITE: 链接" << it->id << "收到数据，大小:" << data.size();
-
-                // 返回成功响应
-                QByteArray response = createErrorResponse(xid, Vxi11::NO_ERROR);
-                client->write(response);
-            } else {
-                QByteArray response = createErrorResponse(xid, Vxi11::PARAMETER_ERROR);
-                client->write(response);
-                qCWarning(tcp) << "DEVICE_WRITE: 参数错误";
-            }
-        }
-    }
-}
-
-void TcpServerManager::handleDeviceRead(QTcpSocket* client, const QByteArray &data)
-{
-    quint32 xid = extractXid(data);
-
-    for (auto it = m_deviceLinks.begin(); it != m_deviceLinks.end(); ++it) {
-        if (it->client == client) {
-            // 构建读取响应
-            // 这里可以返回一些设备状态信息
-            QByteArray response;
-            response.reserve(40);
-
-            QDataStream stream(&response, QIODevice::WriteOnly);
-            stream.setByteOrder(QDataStream::BigEndian);
-
-            // RPC回复头部
-            stream << xid;                      // xid
-            stream << quint32(1);               // msg_type: REPLY
-            stream << quint32(0);               // reply_stat: MSG_ACCEPTED
-
-            // AUTH_NULL验证器
-            stream << quint32(0);               // verf_flavor: AUTH_NULL
-            stream << quint32(0);               // verf_length: 0
-
-            // 接受状态
-            stream << quint32(0);               // accept_stat: SUCCESS
-
-            // 读取响应数据
-            stream << quint32(0);               // error: NO_ERROR
-
-            // 返回模拟的设备信息
-            QString deviceInfo = QString("*IDN? response: %1,%2,%3,%4")
-                                 .arg(getManufacturer, getModel, getSerialNumber, getFirmwareVersion);
-            QByteArray infoData = deviceInfo.toUtf8();
-
-            stream << quint32(infoData.size());  // 数据长度
-            stream.writeRawData(infoData.constData(), infoData.size());
-
-            client->write(response);
-            qCDebug(tcp) << "DEVICE_READ: 返回设备信息，大小:" << response.size();
-        }
-    }
-}
-
-void TcpServerManager::handleDeviceDocmd(QTcpSocket* client, const QByteArray &data)
-{
-    quint32 xid = extractXid(data);
-
-    for (auto it = m_deviceLinks.begin(); it != m_deviceLinks.end(); ++it) {
-        if (it->client == client) {
-            // 处理设备命令（这里处理SCPI命令）
-            // 简化实现：返回成功
-            QByteArray response = createErrorResponse(xid, Vxi11::NO_ERROR);
-            client->write(response);
-            qCDebug(tcp) << "DEVICE_DOCMD: 处理设备命令";
-        }
-    }
-}
-
-void TcpServerManager::handleDestroyLink(QTcpSocket* client, const QByteArray &data)
-{
-    quint32 xid = extractXid(data);
-
-    for (auto it = m_deviceLinks.begin(); it != m_deviceLinks.end(); ++it) {
-        if (it->client == client) {
-            // 销毁链接
-            quint32 linkId = it->id;
-            destroyLink(linkId);
-
-            // 返回成功响应
-            //QByteArray response = createErrorResponse(xid, Vxi11::NO_ERROR);
-            //client->write(response);
-            qCDebug(tcp) << "DESTROY_LINK: 销毁链接" << linkId;
-        }
-    }
-}
 
 // ==================== 析构部分 ====================
 
 TcpServerManager::~TcpServerManager()
 {
-    // 停止链接清理定时器
-    if (m_linkCleanupTimer) {
-        m_linkCleanupTimer->stop();
-        delete m_linkCleanupTimer;
-        m_linkCleanupTimer = nullptr;
-    }
-    // 清理所有链接
     {
         QMutexLocker locker(&m_linkMutex);
         m_deviceLinks.clear();

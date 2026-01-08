@@ -13,101 +13,12 @@
 #include <QLoggingCategory>
 #include <QMap>
 #include <QRegularExpression>
-#include <QLibrary>
 #include <unistd.h>
 #include "scpimanager.h"
+#include "tirpcloader.h"
+#include "canworker.h"
 
 Q_DECLARE_LOGGING_CATEGORY(tcp)
-
-// ===================== 动态加载所需类型定义 =====================
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-// 定义 bool_t 类型（SUN RPC 标准类型）
-typedef int bool_t;
-
-// 定义 rpcprog_t, rpcvers_t, rpcproc_t
-typedef unsigned int rpcprog_t;
-typedef unsigned int rpcvers_t;
-typedef unsigned int rpcproc_t;
-
-// RPC 状态枚举
-enum clnt_stat {
-    RPC_SUCCESS = 0,
-    RPC_CANTENCODEARGS = 1,
-    RPC_CANTDECODERES = 2,
-    RPC_CANTSEND = 3,
-    RPC_CANTRECV = 4,
-    RPC_TIMEDOUT = 5,
-    RPC_CANTDECODEARGS = 6,
-    RPC_CANTSENDTO = 7,
-    RPC_CANTRECVFROM = 8,
-    RPC_CANTSENDTO_LOCAL = 9,
-    RPC_CANTRECVFROM_LOCAL = 10,
-    RPC_CANTSENDTO_REMOTE = 11,
-    RPC_CANTRECVFROM_REMOTE = 12,
-    RPC_UNKNOWNHOST = 13,
-    RPC_UNKNOWNADDR = 14,
-    RPC_UNKNOWNPROTO = 15,
-    RPC_UNKNOWNERR = 16
-};
-
-// 认证类型
-enum auth_flavor {
-    AUTH_NULL = 0,
-    AUTH_UNIX = 1,
-    AUTH_SHORT = 2,
-    AUTH_DES = 3,
-    AUTH_KERB = 4
-};
-
-// XDR 方向
-enum xdr_op {
-    XDR_ENCODE = 0,
-    XDR_DECODE = 1,
-    XDR_FREE = 2
-};
-
-#ifdef __cplusplus
-}
-#endif
-
-struct XDR;
-typedef bool_t (*xdrproc_t)(XDR*, void*);
-
-class TirpcDynamicLoader
-{
-public:
-    static TirpcDynamicLoader& instance();
-
-    bool load();
-    bool isLoaded() const { return m_loaded; }
-
-    // PORTMAP函数
-    bool pmap_set(quint32 program, quint32 version, int protocol, quint16 port);
-    bool pmap_unset(quint32 program, quint32 version, int protocol, quint16 port);
-
-    // XDR编码函数指针类型
-    void* getFunction(const char* name);
-
-private:
-    TirpcDynamicLoader() = default;
-    ~TirpcDynamicLoader() = default;
-
-    bool resolveFunctions();
-
-    QLibrary m_library;
-    bool m_loaded = false;
-
-    // 函数指针类型定义
-    typedef bool_t (*pmap_set_t)(quint32, quint32, int, quint16);
-    typedef bool_t (*pmap_unset_t)(quint32, quint32, int, quint16);
-
-    pmap_set_t m_pmap_set = nullptr;
-    pmap_unset_t m_pmap_unset = nullptr;
-};
 
 namespace Vxi11 {
     constexpr quint32 DEVICE_CORE = 395183;    //->device
@@ -191,7 +102,6 @@ namespace Vxi11 {
     };
 }
 
-
 class TcpServerManager : public QObject
 {
     Q_OBJECT
@@ -211,18 +121,6 @@ signals:
     void SerialSendRequest(const QByteArray &data);
 
 private:
-    #pragma pack(push, 1)
-    struct CanDataPacket {
-        quint32 magic;          // 魔法头: 0xCAFE
-        quint32 length;         // 数据长度
-        qint64 timestamp;       // 时间戳（毫秒）
-        quint32 canId;          // CAN ID
-        quint8 data[8];         // CAN数据（最多8字节）
-        quint16 crc;            // CRC16校验
-    };
-    //20个字节
-    #pragma pack(pop)
-
     struct DeviceLink {
         quint32 id;
         quint32 lock;
@@ -241,37 +139,26 @@ private:
     void onNewConnection();
     bool registerWithRpcbind();
 
-    void onSocketError(QAbstractSocket::SocketError error);
-    void onClientDisconnected();
-    void onClientReadyRead();
+    void onSocketError(QAbstractSocket::SocketError error);//shanchu
+    void onClientDisconnected();//shanchu
+    void onClientReadyRead();//shanchu
     void processClientData(QTcpSocket *client,const QByteArray newdata);
     void handleVxi11RpcCall(QTcpSocket* client, const QByteArray &data);
-    bool isVxi11RpcCall(const QByteArray &data);
 
-    // VXI-11处理函数
-    void handleCreateLink(QTcpSocket* client, const QByteArray &data);
-    void handleDeviceWrite(QTcpSocket* client, const QByteArray &data);
-    void handleDeviceRead(QTcpSocket* client, const QByteArray &data);
-    void handleDeviceDocmd(QTcpSocket* client, const QByteArray &data);
-    void handleDestroyLink(QTcpSocket* client, const QByteArray &data);
+    void handleCreateLink(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
+    void handleDeviceWrite(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
+    void handleDeviceRead(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
+    //void handleDeviceReadStb(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
+    //void handleDeviceLock(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
+    //void handleDeviceUnLock(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
+    void handleDeviceDocmd(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
+    void handleDestroyLink(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
 
-    // 辅助函数
-    quint32 extractXid(const QByteArray &data);
-    quint32 extractProcedure(const QByteArray &data);
     QByteArray createErrorResponse(quint32 xid, quint32 error);
     QByteArray createLinkResponse(quint32 xid, quint32 lid);
-    DeviceLink* createLink(QTcpSocket* client);
-    void destroyLink(quint32 linkId);
+    void destroyLink(quint32 linkId);//shanchu
 
 private:
-    enum ScpiError {
-        NO_ERROR = 0,
-        COMMAND_ERROR = -100,
-        EXECUTION_ERROR = -200,
-        DEVICE_SPECIFIC_ERROR = -300,
-        QUERY_ERROR = -400,
-        PARAMETER_ERROR = -500
-    };
     enum ServerState {
         STATE_STOPPED,
         STATE_STARTING,
@@ -279,33 +166,25 @@ private:
         STATE_STOPPING
     };
 
-    static const QString SCPI_QUERY_SYMBOL;
-
-    QHostAddress m_deviceAddress;
-    QString m_deviceIp;
-
     QMutex m_Mutex;
+    QMutex m_linkMutex;
     QList<QTcpSocket*> m_clients;
     QElapsedTimer m_testtimer;
+    QMap<quint32, DeviceLink> m_deviceLinks;
 
+    const QString m_deviceIp{"192.168.137.33"};
     const QString getManufacturer{"Leacesy"};
     const QString getModel{"M35-Current-Measuring"};
     const QString getSerialNumber{"SN-001"};
     const QString getFirmwareVersion{ "1.0.0" };
 
     quint16 m_port{5025};
-    bool m_vxi11Enabled{true};
-
-    std::atomic<ServerState> m_state{STATE_STOPPED};
-
-    QMap<quint32, DeviceLink> m_deviceLinks;
     quint32 m_nextLinkId{1};
-    QMutex m_linkMutex;
+    std::atomic<ServerState> m_state{STATE_STOPPED};
 
     QThread *m_serverThread{nullptr};
     QTcpServer *m_tcpServer{nullptr};
     QTimer *m_cleanupTimer{nullptr};
-    QTimer *m_linkCleanupTimer{nullptr};
 };
 
 #endif // TCPSERVER_H

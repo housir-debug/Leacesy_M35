@@ -14,7 +14,8 @@ HEADERS += \
     scpimanager.h \
     serialworker.h \
     simple_logger.h \
-    tcpserver.h
+    tcpserver.h \
+    tirpcloader.h
 
 SOURCES += \
         canworker.cpp \

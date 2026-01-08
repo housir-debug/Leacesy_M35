@@ -41,6 +41,7 @@ private:
     static scpi_result_t staticControlCallback(scpi_t* context, scpi_ctrl_name_t ctrl, scpi_reg_val_t val);
     static scpi_result_t staticFlushCallback(scpi_t* context);
     static scpi_result_t staticResetCallback(scpi_t* context);
+
     // ===== 实例处理函数 =====
     size_t handleWrite(const char* data, size_t len);
     int handleError(int_fast16_t err);
