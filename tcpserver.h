@@ -124,10 +124,9 @@ namespace Vxi11 {
         SYSTEM_ERR = 5
     };
 
-    // VXI-11过程号
     enum Procedure : quint32 {
-        GETPORT = 1,
-        CREATE_LINK = 3,
+        GET_PORT = 3,
+        CREATE_LINK = 10,
         DEVICE_WRITE = 11,
         DEVICE_READ = 12,
         DEVICE_DOCMD = 15,
@@ -223,11 +222,9 @@ private:
     void onClientReadyRead();
     void processClientData(QTcpSocket *client,const QByteArray newdata);
     void handleVxi11RpcCall(QTcpSocket* client, const QByteArray &data);
-    QByteArray buildVxi11Response(quint32 xid, quint32 procedure, quint32 result = 0);
     bool isVxi11RpcCall(const QByteArray &data);
 
     // VXI-11处理函数
-    void handleGetPort(QTcpSocket* client, const QByteArray &data);
     void handleCreateLink(QTcpSocket* client, const QByteArray &data);
     void handleDeviceWrite(QTcpSocket* client, const QByteArray &data);
     void handleDeviceRead(QTcpSocket* client, const QByteArray &data);
@@ -238,7 +235,7 @@ private:
     quint32 extractXid(const QByteArray &data);
     quint32 extractProcedure(const QByteArray &data);
     QByteArray createErrorResponse(quint32 xid, quint32 error);
-    DeviceLink* findLinkByClient(QTcpSocket* client);
+    QByteArray createLinkResponse(quint32 xid, quint32 lid);
     DeviceLink* createLink(QTcpSocket* client);
     void destroyLink(quint32 linkId);
 
