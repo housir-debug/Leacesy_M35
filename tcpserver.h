@@ -127,6 +127,7 @@ private:
         QDateTime createTime;
         QTcpSocket* client;
         bool aborted;
+        QByteArray pending_Vxi_Scpi_response;
 
         DeviceLink() : id(0), lock(0), client(nullptr), aborted(false) {}
     };
@@ -139,9 +140,6 @@ private:
     void onNewConnection();
     bool registerWithRpcbind();
 
-    void onSocketError(QAbstractSocket::SocketError error);//shanchu
-    void onClientDisconnected();//shanchu
-    void onClientReadyRead();//shanchu
     void processClientData(QTcpSocket *client,const QByteArray newdata);
     void handleVxi11RpcCall(QTcpSocket* client, const QByteArray &data);
 
@@ -162,8 +160,6 @@ private:
     void handleDestroyIntrChan(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
 
     QByteArray createErrorResponse(quint32 xid, quint32 error);
-     bool validateLink(QTcpSocket* client, quint32 lid, QByteArray& errorResponse, quint32 xid);
-    void destroyLink(quint32 linkId);//shanchu
 
 private:
     enum ServerState {
