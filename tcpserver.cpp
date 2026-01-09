@@ -321,12 +321,41 @@ void TcpServerManager::handleVxi11RpcCall(QTcpSocket* client, const QByteArray &
         case Vxi11::DEVICE_READ:
             handleDeviceRead(client, data, xid);break;
 
+        case Vxi11::DEVICE_READSTB:
+            handleDeviceReadStb(client, data, xid);break;
+
+        case Vxi11::DEVICE_TRIGGER:
+            handleDeviceTrigger(client, data, xid);break;
+
+        case Vxi11::DEVICE_CLEAR:
+            handleDeviceClear(client, data, xid);break;
+
+        case Vxi11::DEVICE_REMOTE:
+            handleDeviceRemote(client, data, xid);break;
+
+        case Vxi11::DEVICE_LOCAL:
+            handleDeviceLocal(client, data, xid);break;
+
+        case Vxi11::DEVICE_LOCK:
+            handleDeviceLock(client, data, xid);break;
+
+        case Vxi11::DEVICE_UNLOCK:
+            handleDeviceUnlock(client, data, xid);break;
+
+        case Vxi11::DEVICE_ENABLE_SRQ:
+            handleDeviceEnableSrq(client, data, xid);break;
+
         case Vxi11::DEVICE_DOCMD:
             handleDeviceDocmd(client, data, xid);break;
 
         case Vxi11::DESTROY_LINK:
-            //handleDestroyLink(client, data, xid);
-            break;
+            handleDestroyLink(client, data, xid);break;
+
+        case Vxi11::CREATE_INTR_CHAN:
+            handleCreateIntrChan(client, data, xid);break;
+
+        case Vxi11::DESTROY_INTR_CHAN:
+            handleDestroyIntrChan(client, data, xid);break;
 
         default:
             qCWarning(tcp) << "未知的VXI-11过程:" << procedure;
@@ -343,7 +372,7 @@ void TcpServerManager::handleCreateLink(QTcpSocket* client, const QByteArray &da
     for (auto it = m_deviceLinks.begin(); it != m_deviceLinks.end(); ++it) {
         if (it->client->peerAddress() == client->peerAddress()) {
             qCWarning(tcp) << "client:" << client->objectName() << "已存在链接号:" << it->id<< "拒绝创建新连接";
-            QByteArray response = createErrorResponse(xid, Vxi11::OUT_OF_RESOURCES);
+            QByteArray response = createErrorResponse(xid, Vxi11::CHANNEL_ALREADY_ESTABLISHED);
             client->write(response);
             return;
         }
@@ -359,33 +388,91 @@ void TcpServerManager::handleCreateLink(QTcpSocket* client, const QByteArray &da
     qCDebug(tcp) << "✅ 创建VXI-11链接:" << link.id<< "for client:" << client->objectName();
 
     DeviceLink* D_link = &m_deviceLinks[link.id];
-    QByteArray response = createLinkResponse(xid, D_link->id);
+    QByteArray response;
+    response.reserve(44);
+    QDataStream stream(&response, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::BigEndian);
+
+    stream << quint32(0x80000028);     // RPC + size
+    stream << xid;                     // XID
+
+    stream << quint32(1);              // msg_type: REPLY (1)
+    stream << quint32(0);              // reply_stat: MSG_ACCEPTED (0)
+
+    stream << quint32(0);              // auth_flavor: AUTH_NULL (0)
+    stream << quint32(0);              // auth_length: 0
+
+    stream << quint32(0);              // accept_stat: SUCCESS (0)
+    stream << quint32(0);              // error_code: 0 (no error)
+    stream << D_link->id;              // link_id (Device_Link ID)
+    stream << quint32(0);              // abort_port
+    stream << quint32(2048);           // max_recv_size
+
     client->write(response);
     qCDebug(tcp) << "CREATE_LINK: " << D_link->id << "Response:" << response.toHex(' ');
 }
 
 void TcpServerManager::handleDeviceWrite(QTcpSocket* client, const QByteArray &data,const quint32 &xid)
 {
-    for (auto it = m_deviceLinks.begin(); it != m_deviceLinks.end(); ++it) {
-        if (it->client == client) {
-            // 解析写入参数（简化处理）
-            // 在实际实现中，这里应该解析XDR编码的参数
-            if (data.size() >= 32) {
-                // 从数据中提取写入的内容（简化版本）
-                // 实际应该使用XDR解码
+    // device_write参数结构：
+    // lid(4), io_timeout(4), lock_timeout(4), flags(4), data<>
 
-                qCDebug(tcp) << "DEVICE_WRITE: 链接" << it->id << "收到数据，大小:" << data.size();
-
-                // 返回成功响应
-                QByteArray response = createErrorResponse(xid, Vxi11::NO_ERROR);
-                client->write(response);
-            } else {
-                QByteArray response = createErrorResponse(xid, Vxi11::PARAMETER_ERROR);
-                client->write(response);
-                qCWarning(tcp) << "DEVICE_WRITE: 参数错误";
-            }
-        }
+    if (data.size() < 44) {
+        QByteArray response = createErrorResponse(xid, Vxi11::PARAMETER_ERROR);
+        client->write(response);
+        return;
     }
+
+    // 提取链接ID (位置36-39)
+    const quint32* lidPtr = reinterpret_cast<const quint32*>(data.constData() + 36);
+    quint32 lid = qFromBigEndian<quint32>(lidPtr);
+
+    // 验证链接
+    QByteArray errorResp;
+    if (!validateLink(client, lid, errorResp, xid)) {
+        client->write(errorResp);
+        return;
+    }
+
+    // 提取数据长度和数据
+    const quint32* dataLenPtr = reinterpret_cast<const quint32*>(data.constData() + 52);
+    quint32 dataLen = qFromBigEndian<quint32>(dataLenPtr);
+
+    if (data.size() < 56 + dataLen) {
+        QByteArray response = createErrorResponse(xid, Vxi11::PARAMETER_ERROR);
+        client->write(response);
+        return;
+    }
+
+    // 提取实际数据
+    QByteArray scpiData;
+    if (dataLen > 0) {
+        scpiData = data.mid(56, dataLen);
+        qCDebug(tcp) << "DEVICE_WRITE: 链接" << lid << "收到SCPI命令:" << QString::fromUtf8(scpiData).trimmed();
+
+        // 处理SCPI命令
+        QByteArray response = m_scpiManager->processCommand(scpiData);
+        qCDebug(tcp) << "SCPI响应:" << QString::fromUtf8(response).trimmed();
+    }
+
+    // 构建成功响应
+    QByteArray response;
+    response.reserve(36);
+    QDataStream stream(&response, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::BigEndian);
+
+    stream << quint32(0x80000020);     // RPC头部长度
+    stream << xid;
+    stream << quint32(1);              // REPLY
+    stream << quint32(0);              // MSG_ACCEPTED
+    stream << quint32(0);              // AUTH_NULL
+    stream << quint32(0);
+    stream << quint32(0);              // SUCCESS
+    stream << quint32(0);              // error_code: NO_ERROR
+    stream << dataLen;                 // 实际写入的字节数
+
+    client->write(response);
+    qCDebug(tcp) << "DEVICE_WRITE: 链接" << lid << "成功写入" << dataLen << "字节";
 }
 
 void TcpServerManager::handleDeviceRead(QTcpSocket* client, const QByteArray &data,const quint32 &xid)
@@ -430,6 +517,244 @@ void TcpServerManager::handleDeviceRead(QTcpSocket* client, const QByteArray &da
     }
 }
 
+void TcpServerManager::handleDeviceReadStb(QTcpSocket* client, const QByteArray &data, const quint32 &xid)
+{
+    // 解析参数：lid(4), flags(4), lock_timeout(4), io_timeout(4)
+    if (data.size() < 44) {
+        QByteArray response = createErrorResponse(xid, Vxi11::PARAMETER_ERROR);
+        client->write(response);
+        return;
+    }
+
+    // 提取链接ID (位置44-47)
+    const quint32* lidPtr = reinterpret_cast<const quint32*>(data.constData() + 44);
+    quint32 lid = qFromBigEndian<quint32>(lidPtr);
+
+    // 验证链接
+    QByteArray errorResp;
+    if (!validateLink(client, lid, errorResp, xid)) {
+        client->write(errorResp);
+        return;
+    }
+
+    // 构建成功响应
+    QByteArray response;
+    response.reserve(32);
+    QDataStream stream(&response, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::BigEndian);
+
+    // RPC头部
+    stream << quint32(0x80000018);     // RPC头部长度
+    stream << xid;
+    stream << quint32(1);              // REPLY
+    stream << quint32(0);              // MSG_ACCEPTED
+    stream << quint32(0);              // AUTH_NULL
+    stream << quint32(0);
+    stream << quint32(0);              // SUCCESS
+
+    // device_readstb响应体
+    stream << quint32(0);              // error: NO_ERROR
+    stream << quint8(0x00);            // 状态字节 (0x00 = 设备就绪)
+
+    // 对齐到4字节
+    stream << quint8(0);               // 填充字节
+    stream << quint16(0);              // 填充字节
+
+    client->write(response);
+    qCDebug(tcp) << "DEVICE_READSTB: 链接" << lid << "返回状态字节";
+}
+
+void TcpServerManager::handleDeviceTrigger(QTcpSocket* client, const QByteArray &data, const quint32 &xid)
+{
+    // 参数结构同device_readstb
+    if (data.size() < 44) {
+        QByteArray response = createErrorResponse(xid, Vxi11::PARAMETER_ERROR);
+        client->write(response);
+        return;
+    }
+
+    const quint32* lidPtr = reinterpret_cast<const quint32*>(data.constData() + 44);
+    quint32 lid = qFromBigEndian<quint32>(lidPtr);
+
+    QByteArray errorResp;
+    if (!validateLink(client, lid, errorResp, xid)) {
+        client->write(errorResp);
+        return;
+    }
+
+    // 触发操作（如果有硬件触发需求可以在这里实现）
+    qCDebug(tcp) << "DEVICE_TRIGGER: 链接" << lid << "收到触发信号";
+
+    // 简单返回成功
+    QByteArray response = createErrorResponse(xid, Vxi11::NO_ERROR);
+    client->write(response);
+}
+
+void TcpServerManager::handleDeviceClear(QTcpSocket* client, const QByteArray &data, const quint32 &xid)
+{
+    if (data.size() < 44) {
+        QByteArray response = createErrorResponse(xid, Vxi11::PARAMETER_ERROR);
+        client->write(response);
+        return;
+    }
+
+    const quint32* lidPtr = reinterpret_cast<const quint32*>(data.constData() + 44);
+    quint32 lid = qFromBigEndian<quint32>(lidPtr);
+
+    QByteArray errorResp;
+    if (!validateLink(client, lid, errorResp, xid)) {
+        client->write(errorResp);
+        return;
+    }
+
+    // 执行清除操作（如果有需要清除的状态可以在这里实现）
+    qCDebug(tcp) << "DEVICE_CLEAR: 链接" << lid << "执行清除操作";
+
+    QByteArray response = createErrorResponse(xid, Vxi11::NO_ERROR);
+    client->write(response);
+}
+
+void TcpServerManager::handleDeviceRemote(QTcpSocket* client, const QByteArray &data, const quint32 &xid)
+{
+    if (data.size() < 44) {
+        QByteArray response = createErrorResponse(xid, Vxi11::PARAMETER_ERROR);
+        client->write(response);
+        return;
+    }
+
+    const quint32* lidPtr = reinterpret_cast<const quint32*>(data.constData() + 44);
+    quint32 lid = qFromBigEndian<quint32>(lidPtr);
+
+    QByteArray errorResp;
+    if (!validateLink(client, lid, errorResp, xid)) {
+        client->write(errorResp);
+        return;
+    }
+
+    qCDebug(tcp) << "DEVICE_REMOTE: 链接" << lid << "设置为远程模式";
+
+    QByteArray response = createErrorResponse(xid, Vxi11::NO_ERROR);
+    client->write(response);
+}
+
+void TcpServerManager::handleDeviceLocal(QTcpSocket* client, const QByteArray &data, const quint32 &xid)
+{
+    if (data.size() < 44) {
+        QByteArray response = createErrorResponse(xid, Vxi11::PARAMETER_ERROR);
+        client->write(response);
+        return;
+    }
+
+    const quint32* lidPtr = reinterpret_cast<const quint32*>(data.constData() + 44);
+    quint32 lid = qFromBigEndian<quint32>(lidPtr);
+
+    QByteArray errorResp;
+    if (!validateLink(client, lid, errorResp, xid)) {
+        client->write(errorResp);
+        return;
+    }
+
+    qCDebug(tcp) << "DEVICE_LOCAL: 链接" << lid << "设置为本地模式";
+
+    QByteArray response = createErrorResponse(xid, Vxi11::NO_ERROR);
+    client->write(response);
+}
+
+void TcpServerManager::handleDeviceLock(QTcpSocket* client, const QByteArray &data, const quint32 &xid)
+{
+    // device_lock参数：lid(4), flags(4), lock_timeout(4)
+    if (data.size() < 40) {
+        QByteArray response = createErrorResponse(xid, Vxi11::PARAMETER_ERROR);
+        client->write(response);
+        return;
+    }
+
+    const quint32* lidPtr = reinterpret_cast<const quint32*>(data.constData() + 36);
+    quint32 lid = qFromBigEndian<quint32>(lidPtr);
+
+    QByteArray errorResp;
+    if (!validateLink(client, lid, errorResp, xid)) {
+        client->write(errorResp);
+        return;
+    }
+
+    // 检查设备是否已被锁定
+    DeviceLink& link = m_deviceLinks[lid];
+    if (link.lock != 0 && link.lock != lid) {
+        QByteArray response = createErrorResponse(xid, Vxi11::DEVICE_LOCKED_BY_ANOTHER_LINK);
+        client->write(response);
+        return;
+    }
+
+    // 锁定设备
+    link.lock = lid;
+    qCDebug(tcp) << "DEVICE_LOCK: 链接" << lid << "锁定设备";
+
+    QByteArray response = createErrorResponse(xid, Vxi11::NO_ERROR);
+    client->write(response);
+}
+
+void TcpServerManager::handleDeviceUnlock(QTcpSocket* client, const QByteArray &data, const quint32 &xid)
+{
+    // device_unlock参数只有lid(4)
+    if (data.size() < 36) {
+        QByteArray response = createErrorResponse(xid, Vxi11::PARAMETER_ERROR);
+        client->write(response);
+        return;
+    }
+
+    const quint32* lidPtr = reinterpret_cast<const quint32*>(data.constData() + 32);
+    quint32 lid = qFromBigEndian<quint32>(lidPtr);
+
+    QByteArray errorResp;
+    if (!validateLink(client, lid, errorResp, xid)) {
+        client->write(errorResp);
+        return;
+    }
+
+    // 检查是否持有锁
+    DeviceLink& link = m_deviceLinks[lid];
+    if (link.lock != lid) {
+        QByteArray response = createErrorResponse(xid, Vxi11::NO_LOCK_HELD_BY_THIS_LINK);
+        client->write(response);
+        return;
+    }
+
+    // 解锁设备
+    link.lock = 0;
+    qCDebug(tcp) << "DEVICE_UNLOCK: 链接" << lid << "解锁设备";
+
+    QByteArray response = createErrorResponse(xid, Vxi11::NO_ERROR);
+    client->write(response);
+}
+
+void TcpServerManager::handleDeviceEnableSrq(QTcpSocket* client, const QByteArray &data, const quint32 &xid)
+{
+    // 参数：lid(4), enable(4), handle<40>
+    if (data.size() < 48) {
+        QByteArray response = createErrorResponse(xid, Vxi11::PARAMETER_ERROR);
+        client->write(response);
+        return;
+    }
+
+    const quint32* lidPtr = reinterpret_cast<const quint32*>(data.constData() + 36);
+    quint32 lid = qFromBigEndian<quint32>(lidPtr);
+
+    QByteArray errorResp;
+    if (!validateLink(client, lid, errorResp, xid)) {
+        client->write(errorResp);
+        return;
+    }
+
+    const quint32* enablePtr = reinterpret_cast<const quint32*>(data.constData() + 40);
+    quint32 enable = qFromBigEndian<quint32>(enablePtr);
+
+    qCDebug(tcp) << "DEVICE_ENABLE_SRQ: 链接" << lid << (enable ? "启用" : "禁用") << "服务请求";
+
+    QByteArray response = createErrorResponse(xid, Vxi11::NO_ERROR);
+    client->write(response);
+}
+
 void TcpServerManager::handleDeviceDocmd(QTcpSocket* client, const QByteArray &data,const quint32 &xid)
 {
     Q_UNUSED(data)
@@ -451,13 +776,51 @@ void TcpServerManager::handleDestroyLink(QTcpSocket* client, const QByteArray &d
         if (it->client == client) {
             // 销毁链接
             quint32 linkId = it->id;
-            destroyLink(linkId);
 
             createErrorResponse(xid, Vxi11::NO_ERROR);
             qCDebug(tcp) << "DESTROY_LINK: 销毁链接" << linkId;
         }
     }
 }
+
+void TcpServerManager::handleCreateIntrChan(QTcpSocket* client, const QByteArray &data, const quint32 &xid)
+{
+    // 参数：hostAddr(4), hostPort(2), progNum(4), progVers(4), progFamily(4)
+    if (data.size() < 54) {
+        QByteArray response = createErrorResponse(xid, Vxi11::PARAMETER_ERROR);
+        client->write(response);
+        return;
+    }
+
+    // 检查是否已建立中断通道
+    for (auto it = m_deviceLinks.begin(); it != m_deviceLinks.end(); ++it) {
+        if (it->client == client) {
+            // 这里应该检查是否已为该client建立了中断通道
+            // 简化实现：总是返回通道已建立
+            QByteArray response = createErrorResponse(xid, Vxi11::CHANNEL_ALREADY_ESTABLISHED);
+            client->write(response);
+            return;
+        }
+    }
+
+    qCDebug(tcp) << "CREATE_INTR_CHAN: 客户端请求创建中断通道";
+
+    // 简化实现：不支持中断通道
+    QByteArray response = createErrorResponse(xid, Vxi11::CHANNEL_NOT_ESTABLISHED);
+    client->write(response);
+}
+
+void TcpServerManager::handleDestroyIntrChan(QTcpSocket* client, const QByteArray &data, const quint32 &xid)
+{
+    Q_UNUSED(data)
+
+    qCDebug(tcp) << "DESTROY_INTR_CHAN: 客户端请求销毁中断通道";
+
+    // 简化实现：没有中断通道可销毁
+    QByteArray response = createErrorResponse(xid, Vxi11::CHANNEL_NOT_ESTABLISHED);
+    client->write(response);
+}
+
 
 QByteArray TcpServerManager::createErrorResponse(quint32 xid, quint32 error)
 {
@@ -483,31 +846,23 @@ QByteArray TcpServerManager::createErrorResponse(quint32 xid, quint32 error)
     return response;
 }
 
-QByteArray TcpServerManager::createLinkResponse(quint32 xid, quint32 lid)
+
+// 辅助函数：验证链接有效性
+bool TcpServerManager::validateLink(QTcpSocket* client, quint32 lid, QByteArray& errorResponse, quint32 xid)
 {
-    QByteArray response;
-    response.reserve(44);
+    if (!m_deviceLinks.contains(lid)) {
+        errorResponse = createErrorResponse(xid, Vxi11::INVALID_LINK_IDENTIFIER);
+        return false;
+    }
 
-    QDataStream stream(&response, QIODevice::WriteOnly);
-    stream.setByteOrder(QDataStream::BigEndian);
+    if (m_deviceLinks[lid].client != client) {
+        errorResponse = createErrorResponse(xid, Vxi11::INVALID_LINK_IDENTIFIER);
+        return false;
+    }
 
-    stream << quint32(0x80000028);     // RPC + Reply
-    stream << xid;                     // XID
-
-    stream << quint32(1);              // msg_type: REPLY (1)
-    stream << quint32(0);              // reply_stat: MSG_ACCEPTED (0)
-
-    stream << quint32(0);              // auth_flavor: AUTH_NULL (0)
-    stream << quint32(0);              // auth_length: 0
-
-    stream << quint32(0);              // accept_stat: SUCCESS (0)
-    stream << quint32(0);              // error_code: 0 (no error)
-    stream << lid;                     // link_id (Device_Link ID)
-    stream << quint32(0);              // abort_port
-    stream << quint32(2048);           // max_recv_size
-
-    return response;
+    return true;
 }
+
 
 void TcpServerManager::destroyLink(quint32 linkId)
 {

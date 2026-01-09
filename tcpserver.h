@@ -78,8 +78,8 @@ namespace Vxi11 {
 
 
     enum Rpc_MsgType : quint32 {
-        CALL  = 0,     // 调用远程过程
-        REPLY = 1      // 远程过程回复
+        CALL  = 0,     // 调用
+        REPLY = 1      // 回复
     };
 
     enum Rpc_ReplyStat : quint32 {
@@ -148,14 +148,21 @@ private:
     void handleCreateLink(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
     void handleDeviceWrite(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
     void handleDeviceRead(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
-    //void handleDeviceReadStb(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
-    //void handleDeviceLock(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
-    //void handleDeviceUnLock(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
+    void handleDeviceReadStb(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
+    void handleDeviceTrigger(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
+    void handleDeviceClear(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
+    void handleDeviceRemote(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
+    void handleDeviceLocal(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
+    void handleDeviceLock(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
+    void handleDeviceUnlock(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
+    void handleDeviceEnableSrq(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
     void handleDeviceDocmd(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
     void handleDestroyLink(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
+    void handleCreateIntrChan(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
+    void handleDestroyIntrChan(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
 
     QByteArray createErrorResponse(quint32 xid, quint32 error);
-    QByteArray createLinkResponse(quint32 xid, quint32 lid);
+     bool validateLink(QTcpSocket* client, quint32 lid, QByteArray& errorResponse, quint32 xid);
     void destroyLink(quint32 linkId);//shanchu
 
 private:
