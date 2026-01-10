@@ -308,8 +308,7 @@ void TcpServerManager::handleVxi11RpcCall(QTcpSocket* client, const QByteArray &
             handleDeviceDocmd(client, data, xid);break;
 
         case Vxi11::DESTROY_LINK:
-            handleDestroyLink(client, data, xid);
-            break;
+            handleDestroyLink(client, data, xid);break;
 
         case Vxi11::CREATE_INTR_CHAN:
             handleCreateIntrChan(client, data, xid);break;
@@ -328,14 +327,14 @@ void TcpServerManager::handleVxi11RpcCall(QTcpSocket* client, const QByteArray &
 void TcpServerManager::handleCreateLink(QTcpSocket* client, const QByteArray &data,const quint32 &xid)
 {
     Q_UNUSED(data)
-    /*for (auto it = m_deviceLinks.begin(); it != m_deviceLinks.end(); ++it) {
+    for (auto it = m_deviceLinks.begin(); it != m_deviceLinks.end(); ++it) {
         if (it->client->peerAddress() == client->peerAddress()) {
             qCWarning(tcp) << "client:" << client->objectName() << "已存在链接号:" << it->id<< "拒绝创建新连接";
             QByteArray response = createErrorResponse(xid, Vxi11::CHANNEL_ALREADY_ESTABLISHED);
             client->write(response);
             return;
         }
-    }*/
+    }
 
     DeviceLink link;
     link.id = m_nextLinkId++;
@@ -636,26 +635,24 @@ void TcpServerManager::handleDestroyLink(QTcpSocket* client, const QByteArray &d
     for (auto it = m_deviceLinks.begin(); it != m_deviceLinks.end(); ++it) {
         if (it->client == client) {
             qCWarning(tcp) << "client:" << client->objectName() << "已断开连接，删除存在链接号:" << it->id;
-            //m_deviceLinks.remove(it->id);
-            //createErrorResponse(xid,Vxi11::NO_ERROR);
+            m_nextLinkId--;
+            m_deviceLinks.remove(it->id);
+            createErrorResponse(xid,Vxi11::NO_ERROR);
+            return;
         }
     }
 }
 
 void TcpServerManager::handleCreateIntrChan(QTcpSocket* client, const QByteArray &data, const quint32 &xid)
 {
-    // 参数：hostAddr(4), hostPort(2), progNum(4), progVers(4), progFamily(4)
     if (data.size() < 54) {
         QByteArray response = createErrorResponse(xid, Vxi11::PARAMETER_ERROR);
         client->write(response);
         return;
     }
 
-    // 检查是否已建立中断通道
     for (auto it = m_deviceLinks.begin(); it != m_deviceLinks.end(); ++it) {
         if (it->client == client) {
-            // 这里应该检查是否已为该client建立了中断通道
-            // 简化实现：总是返回通道已建立
             QByteArray response = createErrorResponse(xid, Vxi11::CHANNEL_ALREADY_ESTABLISHED);
             client->write(response);
             return;
@@ -664,7 +661,6 @@ void TcpServerManager::handleCreateIntrChan(QTcpSocket* client, const QByteArray
 
     qCDebug(tcp) << "CREATE_INTR_CHAN: 客户端请求创建中断通道";
 
-    // 简化实现：不支持中断通道
     QByteArray response = createErrorResponse(xid, Vxi11::CHANNEL_NOT_ESTABLISHED);
     client->write(response);
 }
@@ -675,11 +671,9 @@ void TcpServerManager::handleDestroyIntrChan(QTcpSocket* client, const QByteArra
 
     qCDebug(tcp) << "DESTROY_INTR_CHAN: 客户端请求销毁中断通道";
 
-    // 简化实现：没有中断通道可销毁
     QByteArray response = createErrorResponse(xid, Vxi11::CHANNEL_NOT_ESTABLISHED);
     client->write(response);
 }
-
 
 QByteArray TcpServerManager::createErrorResponse(quint32 xid, quint32 error)
 {
