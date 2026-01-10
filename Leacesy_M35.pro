@@ -11,20 +11,20 @@ LIBS += -L$$PWD/thirdparty/scpi/lib -lscpi -lm
 
 HEADERS += \
     canworker.h \
-    scpimanager.h \
     serialworker.h \
     simple_logger.h \
-    tcpserver.h \
-    tirpcloader.h
+    vxi_11/scpimanager.h \
+    vxi_11/tcpserver.h \
+    vxi_11/tirpcloader.h
 
 SOURCES += \
-        canworker.cpp \
-        main.cpp \
-        scpimanager.cpp \
-        serialworker.cpp \
-        simple_logger.cpp \
-        tcpserver.cpp \
-        tirpcloader.cpp
+    canworker.cpp \
+    main.cpp \
+    serialworker.cpp \
+    simple_logger.cpp \
+    vxi_11/scpimanager.cpp \
+    vxi_11/tcpserver.cpp \
+    vxi_11/tirpcloader.cpp
 
 RESOURCES += qml.qrc
 

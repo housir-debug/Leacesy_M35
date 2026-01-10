@@ -3,13 +3,10 @@
 #include <QTimer>
 #include <QThread>
 #include <QLoggingCategory>
+#include "vxi_11/tcpserver.h"
 #include "serialworker.h"
 #include "canworker.h"
-#include "tcpserver.h"
 #include "simple_logger.h"
-#include <QCoreApplication>
-#include <QDebug>
-
 
 
 void loggermanage(const QString &loglevel){
