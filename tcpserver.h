@@ -12,7 +12,6 @@
 #include <QDateTime>
 #include <QLoggingCategory>
 #include <QMap>
-#include <QRegularExpression>
 #include <unistd.h>
 #include "scpimanager.h"
 #include "tirpcloader.h"
@@ -121,22 +120,8 @@ signals:
     void SerialSendRequest(const QByteArray &data);
 
 private:
-    struct DeviceLink {
-        quint32 id;
-        quint32 lock;
-        QDateTime createTime;
-        QTcpSocket* client;
-        bool aborted;
-        QByteArray pending_Vxi_Scpi_response;
-
-        DeviceLink() : id(0), lock(0), client(nullptr), aborted(false) {}
-    };
-
-    ScpiManager* m_scpiManager{nullptr};
-    QString handleScpiCommand(const QByteArray& command);
-
     void sendToAllClients(const QByteArray &data);
-    void cleanupDisconnectedClients();
+
     void onNewConnection();
     bool registerWithRpcbind();
 
@@ -162,6 +147,17 @@ private:
     QByteArray createErrorResponse(quint32 xid, quint32 error);
 
 private:
+    struct DeviceLink {
+        QTcpSocket* client;
+        quint32 id;
+        bool lock;
+        bool aborted;
+        QDateTime createTime;
+        QByteArray pending_Vxi_Scpi_response;
+
+        DeviceLink() :  client(nullptr), id(0), lock(false), aborted(false) {}
+    };
+
     enum ServerState {
         STATE_STOPPED,
         STATE_STARTING,
@@ -170,21 +166,21 @@ private:
     };
 
     QMutex m_Mutex;
-    QMutex m_linkMutex;
     QList<QTcpSocket*> m_clients;
     QElapsedTimer m_testtimer;
     QMap<quint32, DeviceLink> m_deviceLinks;
 
+    const quint16 m_port{5025};
     const QString m_deviceIp{"192.168.137.33"};
     const QString getManufacturer{"Leacesy"};
     const QString getModel{"M35-Current-Measuring"};
     const QString getSerialNumber{"SN-001"};
     const QString getFirmwareVersion{ "1.0.0" };
 
-    quint16 m_port{5025};
     quint32 m_nextLinkId{1};
     std::atomic<ServerState> m_state{STATE_STOPPED};
 
+    ScpiManager* m_scpiManager{nullptr};
     QThread *m_serverThread{nullptr};
     QTcpServer *m_tcpServer{nullptr};
     QTimer *m_cleanupTimer{nullptr};
