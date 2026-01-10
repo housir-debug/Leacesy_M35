@@ -10,7 +10,7 @@ Q_LOGGING_CATEGORY(scpi, "scpi:")
 
 ScpiManager::ScpiManager(QObject *parent) : QObject(parent) {
     memset(&m_scpiContext, 0, sizeof(scpi_t));
-    s_instance = this;  // 设置单例实例
+    s_instance = this;
 }
 
 bool ScpiManager::init(const QString &manufacturer, const QString &model,
@@ -52,75 +52,58 @@ bool ScpiManager::init(const QString &manufacturer, const QString &model,
     return true;
 }
 
-// ======================= 接口回调部分 ===================================
+// ======================= 静态接口回调部分 ===================================
 
 int ScpiManager::staticErrorCallback(scpi_t* context, int_fast16_t err) {
     Q_UNUSED(context);
     if (s_instance) {
-        return s_instance->handleError(err);
+        qCWarning(scpi) << "SCPI match error:" << err;
     }
     return 0;
-}
-int ScpiManager::handleError(int_fast16_t err)
-{
-    qCWarning(scpi) << "SCPI match error:" << err;
-    return 0;  // 返回0表示成功处理错误
 }
 
 size_t ScpiManager::staticWriteCallback(scpi_t* context, const char* data, size_t len) {
     Q_UNUSED(context);
     if (s_instance) {
-        return s_instance->handleWrite(data, len);
+        QMutexLocker locker(&s_instance->m_bufferMutex);
+        s_instance->m_responseBuffer.append(data, len);
+        qCDebug(scpi) << "SCPI write:" << len << "bytes，"<< "connent:" << data;
+        return len;
     }
     return 0;
-}
-size_t ScpiManager::handleWrite(const char* data, size_t len) {
-    QMutexLocker locker(&m_bufferMutex);
-    m_responseBuffer.append(data, len);
-    qCDebug(scpi) << "SCPI write:" << len << "bytes，"<< "connent:" << data;
-    return len;
 }
 
 scpi_result_t ScpiManager::staticControlCallback(scpi_t* context,scpi_ctrl_name_t ctrl,scpi_reg_val_t val) {
     Q_UNUSED(context);
     if (s_instance) {
-        return s_instance->handleControl(ctrl, val);
+        qCDebug(scpi) << "SCPI control:" << ctrl << "value:" << val;
+        // 根据控制类型处理
+        return SCPI_RES_OK;
     }
     return SCPI_RES_ERR;
-}
-scpi_result_t ScpiManager::handleControl(scpi_ctrl_name_t ctrl, scpi_reg_val_t val) {
-    qCDebug(scpi) << "SCPI control:" << ctrl << "value:" << val;
-    // 根据控制类型处理
-    return SCPI_RES_OK;
 }
 
 scpi_result_t ScpiManager::staticFlushCallback(scpi_t* context) {
     Q_UNUSED(context);
     if (s_instance) {
-        return s_instance->handleFlush();
+        // 压出缓冲区-强制发送
+        // qCDebug(scpi) << "SCPI flush";
+        return SCPI_RES_OK;
     }
     return SCPI_RES_ERR;
-}
-scpi_result_t ScpiManager::handleFlush() {
-    // 压出缓冲区-强制发送
-    // qCDebug(scpi) << "SCPI flush";
-    return SCPI_RES_OK;
 }
 
 scpi_result_t ScpiManager::staticResetCallback(scpi_t* context) {
     Q_UNUSED(context);
     if (s_instance) {
-        return s_instance->handleReset();
+        qCDebug(scpi) << "SCPI reset";
+        // 重置仪器状态
+        return SCPI_RES_OK;
     }
     return SCPI_RES_ERR;
 }
-scpi_result_t ScpiManager::handleReset() {
-    qCDebug(scpi) << "SCPI reset";
-    // 重置仪器状态
-    return SCPI_RES_OK;
-}
 
-// ======================= 命令处理部分 ===================================
+// ======================= 命令-处理部分 ===================================
 
 const scpi_command_t ScpiManager::m_scpiCommands[] = {   // 格式：{ "命令模式", 回调函数, 标签(整数) }
     { "*IDN?", ScpiManager::scpiIdentify,0},
@@ -150,7 +133,7 @@ scpi_result_t ScpiManager::scpiIdentify(scpi_t* context) {
 scpi_result_t ScpiManager::scpiReset(scpi_t* context) {
     Q_UNUSED(context);
     if (s_instance) {
-        s_instance->handleReset();
+        return SCPI_RES_OK;
     }
     return SCPI_RES_OK;
 }
