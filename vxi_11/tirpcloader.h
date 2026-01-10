@@ -64,20 +64,15 @@ enum xdr_op {
 struct XDR;
 typedef bool_t (*xdrproc_t)(XDR*, void*);
 
+
 class TirpcDynamicLoader
 {
 public:
     static TirpcDynamicLoader& instance();
-
     bool load();
-    bool isLoaded() const { return m_loaded; }
 
-    // PORTMAP函数
     bool pmap_set(quint32 program, quint32 version, int protocol, quint16 port);
     bool pmap_unset(quint32 program, quint32 version, int protocol, quint16 port);
-
-    // XDR编码函数指针类型
-    void* getFunction(const char* name);
 
 private:
     TirpcDynamicLoader() = default;
@@ -85,10 +80,10 @@ private:
 
     bool resolveFunctions();
 
+private:
     QLibrary m_library;
-    bool m_loaded = false;
+    bool m_loaded{false};
 
-    // 函数指针类型定义
     typedef bool_t (*pmap_set_t)(quint32, quint32, int, quint16);
     typedef bool_t (*pmap_unset_t)(quint32, quint32, int, quint16);
 
