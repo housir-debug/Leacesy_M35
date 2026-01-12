@@ -4,6 +4,7 @@
 #include <QThread>
 #include <QLoggingCategory>
 #include "vxi_11/tcpserver.h"
+#include "vxi_11/web_server.h"
 #include "serialworker.h"
 #include "canworker.h"
 #include "simple_logger.h"
@@ -206,6 +207,27 @@ int main(int argc, char *argv[])
 
     //canmanager("can0");
     //SerialManager("/dev/ttyS4");
+
+    WebServer webServer;
+    quint16 port = 80;   // 测试完成只能默认80端口
+    if (!webServer.start(port)) {
+        qDebug() << "Port 80 not available, trying 8080...";
+        port = 8080;
+        if (!webServer.start(port)) {
+            qCritical() << "Failed to start web server on any port!";
+            return 1;
+        }
+    }
+
+    qDebug() << "";
+    qDebug() << "========================================";
+    qDebug() << "TEST INSTRUCTIONS:";
+    qDebug() << "1. Open NI-MAX";
+    qDebug() << "2. Add your device";
+    qDebug() << "3. Right-click device -> 'Web Interface'";
+    qDebug() << "4. Browser should open:" << webServer.getServerUrl();
+    qDebug() << "========================================";
+    qDebug() << "";
 
     Test_eth_can("can0");
     //Test_eth_Serial("/dev/ttyS4");

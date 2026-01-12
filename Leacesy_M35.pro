@@ -15,7 +15,8 @@ HEADERS += \
     simple_logger.h \
     vxi_11/scpimanager.h \
     vxi_11/tcpserver.h \
-    vxi_11/tirpcloader.h
+    vxi_11/tirpcloader.h \
+    vxi_11/web_server.h
 
 SOURCES += \
     canworker.cpp \
@@ -24,7 +25,8 @@ SOURCES += \
     simple_logger.cpp \
     vxi_11/scpimanager.cpp \
     vxi_11/tcpserver.cpp \
-    vxi_11/tirpcloader.cpp
+    vxi_11/tirpcloader.cpp \
+    vxi_11/web_server.cpp
 
 RESOURCES += qml.qrc
 
