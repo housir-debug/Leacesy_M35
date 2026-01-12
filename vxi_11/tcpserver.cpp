@@ -15,7 +15,7 @@ TcpServerManager::TcpServerManager(QObject *parent)
 {
     m_scpiManager = new ScpiManager(this);
 
-    if (m_scpiManager->init(getManufacturer,getModel,getSerialNumber,getFirmwareVersion)) {
+    if (m_scpiManager->init()) {
         qCDebug(tcp) << "SCPI管理器初始化成功";} else {qCCritical(tcp) << "SCPI管理器初始化失败";}
 }
 

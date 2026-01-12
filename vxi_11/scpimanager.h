@@ -26,8 +26,7 @@ public:
     explicit ScpiManager(QObject *parent = nullptr);
     ~ScpiManager();
 
-    bool init(const QString &manufacturer, const QString &model,
-              const QString &serial, const QString &version);
+    bool init();
 
     QByteArray processCommand(const QByteArray &command);
 
@@ -56,10 +55,10 @@ private:
     QMutex m_bufferMutex;
     QByteArray m_responseBuffer;
 
-    QByteArray m_idnManufacturer;
-    QByteArray m_idnModel;
-    QByteArray m_idnSerial;
-    QByteArray m_idnVersion;
+    const QByteArray m_idnManufacturer{"Leacesy"};
+    const QByteArray m_idnModel{"M35-Current-Measuring"};
+    const QByteArray m_idnSerial{"SN-001"};
+    const QByteArray m_idnVersion{ "1.0.0" };
 };
 
 #endif // SCPIMANAGER_H

@@ -13,8 +13,7 @@ ScpiManager::ScpiManager(QObject *parent) : QObject(parent) {
     s_instance = this;
 }
 
-bool ScpiManager::init(const QString &manufacturer, const QString &model,
-                       const QString &serial, const QString &version)
+bool ScpiManager::init()
 {
     memset(&interface, 0, sizeof(interface));
 
@@ -26,11 +25,6 @@ bool ScpiManager::init(const QString &manufacturer, const QString &model,
 
     const scpi_unit_def_t* units = NULL;
 
-    m_idnManufacturer = manufacturer.toUtf8();
-    m_idnModel = model.toUtf8();
-    m_idnSerial = serial.toUtf8();
-    m_idnVersion = version.toUtf8();
-
     const char* idn1 = m_idnManufacturer.constData();  // 制造商
     const char* idn2 = m_idnModel.constData();         // 型号
     const char* idn3 = m_idnSerial.constData();        // 序列号
@@ -40,13 +34,13 @@ bool ScpiManager::init(const QString &manufacturer, const QString &model,
     static scpi_error_t error_queue[10];
 
     SCPI_Init(&m_scpiContext,
-              m_scpiCommands,        // 命令表
-              &interface,            // 接口回调
-              units,                 // 单位定义（可为NULL）
-              idn1, idn2, idn3, idn4, // 识别信息
-              input_buffer,          // 输入缓冲区
-              sizeof(input_buffer),  // 缓冲区大小
-              error_queue,           // 错误队列
+              m_scpiCommands,                              // 命令表
+              &interface,                                  // 接口回调
+              units,                                       // 单位定义（可为NULL）
+              idn1, idn2, idn3, idn4,                      // 识别信息
+              input_buffer,                                // 输入缓冲区
+              sizeof(input_buffer),                        // 缓冲区大小
+              error_queue,                                 // 错误队列
               sizeof(error_queue) / sizeof(scpi_error_t)); // 队列大小
 
     return true;

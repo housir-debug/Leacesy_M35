@@ -172,10 +172,6 @@ private:
 
     const quint16 m_port{5025};
     const QString m_deviceIp{"192.168.137.33"};
-    const QString getManufacturer{"Leacesy"};
-    const QString getModel{"M35-Current-Measuring"};
-    const QString getSerialNumber{"SN-001"};
-    const QString getFirmwareVersion{ "1.0.0" };
 
     quint32 m_nextLinkId{1};
     std::atomic<ServerState> m_state{STATE_STOPPED};
