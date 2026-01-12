@@ -10,25 +10,24 @@ Q_LOGGING_CATEGORY(scpi, "scpi:")
 
 ScpiManager::ScpiManager(QObject *parent) : QObject(parent) {
     memset(&m_scpiContext, 0, sizeof(scpi_t));
+    memset(&interface, 0, sizeof(interface));
     s_instance = this;
 }
 
 bool ScpiManager::init()
 {
-    memset(&interface, 0, sizeof(interface));
-
     interface.error = staticErrorCallback;
-    interface.write = staticWriteCallback;
     interface.control = staticControlCallback;
     interface.flush = staticFlushCallback;
     interface.reset = staticResetCallback;
+    interface.write = staticWriteCallback;
 
     const scpi_unit_def_t* units = NULL;
 
-    const char* idn1 = m_idnManufacturer.constData();  // 制造商
-    const char* idn2 = m_idnModel.constData();         // 型号
-    const char* idn3 = m_idnSerial.constData();        // 序列号
-    const char* idn4 = m_idnVersion.constData();       // 固件版本
+    const char* idn1 = m_idnManufacturer.constData();
+    const char* idn2 = m_idnModel.constData();
+    const char* idn3 = m_idnSerial.constData();
+    const char* idn4 = m_idnVersion.constData();
 
     static char input_buffer[256];
     static scpi_error_t error_queue[10];
@@ -46,60 +45,9 @@ bool ScpiManager::init()
     return true;
 }
 
-// ======================= 静态接口回调部分 ===================================
-
-int ScpiManager::staticErrorCallback(scpi_t* context, int_fast16_t err) {
-    Q_UNUSED(context);
-    if (s_instance) {
-        qCWarning(scpi) << "SCPI match error:" << err;
-    }
-    return 0;
-}
-
-size_t ScpiManager::staticWriteCallback(scpi_t* context, const char* data, size_t len) {
-    Q_UNUSED(context);
-    if (s_instance) {
-        QMutexLocker locker(&s_instance->m_bufferMutex);
-        s_instance->m_responseBuffer.append(data, len);
-        qCDebug(scpi) << "SCPI write:" << len << "bytes，"<< "connent:" << data;
-        return len;
-    }
-    return 0;
-}
-
-scpi_result_t ScpiManager::staticControlCallback(scpi_t* context,scpi_ctrl_name_t ctrl,scpi_reg_val_t val) {
-    Q_UNUSED(context);
-    if (s_instance) {
-        qCDebug(scpi) << "SCPI control:" << ctrl << "value:" << val;
-        // 根据控制类型处理
-        return SCPI_RES_OK;
-    }
-    return SCPI_RES_ERR;
-}
-
-scpi_result_t ScpiManager::staticFlushCallback(scpi_t* context) {
-    Q_UNUSED(context);
-    if (s_instance) {
-        // 压出缓冲区-强制发送
-        // qCDebug(scpi) << "SCPI flush";
-        return SCPI_RES_OK;
-    }
-    return SCPI_RES_ERR;
-}
-
-scpi_result_t ScpiManager::staticResetCallback(scpi_t* context) {
-    Q_UNUSED(context);
-    if (s_instance) {
-        qCDebug(scpi) << "SCPI reset";
-        // 重置仪器状态
-        return SCPI_RES_OK;
-    }
-    return SCPI_RES_ERR;
-}
-
-// ======================= 命令-处理部分 ===================================
-
-const scpi_command_t ScpiManager::m_scpiCommands[] = {   // 格式：{ "命令模式", 回调函数, 标签(整数) }
+const scpi_command_t ScpiManager::m_scpiCommands[] = {
+    // 格式：{ "命令模式", 回调函数, 标签(整数) }
+    // ? 查询命令-必须返回响应  |  动作命令-不返回响应
     { "*IDN?", ScpiManager::scpiIdentify,0},
     { "*RST", ScpiManager::scpiReset, 0 },
     { "*CLS", ScpiManager::scpiCls, 0 },
@@ -109,26 +57,30 @@ const scpi_command_t ScpiManager::m_scpiCommands[] = {   // 格式：{ "命令�
     { "NETWork:IP?", ScpiManager::scpiNetworkIpQ, 0 },
 
     SCPI_CMD_LIST_END
-    // 命令处理函数调用->SCPI库函数->接口回调函数
 };
 
+// ======================= 命令-处理部分 ===================================
+
+size_t ScpiManager::staticWriteCallback(scpi_t* context, const char* data, size_t len = 0) {
+    QMutexLocker locker(&s_instance->m_bufferMutex);
+    s_instance->m_responseBuffer.append(data, len);
+    qCDebug(scpi) << "当前上下文："<<context;
+    qCDebug(scpi) << "SCPI write:" << len << "bytes，"<< "connent:" << data;
+    return len;
+}
+
 scpi_result_t ScpiManager::scpiIdentify(scpi_t* context) {
-    if (!s_instance){ return SCPI_RES_ERR;}
-
     QString idn = QString("%1,%2,%3,%4").arg(QString::fromUtf8(s_instance->m_idnManufacturer),
-                                           QString::fromUtf8(s_instance->m_idnModel),
-                                           QString::fromUtf8(s_instance->m_idnSerial),
-                                           QString::fromUtf8(s_instance->m_idnVersion));
+                                             QString::fromUtf8(s_instance->m_idnModel),
+                                             QString::fromUtf8(s_instance->m_idnSerial),
+                                             QString::fromUtf8(s_instance->m_idnVersion));
 
-    SCPI_ResultCharacters(context, idn.toUtf8().constData(), idn.length());
+    staticWriteCallback(context, idn.toUtf8().constData(), idn.length());
     return SCPI_RES_OK;
 }
 
 scpi_result_t ScpiManager::scpiReset(scpi_t* context) {
     Q_UNUSED(context);
-    if (s_instance) {
-        return SCPI_RES_OK;
-    }
     return SCPI_RES_OK;
 }
 
@@ -141,13 +93,11 @@ scpi_result_t ScpiManager::scpiCls(scpi_t* context) {
 
 scpi_result_t ScpiManager::scpiEsrQ(scpi_t* context) {
     Q_UNUSED(context);
-    SCPI_ResultInt32(context, 0);// 返回事件状态寄存器值
+    staticWriteCallback(context, 0);// 返回事件状态寄存器值
     return SCPI_RES_OK;
 }
 
 scpi_result_t ScpiManager::scpiNetworkIpQ(scpi_t* context) {
-    if (!s_instance) return SCPI_RES_ERR;
-
     QString ip = "127.0.0.1";
     QList<QHostAddress> addresses = QNetworkInterface::allAddresses();
     for (const QHostAddress &addr : qAsConst(addresses)) {
@@ -158,7 +108,7 @@ scpi_result_t ScpiManager::scpiNetworkIpQ(scpi_t* context) {
         }
     }
 
-    SCPI_ResultCharacters(context, ip.toUtf8().constData(), ip.length());
+    staticWriteCallback(context, ip.toUtf8().constData(), ip.length());
     return SCPI_RES_OK;
 }
 
@@ -166,12 +116,12 @@ scpi_result_t ScpiManager::scpiNetworkIpQ(scpi_t* context) {
 
 QByteArray ScpiManager::processCommand(const QByteArray &command) {
     if (!s_instance) {
-        qCCritical(scpi) << "错误：实例为空";
+        qCCritical(scpi) << "错误：SCPI实例不存在！";
         return QByteArray("ERROR: Instance null\n");
     }
 
     if (!m_scpiContext.cmdlist || !m_scpiContext.interface) {
-        qCCritical(scpi) << "错误：上下文未初始化";
+        qCCritical(scpi) << "错误：上下文未初始化！";
         return QByteArray("ERROR: Context not initialized\n");
     }
 
