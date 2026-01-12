@@ -9,23 +9,6 @@
 #include "simple_logger.h"
 
 
-void loggermanage(const QString &loglevel){
-    QString rules;
-    if (loglevel == "debug") {
-        rules = "*.debug=true\n*.info=true\n*.warning=true";
-    } else if (loglevel == "info") {
-        rules = "*.debug=false\n*.info=true\n*.warning=true";
-    } else if (loglevel == "warning") {
-        rules = "*.debug=false\n*.info=false\n*.warning=true";
-    } else {
-        rules = "*.debug=false\n*.info=true\n*.warning=true";
-    }
-    QLoggingCategory::setFilterRules(rules);
-
-    //格式化加时间，比直接时间戳延时更多
-    //qSetMessagePattern("[%{time HH:mm:ss.zzzzzz}] [%{category}] %{message}");
-}
-
 void canmanager(const QString &cansocket)
 {
     CanWorker *canWorker = new CanWorker();
@@ -210,7 +193,7 @@ int main(int argc, char *argv[])
 
     QGuiApplication app(argc, argv);
 
-    //loggermanage("info");
+    //loggermanage("debug");   // debug | warning
 
     /*QQmlApplicationEngine engine;
     const QUrl url(QStringLiteral("qrc:/main.qml"));

@@ -20,8 +20,7 @@ struct LoggerConfig {
     LoggerConfig() = default;
 };
 
-
+void loggermanage(const QString &loglevel);
 void initSimpleLogger();
-void cleanupLogger();
 
 #endif // SIMPLE_LOGGER_H
