@@ -61,10 +61,9 @@ const scpi_command_t ScpiManager::m_scpiCommands[] = {
 
 // ======================= 命令-处理部分 ===================================
 
-size_t ScpiManager::staticWriteCallback(scpi_t* context, const char* data, size_t len = 0) {
-    QMutexLocker locker(&s_instance->m_bufferMutex);
+size_t ScpiManager::staticWriteCallback(scpi_t* context, const char* data, size_t len = 0) {   // 自动调用两次添加结束符\r\n
+    Q_UNUSED(context);
     s_instance->m_responseBuffer.append(data, len);
-    qCDebug(scpi) << "当前上下文："<<context;
     qCDebug(scpi) << "SCPI write:" << len << "bytes，"<< "connent:" << data;
     return len;
 }
@@ -86,14 +85,13 @@ scpi_result_t ScpiManager::scpiReset(scpi_t* context) {
 
 scpi_result_t ScpiManager::scpiCls(scpi_t* context) {
     Q_UNUSED(context);
-    qCDebug(scpi) << "*CLS command";
-    // 清除状态寄存器等
+    s_instance->m_esrRegister = 0x00;
     return SCPI_RES_OK;
 }
 
 scpi_result_t ScpiManager::scpiEsrQ(scpi_t* context) {
-    Q_UNUSED(context);
-    staticWriteCallback(context, 0);// 返回事件状态寄存器值
+    const char* esrData = reinterpret_cast<const char*>(&s_instance->m_esrRegister);
+    staticWriteCallback(context,esrData, 1);// 返回事件状态寄存器值
     return SCPI_RES_OK;
 }
 
@@ -125,10 +123,11 @@ QByteArray ScpiManager::processCommand(const QByteArray &command) {
         return QByteArray("ERROR: Context not initialized\n");
     }
 
-    m_responseBuffer.clear();
-
     QByteArray cmd = command;
     if (!cmd.endsWith('\n')) {cmd.append('\n');}
+
+    QMutexLocker locker(&s_instance->m_bufferMutex);
+    s_instance->m_responseBuffer.clear();
 
     SCPI_Input(&m_scpiContext, cmd.constData(), cmd.size());
     return m_responseBuffer;

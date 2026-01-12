@@ -43,6 +43,18 @@ private:
     static scpi_result_t scpiNetworkIpQ(scpi_t* context);
 
 private:
+    enum EsrBits {
+        ESR_OPC1        = (1 << 0),  // 操作完成
+        ESR_CMD_ERROR   = (1 << 2),  // 命令错误
+        ESR_EXE_ERROR   = (1 << 3),  // 执行错误
+        ESR_DEV_ERROR   = (1 << 4),  // 设备特定错误
+        ESR_QUERY_ERROR = (1 << 5),  // 查询错误
+        ESR_USER6       = (1 << 6),  // 用户定义6（保留）
+        ESR_POWER_ON    = (1 << 7)   // 电源开启
+    };
+
+    QMutex m_statusMutex;
+    uint8_t m_esrRegister{0x00};
     QMutex m_bufferMutex;
     QByteArray m_responseBuffer;
 
