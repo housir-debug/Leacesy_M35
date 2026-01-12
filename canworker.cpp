@@ -3,9 +3,7 @@
 Q_LOGGING_CATEGORY(can, "can:");
 
 CanWorker::CanWorker(QObject *parent)
-    : QObject(parent)
-{
-}
+    : QObject(parent){}
 
 bool CanWorker::initialize(const QString &interfaceName, int bitrate)
 {
@@ -421,42 +419,3 @@ bool CanWorker::sendFrame_en(const can_frame &frame)
 
     return true;
 }
-
-
-// ============================================================================
-// 调用示例
-/*
-#include "canworker.h"
-
-void canmanager(const QString &cansocket)
-{
-    CanWorker *canWorker = new CanWorker();
-    QThread *canThread = new QThread();
-    canWorker->moveToThread(canThread);
-
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                         canWorker, &CanWorker::closeCan);
-    QObject::connect(canWorker, &CanWorker::canClosed,
-                     canWorker, &QObject::deleteLater);
-
-    QObject::connect(canWorker, &CanWorker::errorOccurred,
-                     [](const QString &error) {
-        qCritical() << "CAN Error:" << error;
-    });
-    canThread->setObjectName("can_worker");
-    canThread->start();
-
-    //canWorker->initialize("can0", 1000000);
-    //canWorker->testLoopback();
-
-    bool Initialized = false;
-    QMetaObject::invokeMethod(canWorker, [canWorker, &Initialized, &cansocket]() {
-        Initialized = canWorker->initialize(cansocket, 1000000);
-    }, Qt::BlockingQueuedConnection);
-
-    if (Initialized) {
-         QMetaObject::invokeMethod(canWorker, &CanWorker::testLoopback);
-         QTimer::singleShot(1000, QCoreApplication::instance(), &QCoreApplication::quit);
-    }
-}
-*/
