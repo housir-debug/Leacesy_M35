@@ -22,16 +22,16 @@ bool ConfigManager::s_enableVXIServer = true;
 
 // ===================== 初始化方法 =====================
 
-bool ConfigManager::init()
+bool ConfigManager::init(const QString &configDir)
 {
-    if (!QFile::exists(s_configFile)) {
-        qWarning() << "[Config] File not found:" << s_configFile;
-        qWarning() << "[Config] Using default values";
+    QString fullPath = configDir + "/" + s_configFile;
+    if (!QFile::exists(fullPath)) {
+        qWarning() << "[Config] File not found:" << fullPath;
         return false;
     }
 
     if (s_settings) {delete s_settings;}
-    s_settings = new QSettings(s_configFile, QSettings::IniFormat);
+    s_settings = new QSettings(fullPath, QSettings::IniFormat);
     // (setvalue) function change config value
 
     s_manufacturer = s_settings->value("Device/Manufacturer").toString();

@@ -8,6 +8,7 @@
 #include <QString>
 #include <QMutex>
 #include "scpimanager.h"
+#include "config_manager.h"
 
 Q_DECLARE_LOGGING_CATEGORY(web)
 
@@ -33,8 +34,6 @@ private:
     QMutex m_Mutex;
     QTcpServer *m_server{nullptr};
     //QThread *m_serverThread{nullptr};
-    quint16 m_port{80};
-    QString m_ip{"192.168.137.33"};
 };
 
 #endif // WEBSERVER_H

@@ -7,7 +7,7 @@
 class ConfigManager
 {
 public:
-    static bool init();
+    static bool init(const QString &configDir);
 
     static QString getManufacturer() { return s_manufacturer; }
     static QString getModel() { return s_model; }

@@ -8,6 +8,7 @@
 #include "serialworker.h"
 #include "canworker.h"
 #include "simple_logger.h"
+#include "config_manager.h"
 
 
 void canmanager(const QString &cansocket)
@@ -193,7 +194,11 @@ int main(int argc, char *argv[])
 #endif
 
     QGuiApplication app(argc, argv);
+    QGuiApplication::setApplicationName("Leacesy Instrument");
+    QGuiApplication::setOrganizationName("Leacesy");
+    QString appDir = QGuiApplication::applicationDirPath();
 
+    if (!ConfigManager::init(appDir)) {return 1;}  // error
     //loggermanage("debug");   // debug | warning
 
     /*QQmlApplicationEngine engine;
@@ -209,9 +214,7 @@ int main(int argc, char *argv[])
     //SerialManager("/dev/ttyS4");
 
     WebServer webServer;
-    if (!webServer.start()) {
-        qDebug() << "Port 80 not available, trying 8080...";
-    }
+    if (!webServer.start()) {return 1;}
 
     //Test_eth_can("can0");
     //Test_eth_Serial("/dev/ttyS4");
