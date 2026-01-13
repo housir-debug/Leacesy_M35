@@ -11,6 +11,7 @@ LIBS += -L$$PWD/thirdparty/scpi/lib -lscpi -lm
 
 HEADERS += \
     canworker.h \
+    config_manager.h \
     serialworker.h \
     simple_logger.h \
     vxi_11/scpimanager.h \
@@ -20,6 +21,7 @@ HEADERS += \
 
 SOURCES += \
     canworker.cpp \
+    config_manager.cpp \
     main.cpp \
     serialworker.cpp \
     simple_logger.cpp \
@@ -29,6 +31,9 @@ SOURCES += \
     vxi_11/web_server.cpp
 
 RESOURCES += qml.qrc
+
+DISTFILES += \
+    instrument_config.ini
 
 # Additional import path used to resolve QML modules in Qt Creator's code model
 QML_IMPORT_PATH =
