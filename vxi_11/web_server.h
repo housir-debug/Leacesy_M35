@@ -4,7 +4,12 @@
 #include <QObject>
 #include <QTcpServer>
 #include <QTcpSocket>
+#include <QLoggingCategory>
 #include <QString>
+#include <QMutex>
+#include "scpimanager.h"
+
+Q_DECLARE_LOGGING_CATEGORY(web)
 
 class WebServer : public QObject
 {
@@ -13,36 +18,23 @@ public:
     explicit WebServer(QObject *parent = nullptr);
     ~WebServer();
 
-    bool start(quint16 port = 8080);
+    bool start();
     void stop();
 
-    QString getServerUrl() const;
-
-private slots:
+private:
     void onNewConnection();
-    void onClientReadyRead();
-    void onClientDisconnected();
+    void handleHttpRequest(QTcpSocket *client, const QByteArray &request);
+    void sendHttpResponse(QTcpSocket *client,const QString &content,
+         const QString &contentType = "text/html",int statusCode = 200);
+
+    QString generateHtmlPage();
 
 private:
-    QTcpServer *m_server;
-    quint16 m_port;
-    QString m_ip;
-
-    // 处理HTTP请求
-    void handleHttpRequest(QTcpSocket *client, const QByteArray &request);
-
-    // 发送HTTP响应
-    void sendHttpResponse(QTcpSocket *client,
-                         const QString &content,
-                         const QString &contentType = "text/html",
-                         int statusCode = 200);
-
-    // 生成HTML页面
-    QString generateHtmlPage();
-    QString generateNIDiscoveryJson();
-
-    // 获取本地IP
-    QString getLocalIP();
+    QMutex m_Mutex;
+    QTcpServer *m_server{nullptr};
+    //QThread *m_serverThread{nullptr};
+    quint16 m_port{80};
+    QString m_ip{"192.168.137.33"};
 };
 
 #endif // WEBSERVER_H

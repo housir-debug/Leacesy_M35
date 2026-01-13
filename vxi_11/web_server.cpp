@@ -5,102 +5,61 @@
 #include <QJsonObject>
 #include <QJsonDocument>
 
-WebServer::WebServer(QObject *parent) : QObject(parent)
-    , m_server(nullptr)
-    , m_port(8080)
-    , m_ip("127.0.0.1")
-{
-}
+// ===================== 初始化/启动部分 =================================
 
-WebServer::~WebServer()
-{
-    stop();
-}
+Q_LOGGING_CATEGORY(web, "web:")
 
-bool WebServer::start(quint16 port)
-{
-    m_port = port;
-    m_ip = getLocalIP();
+WebServer::WebServer(QObject *parent) : QObject(parent){}
 
-    // 创建TCP服务器
+bool WebServer::start()
+{
+    // 复杂后加入线程
     m_server = new QTcpServer(this);
 
-    if (!m_server->listen(QHostAddress::Any, port)) {
+    if (!m_server->listen(QHostAddress::Any, m_port)) {
         qWarning() << "Failed to start web server:" << m_server->errorString();
         delete m_server;
         m_server = nullptr;
         return false;
     }
 
-    // 连接信号
-    connect(m_server, &QTcpServer::newConnection,
-            this, &WebServer::onNewConnection);
-
-    qDebug() << "========================================";
-    qDebug() << "Simple Web Server Started";
-    qDebug() << "URL: http://" << m_ip << ":" << m_port;
-    qDebug() << "========================================";
-
+    connect(m_server, &QTcpServer::newConnection,this, &WebServer::onNewConnection);
     return true;
-}
-
-void WebServer::stop()
-{
-    if (m_server) {
-        m_server->close();
-        delete m_server;
-        m_server = nullptr;
-    }
-}
-
-QString WebServer::getServerUrl() const
-{
-    return QString("http://%1:%2").arg(m_ip).arg(m_port);
 }
 
 void WebServer::onNewConnection()
 {
     QTcpSocket *client = m_server->nextPendingConnection();
-    if (!client) return;
+    if (!client) {return;}
 
-    qDebug() << "New client connected from:" << client->peerAddress().toString();
+    qDebug() << "New client connected from:" << client->peerAddress().toString()<<client->peerPort();
 
-    connect(client, &QTcpSocket::readyRead,
-            this, &WebServer::onClientReadyRead);
-    connect(client, &QTcpSocket::disconnected,
-            this, &WebServer::onClientDisconnected);
-    connect(client, &QTcpSocket::disconnected,
-            client, &QTcpSocket::deleteLater);
+    connect(client, &QTcpSocket::errorOccurred,this, [client](QAbstractSocket::SocketError error){
+         qCWarning(web) << "Socket error from" << client->peerAddress().toString()<<client->peerPort()<< ":" << client->errorString() << "|" << error;
+    });
+    connect(client, &QTcpSocket::disconnected,this, [client](){
+        qCDebug(web) << "Client disconnected:" << client->peerAddress().toString()<<client->peerPort();
+        client->deleteLater();
+    });
+    connect(client, &QTcpSocket::readyRead,this,[this,client]{
+        QByteArray rawData = client->readAll();
+        qCDebug(web) << "RECEIVED FROM" << client->peerAddress().toString()<<client->peerPort()<< "Raw request:";
+        qCDebug(web) << rawData.constData();
+        this->handleHttpRequest(client, rawData);
+    });
 }
 
-void WebServer::onClientReadyRead()
-{
-    QTcpSocket *client = qobject_cast<QTcpSocket*>(sender());
-    if (!client || !client->bytesAvailable()) return;
-
-    QByteArray requestData = client->readAll();
-    handleHttpRequest(client, requestData);
-}
-
-void WebServer::onClientDisconnected()
-{
-    QTcpSocket *client = qobject_cast<QTcpSocket*>(sender());
-    if (client) {
-        qDebug() << "Client disconnected:" << client->peerAddress().toString();
-    }
-}
+// ===================== 信息处理部分 =================================
 
 void WebServer::handleHttpRequest(QTcpSocket *client, const QByteArray &request)
 {
     QString requestStr = QString::fromUtf8(request);
-    QStringList lines = requestStr.split("\r\n");
-
+    QStringList lines = requestStr.split("\r\n");   // HTTP
     if (lines.isEmpty()) {
         sendHttpResponse(client, "Bad Request", "text/plain", 400);
         return;
     }
 
-    // 解析请求行（第一行）
     QString requestLine = lines[0];
     QStringList parts = requestLine.split(" ");
     if (parts.size() < 3) {
@@ -108,29 +67,10 @@ void WebServer::handleHttpRequest(QTcpSocket *client, const QByteArray &request)
         return;
     }
 
-    QString method = parts[0];
-    QString path = parts[1];
-
-    qDebug() << "HTTP Request:" << method << path;
-
-    // 处理不同的路径
-    if (path == "/" || path == "/index.html") {
-        sendHttpResponse(client, generateHtmlPage());
-    }
-    else if (path == "/niwebdiscovery") {
-        // NI-MAX 发现的特殊路径
-        sendHttpResponse(client, generateNIDiscoveryJson(), "application/json");
-    }
-    else if (path == "/systemweb") {
-        // NI SystemWeb 重定向
-        sendHttpResponse(client, generateHtmlPage());
-    }
-    else if (path == "/favicon.ico") {
-        // 返回空favicon
-        sendHttpResponse(client, "", "image/x-icon", 204); // No Content
-    }
+    QString path = parts[1];   // parts[0]=method
+    if (path == "/" || path == "/index.html" || path == "/systemweb") {sendHttpResponse(client, generateHtmlPage());}
+    else if (path == "/favicon.ico") {sendHttpResponse(client, "", "image/x-icon", 204);}
     else {
-        // 404 页面
         QString notFound = R"(
             <h1>404 Not Found</h1>
             <p>The requested URL was not found on this server.</p>
@@ -139,49 +79,43 @@ void WebServer::handleHttpRequest(QTcpSocket *client, const QByteArray &request)
     }
 }
 
-void WebServer::sendHttpResponse(QTcpSocket *client,
-                                const QString &content,
-                                const QString &contentType,
-                                int statusCode)
+void WebServer::sendHttpResponse(QTcpSocket *client,const QString &content,const QString &contentType,int statusCode)
 {
-    if (!client || !client->isOpen()) return;
+    QMutexLocker locker(&m_Mutex);
+    if (!client || !client->isOpen()){ return;}
 
     QString statusText;
     switch (statusCode) {
-        case 200: statusText = "OK"; break;
+        case 204: statusText = "No Content"; break;
+        case 400: statusText = "Bad Request"; break;
         case 404: statusText = "Not Found"; break;
+        case 405: statusText = "Method Not Allowed"; break;
         default: statusText = "OK"; break;
     }
 
     QString response = QString(
         "HTTP/1.1 %1 %2\r\n"
-        "Server: MyInstrument/1.0\r\n"
         "Content-Type: %3; charset=utf-8\r\n"
         "Content-Length: %4\r\n"
         "Connection: close\r\n"
         "\r\n"
         "%5"
-    ).arg(statusCode).arg(statusText).arg(contentType).arg(content.toUtf8().size()).arg(content);
+    ).arg(QString::number(statusCode),statusText,contentType,QString::number(content.toUtf8().size()),content);
 
     client->write(response.toUtf8());
     client->flush();
-    client->close();
+    client->close();   // disconnectFromHost()用于客户端断开，close完全关闭用于服务器处理
 }
+
+// ===================== 网页部分 =================================
 
 QString WebServer::generateHtmlPage()
 {
     QString html = R"(
 <!DOCTYPE html>
-<html>
-<head>
+<html><head>
     <meta charset="UTF-8">
-    <!-- NI-MAX 识别标签 -->
-    <meta name="ni-device-type" content="Instrument">
-    <meta name="ni-model" content="MyInstrument-100">
-    <meta name="ni-serial" content="SN123456789">
-    <meta name="ni-firmware" content="1.0.0">
-    <meta name="ni-vendor" content="YourCompany">
-    <title>MyInstrument Device</title>
+    <title>Leacesy Instrument</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -234,72 +168,48 @@ QString WebServer::generateHtmlPage()
 </head>
 <body>
     <div class="container">
-        <h1>📡 MyInstrument Device</h1>
+        <h1>📡   Leacesy Instrument Device</h1>
 
         <div class="status">
             <p>Status: <span class="online">● Online</span></p>
-            <p>Web Interface is working correctly.</p>
+            <p>Web Interface is working correctly......</p>
         </div>
 
         <h2>Device Information</h2>
         <table>
-            <tr><th>Property</th><th>Value</th></tr>
-            <tr><td>Model</td><td>MyInstrument-100</td></tr>
-            <tr><td>Serial Number</td><td>SN123456789</td></tr>
-            <tr><td>Firmware</td><td>1.0.0</td></tr>
-            <tr><td>IP Address</td><td>%1</td></tr>
-            <tr><td>Web Port</td><td>%2</td></tr>
-            <tr><td>Last Update</td><td>%3</td></tr>
-        </table>
+            <tbody><tr><th>Property</th><th>Value</th></tr>
+            <tr><td>Model</td><td>%1</td></tr>
+            <tr><td>Serial Number</td><td>%2</td></tr>
+            <tr><td>Firmware Version</td><td>%3</td></tr>
+            <tr><td>IP Address</td><td>%4</td></tr>
+            <tr><td>Web Port</td><td>80</td></tr>
+            <tr><td>Last Update</td><td>%5</td></tr>
+        </tbody></table>
 
         <h2>Connection Info</h2>
         <p>NI-MAX should be able to detect this device and open this web page.</p>
-        <p>Discovery URL: <code>http://%1:%2/niwebdiscovery</code></p>
 
-        <div class="footer">
-            <p>This is a minimal test page for NI-MAX compatibility.</p>
-            <p>Server Time: %3</p>
-        </div>
     </div>
-</body>
-</html>
+</body></html>
     )";
 
     QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss");
     return html.arg(m_ip).arg(m_port).arg(timestamp);
 }
 
-QString WebServer::generateNIDiscoveryJson()
-{
-    QJsonObject niInfo;
-    niInfo["manufacturer"] = "YourCompany";
-    niInfo["model"] = "MyInstrument-100";
-    niInfo["serial"] = "SN123456789";
-    niInfo["firmware"] = "1.0.0";
-    niInfo["deviceType"] = "Instrument";
-    niInfo["webPort"] = (int)m_port;
-    niInfo["webPath"] = "/";
-    niInfo["discoveryTime"] = QDateTime::currentDateTime().toString(Qt::ISODate);
-    niInfo["apiVersion"] = "1.0";
+// ==================== 析构部分 ====================
 
-    QJsonDocument doc(niInfo);
-    return doc.toJson(QJsonDocument::Compact);
+WebServer::~WebServer()
+{
+    stop();
+    qCDebug(web)<< "webServer destroyed";
 }
 
-QString WebServer::getLocalIP()
+void WebServer::stop()
 {
-    // 尝试获取真实IP，失败则返回本地环回
-    foreach (const QNetworkInterface &interface, QNetworkInterface::allInterfaces()) {
-        if (interface.flags().testFlag(QNetworkInterface::IsUp) &&
-            interface.flags().testFlag(QNetworkInterface::IsRunning) &&
-            !interface.flags().testFlag(QNetworkInterface::IsLoopBack)) {
-
-            foreach (const QNetworkAddressEntry &entry, interface.addressEntries()) {
-                if (entry.ip().protocol() == QAbstractSocket::IPv4Protocol) {
-                    return entry.ip().toString();
-                }
-            }
-        }
+    if (m_server) {
+        m_server->close();
+        delete m_server;
+        m_server = nullptr;
     }
-    return "127.0.0.1";
 }

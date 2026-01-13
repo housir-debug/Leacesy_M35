@@ -209,27 +209,11 @@ int main(int argc, char *argv[])
     //SerialManager("/dev/ttyS4");
 
     WebServer webServer;
-    quint16 port = 80;   // 测试完成只能默认80端口
-    if (!webServer.start(port)) {
+    if (!webServer.start()) {
         qDebug() << "Port 80 not available, trying 8080...";
-        port = 8080;
-        if (!webServer.start(port)) {
-            qCritical() << "Failed to start web server on any port!";
-            return 1;
-        }
     }
 
-    qDebug() << "";
-    qDebug() << "========================================";
-    qDebug() << "TEST INSTRUCTIONS:";
-    qDebug() << "1. Open NI-MAX";
-    qDebug() << "2. Add your device";
-    qDebug() << "3. Right-click device -> 'Web Interface'";
-    qDebug() << "4. Browser should open:" << webServer.getServerUrl();
-    qDebug() << "========================================";
-    qDebug() << "";
-
-    Test_eth_can("can0");
+    //Test_eth_can("can0");
     //Test_eth_Serial("/dev/ttyS4");
     //Test_can_serial("can0","/dev/ttyS4");
 
