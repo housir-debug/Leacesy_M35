@@ -16,6 +16,7 @@ extern "C" {
 #include <QByteArray>
 #include <QMutex>
 #include <QLoggingCategory>
+#include "config_manager.h"
 
 Q_DECLARE_LOGGING_CATEGORY(scpi)
 
@@ -63,11 +64,6 @@ private:
 
     static ScpiManager* s_instance;
     static const scpi_command_t m_scpiCommands[];
-
-    const QByteArray m_idnManufacturer{"Leacesy"};
-    const QByteArray m_idnModel{"M35-Current-Measuring"};
-    const QByteArray m_idnSerial{"SN-001"};
-    const QByteArray m_idnVersion{ "1.0.0" };
 };
 
 #endif // SCPIMANAGER_H

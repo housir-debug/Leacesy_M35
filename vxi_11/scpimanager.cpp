@@ -24,11 +24,6 @@ bool ScpiManager::init()
 
     const scpi_unit_def_t* units = NULL;
 
-    const char* idn1 = m_idnManufacturer.constData();
-    const char* idn2 = m_idnModel.constData();
-    const char* idn3 = m_idnSerial.constData();
-    const char* idn4 = m_idnVersion.constData();
-
     static char input_buffer[256];
     static scpi_error_t error_queue[10];
 
@@ -36,7 +31,7 @@ bool ScpiManager::init()
               m_scpiCommands,                              // 命令表
               &interface,                                  // 接口回调
               units,                                       // 单位定义（可为NULL）
-              idn1, idn2, idn3, idn4,                      // 识别信息
+              nullptr, nullptr, nullptr, nullptr,          // 识别信息（指针）
               input_buffer,                                // 输入缓冲区
               sizeof(input_buffer),                        // 缓冲区大小
               error_queue,                                 // 错误队列
@@ -69,10 +64,10 @@ size_t ScpiManager::staticWriteCallback(scpi_t* context, const char* data, size_
 }
 
 scpi_result_t ScpiManager::scpiIdentify(scpi_t* context) {
-    QString idn = QString("%1,%2,%3,%4").arg(QString::fromUtf8(s_instance->m_idnManufacturer),
-                                             QString::fromUtf8(s_instance->m_idnModel),
-                                             QString::fromUtf8(s_instance->m_idnSerial),
-                                             QString::fromUtf8(s_instance->m_idnVersion));
+    QString idn = QString("%1,%2,%3,%4").arg(ConfigManager::getManufacturer(),
+                                             ConfigManager::getModel(),
+                                             ConfigManager::getSerialNumber(),
+                                             ConfigManager::getFirmwareVersion());
 
     staticWriteCallback(context, idn.toUtf8().constData(), idn.length());
     return SCPI_RES_OK;
