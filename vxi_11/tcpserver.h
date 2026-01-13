@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include "scpimanager.h"
 #include "tirpcloader.h"
+#include "config_manager.h"
 #include "canworker.h"
 
 Q_DECLARE_LOGGING_CATEGORY(tcp)
@@ -169,9 +170,6 @@ private:
     QList<QTcpSocket*> m_clients;
     QElapsedTimer m_testtimer;
     QMap<quint32, DeviceLink> m_deviceLinks;
-
-    const quint16 m_port{5025};
-    const QString m_deviceIp{"192.168.137.33"};
 
     quint32 m_nextLinkId{1};
     std::atomic<ServerState> m_state{STATE_STOPPED};
