@@ -17,6 +17,8 @@ QString ConfigManager::s_ipAddress = "127.0.0.1";
 int ConfigManager::s_webPort = 80;
 int ConfigManager::s_vxiPort = 5025;
 
+QString ConfigManager::s_enableloglevel = "debug";
+bool ConfigManager::s_enablelogfile = false;
 bool ConfigManager::s_enableWebServer = true;
 bool ConfigManager::s_enableVXIServer = true;
 
@@ -43,8 +45,10 @@ bool ConfigManager::init(const QString &configDir)
     s_webPort = s_settings->value("Network/WebPort").toInt();
     s_vxiPort = s_settings->value("Network/VXIPort").toInt();
 
-    s_enableWebServer = s_settings->value("Services/EnableWebServer").toBool();
-    s_enableVXIServer = s_settings->value("Services/EnableVXI").toBool();
+    s_enableloglevel = s_settings->value("Switch/EnablelogLevel").toString();
+    s_enablelogfile = s_settings->value("Switch/EnablelogFile").toBool();
+    s_enableWebServer = s_settings->value("Switch/EnableWebServer").toBool();
+    s_enableVXIServer = s_settings->value("Switch/EnableVXIServer").toBool();
 
     return true;
 }

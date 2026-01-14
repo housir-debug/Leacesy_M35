@@ -154,6 +154,7 @@ void loggermanage(const QString &loglevel){
     QString rules;
     if (loglevel == "debug")        {rules = "*.debug=true\n*.info=true\n*.warning=true";}
     else if (loglevel == "warning") {rules = "*.debug=false\n*.info=false\n*.warning=true";}
+    else if (loglevel == "release") {rules = "*.debug=false\n*.info=false\n*.warning=false";}
     else {rules = "*.debug=false\n*.info=false\n*.warning=true";}
     QLoggingCategory::setFilterRules(rules);
 

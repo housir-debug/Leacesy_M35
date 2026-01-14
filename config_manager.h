@@ -19,6 +19,8 @@ public:
     static int s_webPort;
     static int s_vxiPort;
 
+    static QString s_enableloglevel;
+    static bool s_enablelogfile;
     static bool s_enableWebServer;
     static bool s_enableVXIServer;
 

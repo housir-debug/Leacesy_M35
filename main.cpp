@@ -198,8 +198,8 @@ int main(int argc, char *argv[])
     QGuiApplication::setOrganizationName("Leacesy");
     QString appDir = QGuiApplication::applicationDirPath();
 
-    if (!ConfigManager::init(appDir)) {return 1;}  // error
-    //loggermanage("debug");   // debug | warning
+    if (!ConfigManager::init(appDir)) {return 1;}
+    loggermanage(ConfigManager::s_enableloglevel);
 
     /*QQmlApplicationEngine engine;
     const QUrl url(QStringLiteral("qrc:/main.qml"));
