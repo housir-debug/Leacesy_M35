@@ -17,7 +17,12 @@ QString ConfigManager::s_ipAddress = "127.0.0.1";
 int ConfigManager::s_webPort = 80;
 int ConfigManager::s_vxiPort = 5025;
 
-QString ConfigManager::s_enableloglevel = "debug";
+QString ConfigManager::s_loglevel = "debug";
+QString ConfigManager::s_logdir = "logs";
+QString ConfigManager::s_logfilename = "run.log";
+int ConfigManager::s_maxfilesize = 6291456;
+int ConfigManager::s_maxfilecount = 10;
+
 bool ConfigManager::s_enablelogfile = false;
 bool ConfigManager::s_enableWebServer = true;
 bool ConfigManager::s_enableVXIServer = true;
@@ -27,10 +32,7 @@ bool ConfigManager::s_enableVXIServer = true;
 bool ConfigManager::init(const QString &configDir)
 {
     QString fullPath = configDir + "/" + s_configFile;
-    if (!QFile::exists(fullPath)) {
-        qWarning() << "[Config] File not found:" << fullPath;
-        return false;
-    }
+    if (!QFile::exists(fullPath)) {return false;}
 
     if (s_settings) {delete s_settings;}
     s_settings = new QSettings(fullPath, QSettings::IniFormat);
@@ -45,7 +47,12 @@ bool ConfigManager::init(const QString &configDir)
     s_webPort = s_settings->value("Network/WebPort").toInt();
     s_vxiPort = s_settings->value("Network/VXIPort").toInt();
 
-    s_enableloglevel = s_settings->value("Switch/EnablelogLevel").toString();
+    s_loglevel = s_settings->value("Logger/logLevel").toString();
+    s_logdir = s_settings->value("Logger/LogDir").toString();
+    s_logfilename = s_settings->value("Logger/LogfileNmae").toString();
+    s_maxfilesize = s_settings->value("Logger/MaxfileSize").toInt();
+    s_maxfilecount = s_settings->value("Logger/MaxfileCount").toInt();
+
     s_enablelogfile = s_settings->value("Switch/EnablelogFile").toBool();
     s_enableWebServer = s_settings->value("Switch/EnableWebServer").toBool();
     s_enableVXIServer = s_settings->value("Switch/EnableVXIServer").toBool();

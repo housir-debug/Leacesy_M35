@@ -13,7 +13,6 @@ Q_LOGGING_CATEGORY(app, "app:")
 
 namespace {
     struct LoggerData {
-        LoggerConfig config;
         QMutex mutex;
         QFile* file = nullptr;
         QTextStream* stream = nullptr;
@@ -29,31 +28,20 @@ namespace {
         static LoggerData data;
         return data;
     }
-}
 
-namespace {
     void embeddedMessageHandler(QtMsgType type,const QMessageLogContext &context,const QString &msg) {
-        Q_UNUSED(context);
-        fprintf(stderr, "%s\n", qPrintable(msg));// 总是输出到控制台（Qt自带颜色）
+        Q_UNUSED(type); //debug warning ...
+        QString formattedMsg = QString("%1:%2").arg(context.category,msg);
+        fprintf(stderr, "%s\n", qPrintable(formattedMsg));// 总是输出到控制台（Qt自带颜色）
 
         auto& data = getLoggerData();
-
         if (data.stream && data.file && data.file->isOpen()) {
-            QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
-            QString levelStr;
+            QMutexLocker locker(&data.mutex);
 
-            switch(type) {
-                case QtDebugMsg:    levelStr = "DEBUG"; break;
-                case QtInfoMsg:     levelStr = "INFO"; break;
-                case QtWarningMsg:  levelStr = "WARN"; break;
-                case QtCriticalMsg: levelStr = "ERROR"; break;
-                case QtFatalMsg:    levelStr = "FATAL"; break;
-            }
-
-            *data.stream << timestamp << " [" << levelStr << ":] " << msg << "\n";
+            *data.stream << formattedMsg << "\n";
             data.stream->flush();
 
-            if (data.file->size() > data.config.maxFileSize) {
+            if (data.file->size() > ConfigManager::s_maxfilesize) {
                 data.file->close();
 
                 QString currentPath = data.file->fileName();
@@ -64,7 +52,7 @@ namespace {
                 if (suffix.isEmpty()) { suffix = "log";}
                 QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss");
 
-                // 重命名当前轮转文件
+                // 重命名(当处于同一秒内，文件名称与上次轮转相同，导致重命名失败)
                 QString newFileName = QString("%1_%2.%3").arg(baseName,timestamp,suffix);
                 QString newPath = QDir(dirPath).filePath(newFileName);
                 if (!QFile::rename(currentPath, newPath)) {
@@ -73,11 +61,13 @@ namespace {
                     return;
                 }
 
+                qCDebug(log) << "Log file rotated. New archive:" << newPath;
+
                 // 删除最早的日志文件
                 QDir dir(dirPath);
                 QStringList nameFilters = QStringList() << QString("%1_*.%2").arg(baseName,suffix);
                 QStringList logFiles = dir.entryList(nameFilters, QDir::Files, QDir::Time); // 按时间排序
-                while (logFiles.size() >= data.config.maxFileCount) {
+                if (logFiles.size() >= ConfigManager::s_maxfilecount) {
                     QString oldestFile = logFiles.last();
                     QString oldestPath = QDir(dirPath).filePath(oldestFile);
                     if (!QFile::remove(oldestPath)) {qWarning(log) << "Failed to remove old log file:" << oldestPath;}
@@ -96,16 +86,26 @@ namespace {
                 }
 
                 data.stream->setDevice(data.file);
-                qCDebug(log) << "Log file rotated. New archive:" << newPath;
             }
-        }
+        }else{qCDebug(log) << "Log file openning failed!!!" ;};
     }
 }
 
-void initSimpleLogger() {
-    auto& data = getLoggerData();
-    QMutexLocker locker(&data.mutex);
+void loggermanage(const QString &loglevel,const QString &parentPath) {
+    QString rules;
+    if (loglevel == "debug")        {rules = "*.debug=true\n*.info=true\n*.warning=true";}
+    else if (loglevel == "warning") {rules = "*.debug=false\n*.info=false\n*.warning=true";}
+    else if (loglevel == "release") {rules = "*.debug=false\n*.info=false\n*.warning=false";}
+    else {rules = "*.debug=false\n*.info=false\n*.warning=true";}
+    QLoggingCategory::setFilterRules(rules);
 
+    //格式化加时间，比直接时间戳延时更多
+    //qSetMessagePattern("[%{time HH:mm:ss.zzzzzz}] [%{category}] %{message}");
+
+    qCDebug(app) << "config file write&reading normal:" ;
+    if (!ConfigManager::s_enablelogfile){return;}
+
+    auto& data = getLoggerData();
     if (data.stream) {
         data.stream->flush();
         delete data.stream;
@@ -119,48 +119,49 @@ void initSimpleLogger() {
     }
 
     qInstallMessageHandler(nullptr);  // 恢复默认处理器
+    QString fullPath = parentPath + "/" + ConfigManager::s_logdir;
 
-    if (data.config.enableFile) {
-        QDir dir(data.config.logDir);
-        if (dir.exists() || dir.mkpath(".")) {
-            QString logFilePath = QDir(data.config.logDir).filePath(data.config.logFileName);
-            data.file = new QFile(logFilePath);
+    QDir dir(fullPath);
+    if (dir.exists() || dir.mkpath(".")) {
+        QString logFilePath = QDir(fullPath).filePath(ConfigManager::s_logfilename);
+        data.file = new QFile(logFilePath);
 
-            if (data.file->open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
-                data.stream = new QTextStream(data.file);   // goal
-                data.stream->setCodec("UTF-8");
+        if (data.file->open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
+            data.stream = new QTextStream(data.file);   // goal
+            data.stream->setCodec("UTF-8");
 
-                *data.stream << "========================================\n";
-                *data.stream << "Application Log - Started at: "<< QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << "\n";
-                *data.stream << "========================================\n";
-                data.stream->flush();
+            *data.stream << "========================================\n";
+            *data.stream << "Application Log - Started at: "<< QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << "\n";
+            *data.stream << "========================================\n";
 
-                qInstallMessageHandler(embeddedMessageHandler);   //registration processing function
-                qCDebug(log) << "File logging:" << logFilePath;
-            } else {
-                delete data.file;
-                data.file = nullptr;
-                data.config.enableFile = false;
-                qCWarning(log) << "Failed to open log file!";
-            }
+            qInstallMessageHandler(embeddedMessageHandler);   //registration processing function
+            qCDebug(log) << "File logging:" << logFilePath;
+        } else {
+            delete data.file;
+            data.file = nullptr;
+            qCWarning(log) << "Failed to open log file!";
         }
-        else{qCWarning(log) << "Failed to create log directory, file logging disabled";}
+    }
+    else{qCWarning(log) << "Failed to create log directory, file logging disabled";}
+}
+
+void shutdownLogger() {
+    auto& data = getLoggerData();
+    qInstallMessageHandler(nullptr);
+
+    QMutexLocker locker(&data.mutex);
+
+    if (data.stream) {
+        data.stream->flush();
+        delete data.stream;
+        data.stream = nullptr;
     }
 
-    qCDebug(log) << "File:" << (data.config.enableFile ? "on" : "off");
+    if (data.file) {
+        if (data.file->isOpen()) {data.file->close();}
+        delete data.file;
+        data.file = nullptr;
+    }
 }
-
-void loggermanage(const QString &loglevel){
-    QString rules;
-    if (loglevel == "debug")        {rules = "*.debug=true\n*.info=true\n*.warning=true";}
-    else if (loglevel == "warning") {rules = "*.debug=false\n*.info=false\n*.warning=true";}
-    else if (loglevel == "release") {rules = "*.debug=false\n*.info=false\n*.warning=false";}
-    else {rules = "*.debug=false\n*.info=false\n*.warning=true";}
-    QLoggingCategory::setFilterRules(rules);
-
-    //格式化加时间，比直接时间戳延时更多
-    //qSetMessagePattern("[%{time HH:mm:ss.zzzzzz}] [%{category}] %{message}");
-}
-
 
 

@@ -1,6 +1,7 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QTimer>
+#include <QDir>
 #include <QThread>
 #include <QLoggingCategory>
 #include "vxi_11/tcpserver.h"
@@ -105,9 +106,9 @@ void Test_eth_Serial(const QString &portName)
     SerialWorker *serialWorker = new SerialWorker();
     serialWorker->initSerialPort(portName, QSerialPort::Baud115200);
 
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
+    QObject::connect(QGuiApplication::instance(), &QGuiApplication::aboutToQuit,
                      serialWorker, &SerialWorker::closeSerial);
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
+    QObject::connect(QGuiApplication::instance(), &QGuiApplication::aboutToQuit,
                      serialWorker, &QObject::deleteLater);
 
     TcpServerManager *tcpServer = new TcpServerManager();
@@ -190,16 +191,24 @@ int main(int argc, char *argv[])
     qputenv("QT_IM_MODULE", QByteArray("qtvirtualkeyboard"));
 
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+    QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 #endif
 
     QGuiApplication app(argc, argv);
     QGuiApplication::setApplicationName("Leacesy Instrument");
     QGuiApplication::setOrganizationName("Leacesy");
-    QString appDir = QGuiApplication::applicationDirPath();
+    QString appPath = QGuiApplication::applicationDirPath();
+    QDir appDir(appPath);
 
-    if (!ConfigManager::init(appDir)) {return 1;}
-    loggermanage(ConfigManager::s_enableloglevel);
+    if (appDir.cdUp()){
+        QString parentPath = appDir.absolutePath();
+        if (!ConfigManager::init(parentPath)) {return 1;}
+
+        loggermanage(ConfigManager::s_loglevel,parentPath);
+        if (ConfigManager::s_enablelogfile){
+            QObject::connect(&app, &QGuiApplication::aboutToQuit, []{shutdownLogger();});
+        }
+    }else{return 1;}
 
     /*QQmlApplicationEngine engine;
     const QUrl url(QStringLiteral("qrc:/main.qml"));

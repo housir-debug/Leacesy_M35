@@ -19,7 +19,12 @@ public:
     static int s_webPort;
     static int s_vxiPort;
 
-    static QString s_enableloglevel;
+    static QString s_loglevel;
+    static QString s_logdir;
+    static QString s_logfilename;
+    static int s_maxfilesize;
+    static int s_maxfilecount;
+
     static bool s_enablelogfile;
     static bool s_enableWebServer;
     static bool s_enableVXIServer;
