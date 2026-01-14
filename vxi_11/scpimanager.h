@@ -16,7 +16,7 @@ extern "C" {
 #include <QByteArray>
 #include <QMutex>
 #include <QLoggingCategory>
-#include "config_manager.h"
+#include "auxiliary/config_manager.h"
 
 Q_DECLARE_LOGGING_CATEGORY(scpi)
 

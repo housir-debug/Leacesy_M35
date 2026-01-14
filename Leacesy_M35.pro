@@ -11,20 +11,20 @@ LIBS += -L$$PWD/thirdparty/scpi/lib -lscpi -lm
 
 HEADERS += \
     canworker.h \
-    config_manager.h \
     serialworker.h \
-    simple_logger.h \
+    auxiliary/simple_logger.h \
+    auxiliary/config_manager.h \
     vxi_11/scpimanager.h \
     vxi_11/tcpserver.h \
     vxi_11/tirpcloader.h \
     vxi_11/web_server.h
 
 SOURCES += \
-    canworker.cpp \
-    config_manager.cpp \
     main.cpp \
+    canworker.cpp \
     serialworker.cpp \
-    simple_logger.cpp \
+    auxiliary/simple_logger.cpp \
+    auxiliary/config_manager.cpp \
     vxi_11/scpimanager.cpp \
     vxi_11/tcpserver.cpp \
     vxi_11/tirpcloader.cpp \

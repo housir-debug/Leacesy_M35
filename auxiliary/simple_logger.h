@@ -4,7 +4,7 @@
 #include <QLoggingCategory>
 #include <QString>
 #include <QMutex>
-#include "config_manager.h"
+#include "auxiliary/config_manager.h"
 
 Q_DECLARE_LOGGING_CATEGORY(log)
 Q_DECLARE_LOGGING_CATEGORY(app)

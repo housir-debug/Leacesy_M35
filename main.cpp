@@ -6,11 +6,10 @@
 #include <QLoggingCategory>
 #include "vxi_11/tcpserver.h"
 #include "vxi_11/web_server.h"
+#include "auxiliary/simple_logger.h"
+#include "auxiliary/config_manager.h"
 #include "serialworker.h"
 #include "canworker.h"
-#include "simple_logger.h"
-#include "config_manager.h"
-
 
 void canmanager(const QString &cansocket)
 {
@@ -210,6 +209,11 @@ int main(int argc, char *argv[])
         }
     }else{return 1;}
 
+    if (ConfigManager::s_enableWebServer){
+        WebServer webServer;
+        if (!webServer.start()) {return 1;}
+    }
+
     /*QQmlApplicationEngine engine;
     const QUrl url(QStringLiteral("qrc:/main.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
@@ -222,10 +226,9 @@ int main(int argc, char *argv[])
     //canmanager("can0");
     //SerialManager("/dev/ttyS4");
 
-    WebServer webServer;
-    if (!webServer.start()) {return 1;}
 
-    Test_eth_can("can0");
+
+    //Test_eth_can("can0");
     //Test_eth_Serial("/dev/ttyS4");
     //Test_can_serial("can0","/dev/ttyS4");
 

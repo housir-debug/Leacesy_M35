@@ -102,7 +102,7 @@ void loggermanage(const QString &loglevel,const QString &parentPath) {
     //格式化加时间，比直接时间戳延时更多
     //qSetMessagePattern("[%{time HH:mm:ss.zzzzzz}] [%{category}] %{message}");
 
-    qCDebug(app) << "config file write&reading normal:" ;
+    qCDebug(app) << "config file write&reading normal" ;
     if (!ConfigManager::s_enablelogfile){return;}
 
     auto& data = getLoggerData();

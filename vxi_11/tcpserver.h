@@ -13,9 +13,9 @@
 #include <QLoggingCategory>
 #include <QMap>
 #include <unistd.h>
+#include "auxiliary/config_manager.h"
 #include "scpimanager.h"
 #include "tirpcloader.h"
-#include "config_manager.h"
 #include "canworker.h"
 
 Q_DECLARE_LOGGING_CATEGORY(tcp)
