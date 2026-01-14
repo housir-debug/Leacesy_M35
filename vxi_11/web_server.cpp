@@ -16,7 +16,7 @@ bool WebServer::start()
     // 复杂后加入线程
     m_server = new QTcpServer(this);
 
-    if (!m_server->listen(QHostAddress::Any, int(ConfigManager::s_webPort))) {
+    if (!m_server->listen(QHostAddress::Any, ConfigManager::s_webPort)) {
         qWarning() << "Failed to start web server:" << m_server->errorString();
         delete m_server;
         m_server = nullptr;

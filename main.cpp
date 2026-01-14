@@ -164,25 +164,6 @@ void Test_can_serial(const QString &cansocket,const QString &portName)
     QMetaObject::invokeMethod(canWorker, &CanWorker::testserialloop);//存在异步析构耗时开销事件循环问题导致延时
 }
 
-void TcpManager(CanWorker *canWorker)
-{
-    TcpServerManager *tcpServer = new TcpServerManager();
-    tcpServer->startServer();
-
-    QObject::connect(canWorker, &CanWorker::frameReceived,
-                     tcpServer, &TcpServerManager::forwardCanData,
-                     Qt::QueuedConnection);
-    QObject::connect(tcpServer, &TcpServerManager::canSendRequest,
-                     canWorker, &CanWorker::sendFrame,
-                     Qt::QueuedConnection);
-
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                     tcpServer, &TcpServerManager::stopServer,
-                     Qt::QueuedConnection);
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                     tcpServer, &QObject::deleteLater,
-                     Qt::QueuedConnection);
-}
 
 
 int main(int argc, char *argv[])
@@ -210,8 +191,16 @@ int main(int argc, char *argv[])
     }else{return 1;}
 
     if (ConfigManager::s_enableWebServer){
-        WebServer webServer;
-        if (!webServer.start()) {return 1;}
+        WebServer *webServer =  new WebServer(&app);
+        if (!webServer->start()) {return 1;}
+    }
+
+    if (ConfigManager::s_enableVXIServer){
+        TcpServerManager *vxiServer = new TcpServerManager();
+        if(!vxiServer->startServer()){return 1;}
+
+        QObject::connect(&app, &QCoreApplication::aboutToQuit,vxiServer, &TcpServerManager::stopServer);
+        QObject::connect(&app, &QCoreApplication::aboutToQuit,vxiServer, &QObject::deleteLater);
     }
 
     /*QQmlApplicationEngine engine;
