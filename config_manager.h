@@ -7,23 +7,6 @@
 class ConfigManager
 {
 public:
-    static bool init(const QString &configDir);
-
-    static QString getManufacturer() { return s_manufacturer; }
-    static QString getModel() { return s_model; }
-    static QString getSerialNumber() { return s_serialNumber; }
-    static QString getFirmwareVersion() { return s_firmwareVersion; }
-
-    static QString getIPAddress() { return s_ipAddress; }
-    static int getWebPort() { return s_webPort; }
-    static int getVXIPort() { return s_vxiPort; }
-
-    static bool isWebServerEnabled() { return s_enableWebServer; }
-    static bool isVXIEnabled() { return s_enableVXIServer; }
-
-    static QString getConfigFilePath() { return s_configFile; }
-
-private:
     static QString s_configFile;
     static QSettings* s_settings;
 
@@ -39,6 +22,9 @@ private:
     static bool s_enableWebServer;
     static bool s_enableVXIServer;
 
+    static bool init(const QString &configDir);
+
+private:
     ConfigManager() = delete;
     ~ConfigManager() = delete;
     Q_DISABLE_COPY(ConfigManager)

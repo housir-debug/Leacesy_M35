@@ -16,7 +16,7 @@ bool WebServer::start()
     // 复杂后加入线程
     m_server = new QTcpServer(this);
 
-    if (!m_server->listen(QHostAddress::Any, int(ConfigManager::getWebPort()))) {
+    if (!m_server->listen(QHostAddress::Any, int(ConfigManager::s_webPort))) {
         qWarning() << "Failed to start web server:" << m_server->errorString();
         delete m_server;
         m_server = nullptr;
@@ -194,8 +194,8 @@ QString WebServer::generateHtmlPage()
     )";
 
     QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss");
-    return html.arg(ConfigManager::getModel(),ConfigManager::getSerialNumber(),ConfigManager::getFirmwareVersion(),
-                    ConfigManager::getIPAddress()).arg(ConfigManager::getWebPort()).arg(timestamp);
+    return html.arg(ConfigManager::s_model,ConfigManager::s_serialNumber,ConfigManager::s_firmwareVersion,
+                    ConfigManager::s_ipAddress).arg(ConfigManager::s_webPort).arg(timestamp);
 }
 
 // ==================== 析构部分 ====================

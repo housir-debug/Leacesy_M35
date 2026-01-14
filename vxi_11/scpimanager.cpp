@@ -64,10 +64,10 @@ size_t ScpiManager::staticWriteCallback(scpi_t* context, const char* data, size_
 }
 
 scpi_result_t ScpiManager::scpiIdentify(scpi_t* context) {
-    QString idn = QString("%1,%2,%3,%4").arg(ConfigManager::getManufacturer(),
-                                             ConfigManager::getModel(),
-                                             ConfigManager::getSerialNumber(),
-                                             ConfigManager::getFirmwareVersion());
+    QString idn = QString("%1,%2,%3,%4").arg(ConfigManager::s_manufacturer,
+                                             ConfigManager::s_model,
+                                             ConfigManager::s_serialNumber,
+                                             ConfigManager::s_firmwareVersion);
 
     staticWriteCallback(context, idn.toUtf8().constData(), idn.length());
     return SCPI_RES_OK;
