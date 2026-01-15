@@ -202,12 +202,14 @@ int main(int argc, char *argv[])
         QObject::connect(&app, &QCoreApplication::aboutToQuit,vxiServer, &QObject::deleteLater);
     }
 
-    QQmlApplicationEngine engine;
-    const QUrl url(QStringLiteral("qrc:/qml/main.qml"));
-    QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,&app, [url](QObject *obj, const QUrl &objUrl) {
-        if (!obj && url == objUrl){QCoreApplication::exit(-1);}
-    }, Qt::QueuedConnection);
-    engine.load(url);
+    if (ConfigManager::s_enableDisplay){
+        QQmlApplicationEngine engine;
+        const QUrl url(QStringLiteral("qrc:/qml/main.qml"));
+        QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,&app, [url](QObject *obj, const QUrl &objUrl) {
+            if (!obj && url == objUrl){QCoreApplication::exit(-1);}
+        }, Qt::QueuedConnection);
+        engine.load(url);
+    }
 
     //canmanager("can0");
     //SerialManager("/dev/ttyS4");

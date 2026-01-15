@@ -98,10 +98,10 @@ bool TcpServerManager::startServer()
                 this, &TcpServerManager::onNewConnection);
 
         QMetaObject::invokeMethod(this, [this]() {
-            if (m_tcpServer->listen(QHostAddress::Any, ConfigManager::s_vxiPort)) {
+            if (m_tcpServer->listen(QHostAddress::Any, 5025)) {
                 m_state.store(STATE_RUNNING);
                 m_cleanupTimer->start();
-                qCDebug(tcp) << "TcpServer started on port" << ConfigManager::s_vxiPort;
+                qCDebug(tcp) << "TcpServer started on port" << 5025;
             } else {
                 m_state.store(STATE_STOPPED);
                 stopServer();
@@ -159,10 +159,10 @@ bool TcpServerManager::registerWithRpcbind()
             Vxi11::DEVICE_CORE,         // VXI-11程序号
             Vxi11::DEVICE_CORE_VERSION, // 版本
             IPPROTO_TCP,                // TCP协议
-            ConfigManager::s_vxiPort
+            5025
         );
 
-        if (result) {qCDebug(tcp) << "✅ 使用 libtirpc 成功注册 VXI-11 服务到端口" << ConfigManager::s_vxiPort;}
+        if (result) {qCDebug(tcp) << "✅ 使用 libtirpc 成功注册 VXI-11 服务到端口" << 111;}
         else {qCWarning(tcp) << "❌ 使用 libtirpc 注册失败，尝试手动注册";
             int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
             if (sockfd < 0) {
@@ -207,11 +207,11 @@ bool TcpServerManager::registerWithRpcbind()
             call.map_prog = htonl(395183);   // VXI-11程序号
             call.map_vers = htonl(1);        // VXI-11版本1
             call.map_prot = htonl(6);        // TCP协议
-            call.map_port = htonl(ConfigManager::s_vxiPort);   //
+            call.map_port = htonl(5025);   //
 
             sendto(sockfd, &call, sizeof(call), 0,(struct sockaddr*)&addr, sizeof(addr));
             close(sockfd);
-            qCDebug(tcp) << "手动注册 VXI-11 服务到端口" << ConfigManager::s_vxiPort;
+            qCDebug(tcp) << "手动注册 VXI-11 服务到端口" << 111;
         }
 
     }else{qCWarning(tcp)<<"TirpcDynamicLoader::instance() error";}

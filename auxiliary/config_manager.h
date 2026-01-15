@@ -16,8 +16,6 @@ public:
     static QString s_firmwareVersion;
 
     static QString s_ipAddress;
-    static int s_webPort;
-    static int s_vxiPort;
 
     static QString s_loglevel;
     static QString s_logdir;
@@ -28,6 +26,7 @@ public:
     static bool s_enablelogfile;
     static bool s_enableWebServer;
     static bool s_enableVXIServer;
+    static bool s_enableDisplay;
 
     static bool init(const QString &configDir);
 

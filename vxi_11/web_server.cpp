@@ -16,7 +16,7 @@ bool WebServer::start()
     // 复杂后加入线程
     m_server = new QTcpServer(this);
 
-    if (!m_server->listen(QHostAddress::Any, ConfigManager::s_webPort)) {
+    if (!m_server->listen(QHostAddress::Any, 80)) {
         qCWarning(web) << "Failed to start web server:" << m_server->errorString();
         delete m_server;
         m_server = nullptr;
@@ -181,9 +181,7 @@ QString WebServer::generateHtmlPage()
             <tr><td>Model</td><td>%1</td></tr>
             <tr><td>Serial Number</td><td>%2</td></tr>
             <tr><td>Firmware Version</td><td>%3</td></tr>
-            <tr><td>IP Address</td><td>%4</td></tr>
-            <tr><td>Web Port</td><td>%5</td></tr>
-            <tr><td>Last Update</td><td>%6</td></tr>
+            <tr><td>Last Update</td><td>%4</td></tr>
         </tbody></table>
 
         <h2>Connection Info</h2>
@@ -195,7 +193,7 @@ QString WebServer::generateHtmlPage()
 
     QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss");
     return html.arg(ConfigManager::s_model,ConfigManager::s_serialNumber,ConfigManager::s_firmwareVersion,
-                    ConfigManager::s_ipAddress).arg(ConfigManager::s_webPort).arg(timestamp);
+                    ConfigManager::s_ipAddress,timestamp);
 }
 
 // ==================== 析构部分 ====================

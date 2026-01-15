@@ -14,8 +14,6 @@ QString ConfigManager::s_serialNumber = "SN123456789";
 QString ConfigManager::s_firmwareVersion = "1.0.0";
 
 QString ConfigManager::s_ipAddress = "127.0.0.1";
-int ConfigManager::s_webPort = 80;
-int ConfigManager::s_vxiPort = 5025;
 
 QString ConfigManager::s_loglevel = "debug";
 QString ConfigManager::s_logdir = "logs";
@@ -26,6 +24,7 @@ int ConfigManager::s_maxfilecount = 10;
 bool ConfigManager::s_enablelogfile = false;
 bool ConfigManager::s_enableWebServer = true;
 bool ConfigManager::s_enableVXIServer = true;
+bool ConfigManager::s_enableDisplay = true;
 
 // ===================== 初始化方法 =====================
 
@@ -44,8 +43,6 @@ bool ConfigManager::init(const QString &configDir)
     s_firmwareVersion = s_settings->value("Device/FirmwareVersion").toString();
 
     s_ipAddress = s_settings->value("Network/IPAddress").toString();
-    s_webPort = s_settings->value("Network/WebPort").toInt();
-    s_vxiPort = s_settings->value("Network/VXIPort").toInt();
 
     s_loglevel = s_settings->value("Logger/logLevel").toString();
     s_logdir = s_settings->value("Logger/LogDir").toString();
@@ -56,6 +53,7 @@ bool ConfigManager::init(const QString &configDir)
     s_enablelogfile = s_settings->value("Switch/EnablelogFile").toBool();
     s_enableWebServer = s_settings->value("Switch/EnableWebServer").toBool();
     s_enableVXIServer = s_settings->value("Switch/EnableVXIServer").toBool();
+    s_enableDisplay = s_settings->value("Switch/EnableDisplay").toBool();
 
     return true;
 }
