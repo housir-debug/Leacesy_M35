@@ -1,8 +1,9 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "./Component" // as MyComponents
 
-Rectangle {//ApplicationWindow
+ApplicationWindow {//ApplicationWindow
     id: mainWindow
     width: 1024
     height: 768

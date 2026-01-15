@@ -176,7 +176,6 @@ int main(int argc, char *argv[])
 
     QGuiApplication app(argc, argv);
     QGuiApplication::setApplicationName("Leacesy Instrument");
-    QGuiApplication::setOrganizationName("Leacesy");
     QString appPath = QGuiApplication::applicationDirPath();
     QDir appDir(appPath);
 
@@ -203,19 +202,15 @@ int main(int argc, char *argv[])
         QObject::connect(&app, &QCoreApplication::aboutToQuit,vxiServer, &QObject::deleteLater);
     }
 
-    /*QQmlApplicationEngine engine;
-    const QUrl url(QStringLiteral("qrc:/main.qml"));
-    QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
-                     &app, [url](QObject *obj, const QUrl &objUrl) {
-        if (!obj && url == objUrl)
-            QCoreApplication::exit(-1);
+    QQmlApplicationEngine engine;
+    const QUrl url(QStringLiteral("qrc:/qml/main.qml"));
+    QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,&app, [url](QObject *obj, const QUrl &objUrl) {
+        if (!obj && url == objUrl){QCoreApplication::exit(-1);}
     }, Qt::QueuedConnection);
-    engine.load(url);*/
+    engine.load(url);
 
     //canmanager("can0");
     //SerialManager("/dev/ttyS4");
-
-
 
     //Test_eth_can("can0");
     //Test_eth_Serial("/dev/ttyS4");

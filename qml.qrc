@@ -1,8 +1,8 @@
 <RCC>
     <qresource prefix="/">
-        <file>main.qml</file>
-        <file alias="Component/Gauge.qml">Gauge.qml</file>
-        <file alias="Component/DigitalDisplay.qml">DigitalDisplay.qml</file>
-        <file alias="Component/WaveformDisplay.qml">WaveformDisplay.qml</file>
+        <file>qml/main.qml</file>
+        <file>qml/Component/Gauge.qml</file>
+        <file>qml/Component/DigitalDisplay.qml</file>
+        <file>qml/Component/WaveformDisplay.qml</file>
     </qresource>
 </RCC>

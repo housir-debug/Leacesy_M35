@@ -33,7 +33,7 @@ SOURCES += \
 RESOURCES += qml.qrc
 
 DISTFILES += \
-    instrument_config.ini
+    auxiliary/instrument_config.ini
 
 # Additional import path used to resolve QML modules in Qt Creator's code model
 QML_IMPORT_PATH =
