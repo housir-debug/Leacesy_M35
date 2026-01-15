@@ -1,7 +1,5 @@
 #include "config_manager.h"
 #include <QFile>
-#include <QDebug>
-#include <QCoreApplication>
 
 // ===================== 静态成员初始化 =====================
 
@@ -14,16 +12,12 @@ QString ConfigManager::s_serialNumber = "SN123456789";
 QString ConfigManager::s_firmwareVersion = "1.0.0";
 
 QString ConfigManager::s_ipAddress = "127.0.0.1";
-
-QString ConfigManager::s_loglevel = "debug";
-QString ConfigManager::s_logdir = "logs";
-QString ConfigManager::s_logfilename = "run.log";
-int ConfigManager::s_maxfilesize = 6291456;
-int ConfigManager::s_maxfilecount = 10;
-
-bool ConfigManager::s_enablelogfile = false;
 bool ConfigManager::s_enableWebServer = true;
 bool ConfigManager::s_enableVXIServer = true;
+
+QString ConfigManager::s_loglevel = "debug";
+bool ConfigManager::s_enablelogfile = false;
+
 bool ConfigManager::s_enableDisplay = true;
 
 // ===================== 初始化方法 =====================
@@ -43,16 +37,12 @@ bool ConfigManager::init(const QString &configDir)
     s_firmwareVersion = s_settings->value("Device/FirmwareVersion").toString();
 
     s_ipAddress = s_settings->value("Network/IPAddress").toString();
+    s_enableWebServer = s_settings->value("Network/EnableWebServer").toBool();
+    s_enableVXIServer = s_settings->value("Network/EnableVXIServer").toBool();
 
     s_loglevel = s_settings->value("Logger/logLevel").toString();
-    s_logdir = s_settings->value("Logger/LogDir").toString();
-    s_logfilename = s_settings->value("Logger/LogfileNmae").toString();
-    s_maxfilesize = s_settings->value("Logger/MaxfileSize").toInt();
-    s_maxfilecount = s_settings->value("Logger/MaxfileCount").toInt();
+    s_enablelogfile = s_settings->value("Logger/EnablelogFile").toBool();
 
-    s_enablelogfile = s_settings->value("Switch/EnablelogFile").toBool();
-    s_enableWebServer = s_settings->value("Switch/EnableWebServer").toBool();
-    s_enableVXIServer = s_settings->value("Switch/EnableVXIServer").toBool();
     s_enableDisplay = s_settings->value("Switch/EnableDisplay").toBool();
 
     return true;

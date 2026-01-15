@@ -9,6 +9,7 @@ class ConfigManager
 public:
     static QString s_configFile;
     static QSettings* s_settings;
+    static bool init(const QString &configDir);
 
     static QString s_manufacturer;
     static QString s_model;
@@ -16,19 +17,13 @@ public:
     static QString s_firmwareVersion;
 
     static QString s_ipAddress;
-
-    static QString s_loglevel;
-    static QString s_logdir;
-    static QString s_logfilename;
-    static int s_maxfilesize;
-    static int s_maxfilecount;
-
-    static bool s_enablelogfile;
     static bool s_enableWebServer;
     static bool s_enableVXIServer;
-    static bool s_enableDisplay;
 
-    static bool init(const QString &configDir);
+    static QString s_loglevel;
+    static bool s_enablelogfile;
+
+    static bool s_enableDisplay;
 
 private:
     ConfigManager() = delete;

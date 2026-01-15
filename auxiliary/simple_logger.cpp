@@ -4,8 +4,6 @@
 #include <QDateTime>
 #include <QDir>
 #include <QFileInfo>
-#include <QDebug>
-#include <QCoreApplication>
 
 
 Q_LOGGING_CATEGORY(log, "log:")
@@ -32,7 +30,7 @@ namespace {
     void embeddedMessageHandler(QtMsgType type,const QMessageLogContext &context,const QString &msg) {
         Q_UNUSED(type); //debug warning ...
         QString formattedMsg = QString("%1:%2").arg(context.category,msg);
-        fprintf(stderr, "%s\n", qPrintable(formattedMsg));// 总是输出到控制台（Qt自带颜色）
+        fprintf(stderr, "%s\n", qPrintable(formattedMsg));
 
         auto& data = getLoggerData();
         if (data.stream && data.file && data.file->isOpen()) {
@@ -41,11 +39,12 @@ namespace {
             *data.stream << formattedMsg << "\n";
             data.stream->flush();
 
-            if (data.file->size() > ConfigManager::s_maxfilesize) {
+            if (data.file->size() > 6291456) {  // 6 MB
                 data.file->close();
 
                 QString currentPath = data.file->fileName();
                 QFileInfo fileInfo(currentPath);
+
                 QString dirPath = fileInfo.absolutePath();
                 QString baseName = fileInfo.baseName();
                 QString suffix = fileInfo.completeSuffix();
@@ -53,8 +52,7 @@ namespace {
                 QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss");
 
                 // 重命名(当处于同一秒内，文件名称与上次轮转相同，导致重命名失败)
-                QString newFileName = QString("%1_%2.%3").arg(baseName,timestamp,suffix);
-                QString newPath = QDir(dirPath).filePath(newFileName);
+                QString newPath = QDir(dirPath).filePath(QString("%1_%2.%3").arg(baseName,timestamp,suffix));
                 if (!QFile::rename(currentPath, newPath)) {
                     qCWarning(log) << "Failed to rename log file to:" << newPath;
                     data.file->open(QIODevice::WriteOnly | QIODevice::Append);
@@ -67,9 +65,8 @@ namespace {
                 QDir dir(dirPath);
                 QStringList nameFilters = QStringList() << QString("%1_*.%2").arg(baseName,suffix);
                 QStringList logFiles = dir.entryList(nameFilters, QDir::Files, QDir::Time); // 按时间排序
-                if (logFiles.size() >= ConfigManager::s_maxfilecount) {
-                    QString oldestFile = logFiles.last();
-                    QString oldestPath = QDir(dirPath).filePath(oldestFile);
+                if (logFiles.size() >= 6) {  // file counts
+                    QString oldestPath = QDir(dirPath).filePath(logFiles.last());
                     if (!QFile::remove(oldestPath)) {qWarning(log) << "Failed to remove old log file:" << oldestPath;}
                     logFiles.removeLast();
                 }
@@ -96,7 +93,7 @@ void loggermanage(const QString &loglevel,const QString &parentPath) {
     if (loglevel == "debug")        {rules = "*.debug=true\n*.info=true\n*.warning=true";}
     else if (loglevel == "warning") {rules = "*.debug=false\n*.info=false\n*.warning=true";}
     else if (loglevel == "release") {rules = "*.debug=false\n*.info=false\n*.warning=false";}
-    else {return;}
+    else {rules = "";}
     QLoggingCategory::setFilterRules(rules);
 
     //格式化加时间，比直接时间戳延时更多
@@ -119,11 +116,11 @@ void loggermanage(const QString &loglevel,const QString &parentPath) {
     }
 
     qInstallMessageHandler(nullptr);  // 恢复默认处理器
-    QString fullPath = parentPath + "/" + ConfigManager::s_logdir;
+    QString fullPath = parentPath + "/logs";
 
     QDir dir(fullPath);
     if (dir.exists() || dir.mkpath(".")) {
-        QString logFilePath = QDir(fullPath).filePath(ConfigManager::s_logfilename);
+        QString logFilePath = QDir(fullPath).filePath("run.log");
         data.file = new QFile(logFilePath);
 
         if (data.file->open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
