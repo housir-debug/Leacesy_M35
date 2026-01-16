@@ -32,7 +32,7 @@ void WebServer::onNewConnection()
     QTcpSocket *client = m_server->nextPendingConnection();
     if (!client) {return;}
 
-    qDebug() << "New client connected from:" << client->peerAddress().toString()<<client->peerPort();
+    qCDebug(web) << "New client connected from:" << client->peerAddress().toString()<<client->peerPort();
 
     connect(client, &QTcpSocket::errorOccurred,this, [client](QAbstractSocket::SocketError error){
          qCWarning(web) << "Socket error from" << client->peerAddress().toString()<<client->peerPort()<< ":" << client->errorString() << "|" << error;
@@ -192,8 +192,8 @@ QString WebServer::generateHtmlPage()
     )";
 
     QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss");
-    return html.arg(ConfigManager::s_model,ConfigManager::s_serialNumber,ConfigManager::s_firmwareVersion,
-                    ConfigManager::s_ipAddress,timestamp);
+    return html.arg(ConfigManager::s_model,ConfigManager::s_serialNumber,
+                    ConfigManager::s_firmwareVersion ,timestamp);
 }
 
 // ==================== 析构部分 ====================

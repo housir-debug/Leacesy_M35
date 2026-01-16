@@ -34,23 +34,19 @@ public:
 
 signals:
     void serialDataReceived(const QByteArray &data);
-    void serialErrorOccurred(const QString &error);
 
 private:
     void handleReadyRead();
-    void handleError(QSerialPort::SerialPortError error);
 
 private:
     QMutex m_mutex;
     QElapsedTimer m_testTimer;
-    QByteArray m_testData;
-    QString m_postName;
-
-    QThread *m_serialThread{nullptr};
-    QSerialPort *m_serialPort{nullptr};
-    bool m_isListening{false};
     std::atomic<bool> m_isTesting{false};
     std::atomic<qint64> m_bytesReceived{0};
+
+    QString m_portName{""};
+    QThread *m_serialThread{nullptr};
+    QSerialPort *m_serialPort{nullptr};
 };
 
 #endif // SERIALWORKER_H

@@ -9,13 +9,10 @@ ScpiManager* ScpiManager::s_instance = nullptr;
 Q_LOGGING_CATEGORY(scpi, "scpi:")
 
 ScpiManager::ScpiManager(QObject *parent) : QObject(parent) {
+    s_instance = this;
     memset(&m_scpiContext, 0, sizeof(scpi_t));
     memset(&interface, 0, sizeof(interface));
-    s_instance = this;
-}
 
-bool ScpiManager::init()
-{
     interface.error = staticErrorCallback;
     interface.control = staticControlCallback;
     interface.flush = staticFlushCallback;
@@ -36,8 +33,6 @@ bool ScpiManager::init()
               sizeof(input_buffer),                        // 缓冲区大小
               error_queue,                                 // 错误队列
               sizeof(error_queue) / sizeof(scpi_error_t)); // 队列大小
-
-    return true;
 }
 
 const scpi_command_t ScpiManager::m_scpiCommands[] = {
@@ -108,11 +103,6 @@ scpi_result_t ScpiManager::scpiNetworkIpQ(scpi_t* context) {
 // ===================== 外部调用处理部分 =================================
 
 QByteArray ScpiManager::processCommand(const QByteArray &command) {
-    if (!s_instance) {
-        qCCritical(scpi) << "错误：SCPI实例不存在！";
-        return QByteArray("ERROR: Instance null\n");
-    }
-
     if (!m_scpiContext.cmdlist || !m_scpiContext.interface) {
         qCCritical(scpi) << "错误：上下文未初始化！";
         return QByteArray("ERROR: Context not initialized\n");
@@ -121,8 +111,8 @@ QByteArray ScpiManager::processCommand(const QByteArray &command) {
     QByteArray cmd = command;
     if (!cmd.endsWith('\n')) {cmd.append('\n');}
 
-    QMutexLocker locker(&s_instance->m_bufferMutex);
-    s_instance->m_responseBuffer.clear();
+    QMutexLocker locker(&m_bufferMutex);
+    m_responseBuffer.clear();
 
     SCPI_Input(&m_scpiContext, cmd.constData(), cmd.size());
     return m_responseBuffer;
@@ -131,5 +121,6 @@ QByteArray ScpiManager::processCommand(const QByteArray &command) {
 // ======================= 析构部分 ===================================
 
 ScpiManager::~ScpiManager() {
+    m_responseBuffer.clear();
     s_instance = nullptr;
 }

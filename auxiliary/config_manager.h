@@ -25,6 +25,8 @@ public:
 
     static bool s_enableDisplay;
 
+    static bool s_enableUartMess;
+
 private:
     ConfigManager() = delete;
     ~ConfigManager() = delete;

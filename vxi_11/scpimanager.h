@@ -27,7 +27,6 @@ public:
     explicit ScpiManager(QObject *parent = nullptr);
     ~ScpiManager();
 
-    bool init();
     QByteArray processCommand(const QByteArray &command);
 
 private:
@@ -54,7 +53,6 @@ private:
         ESR_POWER_ON    = (1 << 7)   // 电源开启
     };
 
-    QMutex m_statusMutex;
     uint8_t m_esrRegister{0x00};
     QMutex m_bufferMutex;
     QByteArray m_responseBuffer;

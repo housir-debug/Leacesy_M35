@@ -75,31 +75,6 @@ void Test_eth_can(const QString &cansocket){
                      tcpServer, &QObject::deleteLater);
 }
 
-
-void SerialManager(const QString &portName)
-{
-    SerialWorker *serialWorker = new SerialWorker();
-    serialWorker->initSerialPort(portName, QSerialPort::Baud115200);
-
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                     serialWorker, &SerialWorker::closeSerial);
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                     serialWorker, &QObject::deleteLater);
-
-    //挂起 一秒后执行---在lambda中使用局部变量，但生命周期问题singleShot(1000, [](),所以使用捕获singleShot(1000, [serialWorker]()
-    QTimer::singleShot(1000, serialWorker,[serialWorker]() {
-        qCDebug(app) << "\n=== Starting Loopback Test ===";
-        qCDebug(app) << "Please connect TX and RX pins of the serial port!";
-
-        QMetaObject::invokeMethod(serialWorker, &SerialWorker::startLoopbackTest);
-    });
-
-    // 3秒后自动退出
-    //QTimer::singleShot(3000, QCoreApplication::instance(), &QCoreApplication::quit);
-
-
-}
-
 void Test_eth_Serial(const QString &portName)
 {
     SerialWorker *serialWorker = new SerialWorker();
@@ -123,7 +98,6 @@ void Test_eth_Serial(const QString &portName)
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
                      tcpServer, &QObject::deleteLater);
 }
-
 
 void Test_can_serial(const QString &cansocket,const QString &portName)
 {
@@ -184,9 +158,7 @@ int main(int argc, char *argv[])
         if (!ConfigManager::init(parentPath)) {return 1;}
 
         loggermanage(ConfigManager::s_loglevel,parentPath);
-        if (ConfigManager::s_enablelogfile){
-            QObject::connect(&app, &QGuiApplication::aboutToQuit, []{shutdownLogger();});
-        }
+        if (ConfigManager::s_enablelogfile){QObject::connect(&app, &QGuiApplication::aboutToQuit, []{shutdownLogger();});}
     }else{return 1;}
 
     if (ConfigManager::s_enableWebServer){
@@ -198,8 +170,19 @@ int main(int argc, char *argv[])
         TcpServerManager *vxiServer = new TcpServerManager();
         if(!vxiServer->startServer()){return 1;}
 
-        QObject::connect(&app, &QCoreApplication::aboutToQuit,vxiServer, &TcpServerManager::stopServer);
-        QObject::connect(&app, &QCoreApplication::aboutToQuit,vxiServer, &QObject::deleteLater);
+        QObject::connect(&app, &QGuiApplication::aboutToQuit,vxiServer, &TcpServerManager::stopServer);
+        QObject::connect(&app, &QGuiApplication::aboutToQuit,vxiServer, &QObject::deleteLater);
+    }
+
+    if (ConfigManager::s_enableUartMess){
+        SerialWorker *Uart_8 = new SerialWorker();
+        if(!Uart_8->initSerialPort("/dev/ttyS8", QSerialPort::Baud115200)){return 1;}
+
+        QObject::connect(&app, &QGuiApplication::aboutToQuit,Uart_8, &SerialWorker::closeSerial);
+        QObject::connect(&app, &QGuiApplication::aboutToQuit,Uart_8, &QObject::deleteLater);
+
+        QMetaObject::invokeMethod(Uart_8, &SerialWorker::startLoopbackTest);
+        //QTimer::singleShot(3000, QGuiApplication::instance(), &QCoreApplication::quit);
     }
 
     if (ConfigManager::s_enableDisplay){
@@ -212,7 +195,6 @@ int main(int argc, char *argv[])
     }
 
     //canmanager("can0");
-    //SerialManager("/dev/ttyS4");
 
     //Test_eth_can("can0");
     //Test_eth_Serial("/dev/ttyS4");

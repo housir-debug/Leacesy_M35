@@ -20,6 +20,8 @@ bool ConfigManager::s_enablelogfile = false;
 
 bool ConfigManager::s_enableDisplay = true;
 
+bool ConfigManager::s_enableUartMess = true;
+
 // ===================== 初始化方法 =====================
 
 bool ConfigManager::init(const QString &configDir)
@@ -43,7 +45,9 @@ bool ConfigManager::init(const QString &configDir)
     s_loglevel = s_settings->value("Logger/logLevel").toString();
     s_enablelogfile = s_settings->value("Logger/EnablelogFile").toBool();
 
-    s_enableDisplay = s_settings->value("Switch/EnableDisplay").toBool();
+    s_enableDisplay = s_settings->value("Display/EnableDisplay").toBool();
+
+    s_enableUartMess = s_settings->value("Uart/EnableUartMess").toBool();
 
     return true;
 }

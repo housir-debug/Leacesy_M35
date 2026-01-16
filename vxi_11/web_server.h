@@ -24,6 +24,7 @@ public:
 
 private:
     void onNewConnection();
+
     void handleHttpRequest(QTcpSocket *client, const QByteArray &request);
     void sendHttpResponse(QTcpSocket *client,const QString &content,
          const QString &contentType = "text/html",int statusCode = 200);
