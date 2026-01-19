@@ -11,68 +11,30 @@
 #include "serialworker.h"
 #include "canworker.h"
 
-void canmanager(const QString &cansocket)
-{
-    CanWorker *canWorker = new CanWorker();
-    QThread *canThread = new QThread();
-    canWorker->moveToThread(canThread);
-
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                         canWorker, &CanWorker::closeCan);
-    QObject::connect(canThread, &QThread::finished,
-                     canWorker, &QObject::deleteLater);
-    QObject::connect(canThread, &QThread::finished,
-                     canThread, &QObject::deleteLater);
-
-    canThread->setObjectName("can_worker");
-    canThread->start();
-
-    bool Initialized = false;
-    QMetaObject::invokeMethod(canWorker, [canWorker, &Initialized, &cansocket]() {
-        Initialized = canWorker->initialize(cansocket, 1000000);
-    }, Qt::QueuedConnection);//Blocking
-
-    sleep(5);
-
-    if (Initialized) {
-         QMetaObject::invokeMethod(canWorker, &CanWorker::testLoopback);
-         QTimer::singleShot(6000, QCoreApplication::instance(), &QCoreApplication::quit);
-    }
-}
-
 void Test_eth_can(const QString &cansocket){
     CanWorker *canWorker = new CanWorker();
     QThread *canThread = new QThread();
+
     canWorker->moveToThread(canThread);
-
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                         canWorker, &CanWorker::closeCan);
-    QObject::connect(canThread, &QThread::finished,
-                     canWorker, &QObject::deleteLater);
-    QObject::connect(canThread, &QThread::finished,
-                     canThread, &QObject::deleteLater);
-
     canThread->setObjectName("can_worker");
     canThread->start();
 
-    bool Initialized = false;
-    QMetaObject::invokeMethod(canWorker, [canWorker, &Initialized, &cansocket]() {
-        Initialized = canWorker->initialize(cansocket, 1000000);
-    }, Qt::BlockingQueuedConnection);
+    QObject::connect(QGuiApplication::instance(), &QGuiApplication::aboutToQuit,canWorker, &CanWorker::closeCan);
+    QObject::connect(canThread, &QThread::finished,canWorker, &QObject::deleteLater);
+    QObject::connect(canThread, &QThread::finished,canThread, &QObject::deleteLater);
 
+    QMetaObject::invokeMethod(canWorker, [canWorker, &cansocket]() {
+        canWorker->initialize(cansocket, 1000000);
+    }, Qt::BlockingQueuedConnection);
 
     TcpServerManager *tcpServer = new TcpServerManager();
     tcpServer->startServer();
 
-    QObject::connect(canWorker, &CanWorker::frameReceived,
-                     tcpServer, &TcpServerManager::forwardCanData);
-    QObject::connect(tcpServer, &TcpServerManager::canSendRequest,
-                     canWorker, &CanWorker::sendFrame);
+    QObject::connect(QGuiApplication::instance(), &QGuiApplication::aboutToQuit,tcpServer, &TcpServerManager::stopServer);
+    QObject::connect(QGuiApplication::instance(), &QGuiApplication::aboutToQuit,tcpServer, &QObject::deleteLater);
 
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                     tcpServer, &TcpServerManager::stopServer);
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                     tcpServer, &QObject::deleteLater);
+    QObject::connect(canWorker, &CanWorker::frameReceived,tcpServer, &TcpServerManager::forwardCanData);
+    QObject::connect(tcpServer, &TcpServerManager::canSendRequest,canWorker, &CanWorker::sendFrame);
 }
 
 void Test_eth_Serial(const QString &portName)
@@ -80,62 +42,45 @@ void Test_eth_Serial(const QString &portName)
     SerialWorker *serialWorker = new SerialWorker();
     serialWorker->initSerialPort(portName, QSerialPort::Baud115200);
 
-    QObject::connect(QGuiApplication::instance(), &QGuiApplication::aboutToQuit,
-                     serialWorker, &SerialWorker::closeSerial);
-    QObject::connect(QGuiApplication::instance(), &QGuiApplication::aboutToQuit,
-                     serialWorker, &QObject::deleteLater);
+    QObject::connect(QGuiApplication::instance(), &QGuiApplication::aboutToQuit,serialWorker, &SerialWorker::closeSerial);
+    QObject::connect(QGuiApplication::instance(), &QGuiApplication::aboutToQuit,serialWorker, &QObject::deleteLater);
 
     TcpServerManager *tcpServer = new TcpServerManager();
     tcpServer->startServer();
 
-    QObject::connect(serialWorker, &SerialWorker::serialDataReceived,
-                     tcpServer, &TcpServerManager::forwardSerialData);
-    QObject::connect(tcpServer, &TcpServerManager::SerialSendRequest,
-                     serialWorker, &SerialWorker::writeSerialData);
+    QObject::connect(QGuiApplication::instance(), &QGuiApplication::aboutToQuit,tcpServer, &TcpServerManager::stopServer);
+    QObject::connect(QGuiApplication::instance(), &QGuiApplication::aboutToQuit,tcpServer, &QObject::deleteLater);
 
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                     tcpServer, &TcpServerManager::stopServer);
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                     tcpServer, &QObject::deleteLater);
+    QObject::connect(serialWorker, &SerialWorker::serialDataReceived,tcpServer, &TcpServerManager::forwardSerialData);
+    QObject::connect(tcpServer, &TcpServerManager::SerialSendRequest,serialWorker, &SerialWorker::writeSerialData);
 }
 
 void Test_can_serial(const QString &cansocket,const QString &portName)
 {
-    CanWorker *canWorker = new CanWorker();
-    QThread *canThread = new QThread();
-    canWorker->moveToThread(canThread);
-
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                         canWorker, &CanWorker::closeCan);
-    QObject::connect(canThread, &QThread::finished,
-                     canWorker, &QObject::deleteLater);
-    QObject::connect(canThread, &QThread::finished,
-                     canThread, &QObject::deleteLater);
-
-    canThread->setObjectName("can_worker");
-    canThread->start();
-
-    bool Initialized = false;
-    QMetaObject::invokeMethod(canWorker, [canWorker, &Initialized, &cansocket]() {
-        Initialized = canWorker->initialize(cansocket, 1000000);
-    }, Qt::QueuedConnection);//Blocking
-
-    //sleep(1);
-
     SerialWorker *serialWorker = new SerialWorker();
     serialWorker->initSerialPort(portName, QSerialPort::Baud115200);
 
-    QObject::connect(serialWorker, &SerialWorker::serialDataReceived,
-                     canWorker, &CanWorker::forwardSerialData);
-    QObject::connect(canWorker, &CanWorker::SerialSendRequest,
-                     serialWorker, &SerialWorker::writeSerialData);
+    QObject::connect(QGuiApplication::instance(), &QGuiApplication::aboutToQuit,serialWorker, &SerialWorker::closeSerial);
+    QObject::connect(QGuiApplication::instance(), &QGuiApplication::aboutToQuit,serialWorker, &QObject::deleteLater);
 
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                     serialWorker, &SerialWorker::closeSerial);
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit,
-                     serialWorker, &QObject::deleteLater);
+    CanWorker *canWorker = new CanWorker();
+    QThread *canThread = new QThread();
 
-    QMetaObject::invokeMethod(canWorker, &CanWorker::testserialloop);//存在异步析构耗时开销事件循环问题导致延时
+    canWorker->moveToThread(canThread);
+    canThread->setObjectName("can_worker");
+    canThread->start();
+
+    QObject::connect(QGuiApplication::instance(), &QGuiApplication::aboutToQuit,canWorker, &CanWorker::closeCan);
+    QObject::connect(canThread, &QThread::finished,canWorker, &QObject::deleteLater);
+    QObject::connect(canThread, &QThread::finished,canThread, &QObject::deleteLater);
+
+    QObject::connect(serialWorker, &SerialWorker::serialDataReceived,canWorker, &CanWorker::forwardSerialData);
+    QObject::connect(canWorker, &CanWorker::SerialSendRequest,serialWorker, &SerialWorker::writeSerialData);
+
+    QMetaObject::invokeMethod(canWorker, [canWorker, &cansocket]() {
+        canWorker->initialize(cansocket, 1000000);
+        canWorker->testserialloop();
+    }, Qt::BlockingQueuedConnection);
 }
 
 
@@ -182,7 +127,27 @@ int main(int argc, char *argv[])
         QObject::connect(&app, &QGuiApplication::aboutToQuit,Uart_8, &QObject::deleteLater);
 
         QMetaObject::invokeMethod(Uart_8, &SerialWorker::startLoopbackTest);
-        //QTimer::singleShot(3000, QGuiApplication::instance(), &QCoreApplication::quit);
+        //QTimer::singleShot(300, &app, &QGuiApplication::quit);
+    }
+
+    if (ConfigManager::s_enableCanMess){
+        CanWorker *canWorker = new CanWorker();
+        QThread *canThread = new QThread();
+
+        canWorker->moveToThread(canThread);
+        canThread->setObjectName("can_worker");
+        canThread->start();
+
+        QObject::connect(&app, &QGuiApplication::aboutToQuit,canWorker, &CanWorker::closeCan);
+        QObject::connect(canThread, &QThread::finished,canWorker, &QObject::deleteLater);
+        QObject::connect(canThread, &QThread::finished,canThread, &QObject::deleteLater);
+
+        QMetaObject::invokeMethod(canWorker, [canWorker]() {
+            canWorker->initialize("all", 1000000);  // all
+            canWorker->testLoopback();
+        }, Qt::QueuedConnection);//Blocking
+
+        QTimer::singleShot(300, &app, &QGuiApplication::quit);
     }
 
     if (ConfigManager::s_enableDisplay){
@@ -194,10 +159,8 @@ int main(int argc, char *argv[])
         engine.load(url);
     }
 
-    //canmanager("can0");
-
-    //Test_eth_can("can0");
-    //Test_eth_Serial("/dev/ttyS4");
+    //Test_eth_can("can1");
+    //Test_eth_Serial("/dev/ttyS5");
     //Test_can_serial("can0","/dev/ttyS4");
 
     return app.exec();

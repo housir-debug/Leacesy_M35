@@ -27,6 +27,8 @@ public:
 
     static bool s_enableUartMess;
 
+    static bool s_enableCanMess;
+
 private:
     ConfigManager() = delete;
     ~ConfigManager() = delete;

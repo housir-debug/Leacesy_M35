@@ -16,12 +16,12 @@ TcpServerManager::TcpServerManager(QObject *parent)
     m_scpiManager = new ScpiManager(this);
 }
 
-void TcpServerManager::forwardCanData(quint32 canId, const QByteArray &data, qint64 timestamp)
+void TcpServerManager::forwardCanData(quint32 canId, const QByteArray &data,const QString &canface)
 {
     if (m_state.load() != STATE_RUNNING) {return;}
 
     Q_UNUSED(canId)
-    Q_UNUSED(timestamp)
+    Q_UNUSED(canface)
 
     sendToAllClients(data);
 }
@@ -49,9 +49,9 @@ void TcpServerManager::sendToAllClients(const QByteArray &data)
     }
 
     if (successCount == m_clients.size()) {
-        if (data != "HEARTBEAT"){
+        if (data.toHex() == "1122334455667788"){
             qint64 elapsed = m_testtimer.elapsed();
-            qCDebug(tcp) << "eth-can test time:" <<elapsed;
+            qCDebug(tcp) << "eth-can/uart test time:" <<elapsed;
         }
     }else{qCDebug(tcp) << "tcpsendclient failcount:" <<failedCount<< "clients,"<< successCount << "clients";}
 }
@@ -235,6 +235,13 @@ void TcpServerManager::processClientData(QTcpSocket *client,const QByteArray new
         QByteArray response = m_scpiManager->processCommand(newdata);
         client->write(response);
         qCDebug(tcp) << "SCPI响应发送:" << response << ",长度:" << response.size() << "bytes";
+        return;
+    }
+
+    if (message == "test"){
+        m_testtimer.start();
+        emit canSendRequest(0x123,QByteArray::fromHex("1122334455667788"),"can1");
+        emit SerialSendRequest(QByteArray::fromHex("1122334455667788"));
         return;
     }
 
@@ -685,8 +692,12 @@ void TcpServerManager::stopServer()
 
     m_state.store(STATE_STOPPING);
     m_deviceLinks.clear();
+    delete m_scpiManager;
+    m_scpiManager = nullptr;
+
     m_cleanupTimer->stop();
     delete m_cleanupTimer;
+    m_cleanupTimer = nullptr;
 
     {
         for (QTcpSocket *client : qAsConst(m_clients)) {
@@ -696,17 +707,17 @@ void TcpServerManager::stopServer()
             }
         }
         m_clients.clear();
-
-        if (m_tcpServer->isListening()) {
-            m_tcpServer->close();
-        }
+        m_tcpServer->close();
+        delete m_tcpServer;
+        m_tcpServer = nullptr;
     }
 
-    if (m_serverThread && m_serverThread->isRunning()) {
+    if (m_serverThread) {
         m_serverThread->quit();
         m_serverThread->wait(1000);// 等待1秒
         m_serverThread->deleteLater();
         delete m_serverThread;
+        m_serverThread = nullptr;
     }
 
     m_state.store(STATE_STOPPED);

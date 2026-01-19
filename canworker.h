@@ -30,44 +30,37 @@ public:
     explicit CanWorker(QObject *parent = nullptr);
     ~CanWorker();
 
-    bool initialize(const QString &interfaceName = "can0", int bitrate = 1000000);
+    bool initialize(const QString  &interface = "can0", const int &bitrate = 1000000);
     void closeCan();
 
-    bool sendFrame(quint32 canId, const QByteArray &data);
+    bool sendFrame(quint32 canId, const QByteArray &data,const QString &canface);
     void forwardSerialData(const QByteArray &data);
 
     void testLoopback();
     void testserialloop();
 
 signals:
-    void frameReceived(quint32 canId, const QByteArray &data, qint64 timestamp);
-    void errorOccurred(const QString &error);
-    void frameSenterror(quint32 canId, const QString &error);
+    void frameReceived(const quint32 &canId, const QByteArray &data,const QString &canface);
     void SerialSendRequest(const QByteArray &data);
 
 private:
-    bool initializeSocket();
-    bool configureInterface(int bitrate);
-    void startListening();
-
+    bool initializeSocket(const QString &interfaceName, int &socketFd);
     void listenLoop();
-    void listenProcessing(quint32 canId, const QByteArray &data, qint64 timestamp);
-    bool sendFrame_en(const can_frame &frame);
+    void listenProcessing(const quint32 &canId, const QByteArray &data,const QString &canface);
 
 private:
     QMutex m_Mutex;
-    QString m_interfaceName;
     QElapsedTimer m_testtimer;
 
-    int m_bitrate{0};
-    int m_canSocket{-1};
+    int m_can0Socket{-1};
+    int m_can1Socket{-1};
+    int m_can2Socket{-1};
 
     QThread *m_listenThread{nullptr};
-    std::atomic<bool> m_listening{false};
     std::atomic<bool> m_stopRequested{false};
+
     std::atomic<bool> m_testing{false};
     std::atomic<qint64> m_receivedCount{0};
-    std::atomic<qint64> m_sentCount{0};
 };
 
 #endif // CANWORKER_H

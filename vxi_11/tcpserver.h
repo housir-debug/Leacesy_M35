@@ -113,11 +113,11 @@ public:
     bool startServer();
     void stopServer();
 
-    void forwardCanData(quint32 canId, const QByteArray &data, qint64 timestamp);
+    void forwardCanData(quint32 canId, const QByteArray &data,const QString &canface);
     void forwardSerialData(const QByteArray &data);
 
 signals:
-    void canSendRequest(quint32 canId, const QByteArray &data);
+    void canSendRequest(quint32 canId, const QByteArray &data,const QString &canface);
     void SerialSendRequest(const QByteArray &data);
 
 private:

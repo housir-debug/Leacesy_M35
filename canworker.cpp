@@ -1,385 +1,245 @@
 #include "canworker.h"
 
+// ========================== 初始化部分 ===================================
+
 Q_LOGGING_CATEGORY(can, "can:");
 
-CanWorker::CanWorker(QObject *parent)
-    : QObject(parent){}
+CanWorker::CanWorker(QObject *parent): QObject(parent){}
 
-bool CanWorker::initialize(const QString &interfaceName, int bitrate)
+bool CanWorker::initialize(const QString &interface, const int &bitrate)
 {
-    QMutexLocker locker(&m_Mutex);
+    if (m_can0Socket>=0||m_can1Socket>=0||m_can2Socket>=0) {return false;}
 
-    if (m_canSocket >= 0) {
-        qCWarning(can) << "CAN interface already opened";
-        return true;
-    }
+    if(interface == "all"){
+        QStringList canInterfaces = {"can0", "can1", "can2"};
+        QStringList commands;
+        for (const QString &iface : canInterfaces) {
+                commands << QString("ip link set %1 down").arg(iface);
+                commands << QString("ip link set %1 type can bitrate %2").arg(iface).arg(bitrate);
+                commands << QString("ip link set %1 type can restart-ms 18").arg(iface);
+                commands << QString("ip link set %1 txqueuelen 1000").arg(iface);
+                commands << QString("ip link set %1 up").arg(iface);
+        }
 
-    m_interfaceName = interfaceName;
-    m_bitrate = bitrate;
+        qCDebug(can) << "Configuring CAN interface:";
+        for (const QString &cmd : qAsConst(commands)) {
+            qCDebug(can) << cmd;
+            int ret = system(cmd.toUtf8().constData());
+            if (ret != 0) {return false;}
+        }
 
-    if (!configureInterface(bitrate)) {
-        qCCritical(can) << "Failed to configure CAN interface " << interfaceName;
-        emit errorOccurred(QString("Failed to configure CAN interface %1").arg(interfaceName));
-        return false;
-    }
+        QThread::msleep(10);
+        bool success= true;
+        success= success && initializeSocket("can0",m_can0Socket);
+        success= success && initializeSocket("can1",m_can1Socket);
+        success= success && initializeSocket("can2",m_can2Socket);
+        if (!success) {
+            qCCritical(can) << "Failed to initialize all CAN sockets";
+            return false;
+        }
+    }else{
+        QStringList commands;
+        commands << QString("ip link set %1 down").arg(interface);
+        commands << QString("ip link set %1 type can bitrate %2").arg(interface,QString::number(bitrate));
+        commands << QString("ip link set %1 type can restart-ms 18").arg(interface);
+        commands << QString("ip link set %1 txqueuelen 1000").arg(interface);
+        commands << QString("ip link set %1 type can loopback on").arg(interface);
+        commands << QString("ip link set %1 up").arg(interface);
 
-    if (!initializeSocket()) {
-        qCCritical(can) << "Failed to initialize CAN socket for " << interfaceName;
-        emit errorOccurred(QString("Failed to initialize CAN socket for %1").arg(interfaceName));
-        return false;
-    }
+        qCDebug(can) << "Configuring CAN interface:";
+        for (const QString &cmd : qAsConst(commands)) {
+            qCDebug(can) << cmd;
+            int ret = system(cmd.toUtf8().constData());
+            if (ret != 0) {return false;}
+        }
 
-    qCInfo(can) << m_interfaceName << "opened successfully with bitrate" << bitrate;
-
-    QObject::connect(this, &CanWorker::frameReceived,this, &CanWorker::listenProcessing);
-    startListening();
-    return true;
-}
-
-bool CanWorker::configureInterface(int bitrate)
-{
-    QStringList commands;
-    commands << QString("ip link set %1 down").arg(m_interfaceName);
-    commands << QString("ip link set %1 type can bitrate %2").arg(m_interfaceName,QString::number(bitrate));
-    commands << QString("ip link set %1 type can restart-ms 18").arg(m_interfaceName);
-    commands << QString("ip link set %1 txqueuelen 1000").arg(m_interfaceName);
-    commands << QString("ip link set %1 type can loopback on").arg(m_interfaceName);
-    commands << QString("ip link set %1 up").arg(m_interfaceName);
-
-    qCDebug(can) << "Configuring CAN interface:";
-    for (const QString &cmd : qAsConst(commands)) {
-        qCDebug(can) << cmd;
-        int ret = system(cmd.toUtf8().constData());
-        if (ret != 0) {
-           qCWarning(can) << "Command failed:" << cmd;
-           return false;
+        QThread::msleep(10);
+        bool success= false;
+        if(interface == "can0"){success=initializeSocket(interface,m_can0Socket);}
+        if(interface == "can1"){success=initializeSocket(interface,m_can1Socket);}
+        if(interface == "can2"){success=initializeSocket(interface,m_can2Socket);}
+        if (!success) {
+            qCCritical(can) << "Failed to initialize all CAN sockets";
+            return false;
         }
     }
 
-    QThread::msleep(10);
+    m_listenThread = QThread::create([this]() {this->listenLoop();});
+    m_listenThread->setObjectName(QString("%1_Listener").arg(interface));
+    m_listenThread->start();
+
+    qCDebug(can) << "can socket opened successfully with bitrate" << bitrate;
     return true;
 }
 
-bool CanWorker::initializeSocket()
+bool CanWorker::initializeSocket(const QString &interfaceName, int &socketFd)
 {
-    m_canSocket = socket(PF_CAN, SOCK_RAW, CAN_RAW);
-    if (m_canSocket < 0) {
-        qCCritical(can)<< "Create CAN socket failed:" << strerror(errno);
+    socketFd = socket(PF_CAN, SOCK_RAW, CAN_RAW);
+    if (socketFd < 0) {
+        qCCritical(can) << "Create CAN socket for" << interfaceName << "failed:" << strerror(errno);
         return false;
     }
 
-    // 获取接口索引
     struct ifreq ifr;
-    strncpy(ifr.ifr_name, m_interfaceName.toUtf8().constData(), IFNAMSIZ - 1);
+    strncpy(ifr.ifr_name, interfaceName.toUtf8().constData(), IFNAMSIZ - 1);
     ifr.ifr_name[IFNAMSIZ - 1] = '\0';
-
-    if (ioctl(m_canSocket, SIOCGIFINDEX, &ifr) < 0) {
+    if (ioctl(socketFd, SIOCGIFINDEX, &ifr) < 0) {
         qCCritical(can) << "Cannot get interface:" << strerror(errno);
-        close(m_canSocket);
-        m_canSocket = -1;
+        close(socketFd);
+        socketFd = -1;
         return false;
     }
 
-    // 绑定套接字到CAN接口
     struct sockaddr_can addr;
     memset(&addr, 0, sizeof(addr));
     addr.can_family = AF_CAN;
     addr.can_ifindex = ifr.ifr_ifindex;
-
-    if (bind(m_canSocket, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+    if (bind(socketFd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         qCCritical(can) << "Error: Bind CAN interface failed:" << strerror(errno);
-        close(m_canSocket);
-        m_canSocket = -1;
+        close(socketFd);
+        socketFd = -1;
         return false;
     }
 
     // 设置非阻塞模式
-    int flags = fcntl(m_canSocket, F_GETFL, 0);
-    fcntl(m_canSocket, F_SETFL, flags | O_NONBLOCK);
+    int flags = fcntl(socketFd, F_GETFL, 0);
+    fcntl(socketFd, F_SETFL, flags | O_NONBLOCK);
 
-    // 是否开启回环
-    int recv_own_msgs = 0; // 0表示不接收自己发送的帧--默认
-    //int recv_own_msgs = 1; //在内核socket中直接环回到接收缓冲区--不阻塞物理发送
-    setsockopt(m_canSocket, SOL_CAN_RAW, CAN_RAW_RECV_OWN_MSGS, &recv_own_msgs, sizeof(recv_own_msgs));
+    int recv_own_msgs = 0; // 0不接收 | 1; 在内核socket中直接环回到接收缓冲区--不阻塞物理发送
+    setsockopt(socketFd, SOL_CAN_RAW, CAN_RAW_RECV_OWN_MSGS, &recv_own_msgs, sizeof(recv_own_msgs));
 
-    qCDebug(can) << "Created CAN socket success!";
+    int sndbuf_size = 100000 * sizeof(struct can_frame);  // format 1000fp | write bufsize
+    setsockopt(socketFd, SOL_SOCKET, SO_SNDBUF, &sndbuf_size, sizeof(sndbuf_size));
+
     return true;
 }
 
-void CanWorker::startListening()
-{
-    if (m_listening.load()) {
-        qCWarning(can) << "Already listening";
-        return;
-    }
-
-    if (m_canSocket < 0) {
-        qCWarning(can) << "CAN not initialized";
-        emit errorOccurred("CAN not initialized");
-        return;
-    }
-
-    m_listenThread = QThread::create([this]() {
-            this->listenLoop();
-        });
-
-    m_stopRequested.store(false);
-    m_listening.store(true);
-
-    m_listenThread->setObjectName(QString("%1_Listener").arg(m_interfaceName));
-    m_listenThread->start();
-}
-
-
 void CanWorker::listenLoop()
 {
-    // 这个函数在专用监听线程中运行
-    // 注意：不能直接访问成员变量，需要加锁或使用原子变量
-    qCInfo(can) << "Entering listenLoop in thread:" << QThread::currentThread();
-
-    int canSocket = -1;
-    {
-        QMutexLocker locker(&m_Mutex);
-        canSocket = m_canSocket;
-    }
-    if (canSocket < 0) {
-            return;
-    }
-
-    // epoll是Linux特有的高效I/O多路复用机制，用于监控多个文件描述符的状态
     int epoll_fd = epoll_create1(EPOLL_CLOEXEC);//设置close-on-exec标志，进程exec时自动关闭
     if (epoll_fd < 0) {
-        QString error = QString("Epoll create failed: %1").arg(strerror(errno));
-        emit errorOccurred(error);
+        qCWarning(can)<<"Epoll create failed: "<<strerror(errno);
         return;
     }
 
-    // 添加CAN套接字到epoll
-    struct epoll_event ev;
-    ev.events = EPOLLIN;
+    int can0Socket = -1;int can1Socket = -1;int can2Socket = -1;
+    {
+        // 不能直接访问成员变量，需要加锁或使用原子变量
+        QMutexLocker locker(&m_Mutex);
+        if (m_can0Socket > 0) {can0Socket = m_can0Socket;}
+        if (m_can1Socket > 0) {can1Socket = m_can1Socket;}
+        if (m_can2Socket > 0) {can2Socket = m_can2Socket;}
+    }
+
+    if (can0Socket >0){
+        struct epoll_event ev0;
+        ev0.events = EPOLLIN;
+        ev0.data.fd = can0Socket;
+        if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, can0Socket, &ev0) < 0) { // - EPOLL_CTL_ADD: 添加监控
+            qCWarning(can)<<"Epoll add failed: "<<strerror(errno);
+            close(epoll_fd);
+            return;
+        }
+    }
+    if (can1Socket >0){
+        struct epoll_event ev1;
+        ev1.events = EPOLLIN;
+        ev1.data.fd = can1Socket;
+        if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, can1Socket, &ev1) < 0) { // - EPOLL_CTL_ADD: 添加监控
+            qCWarning(can)<<"Epoll add failed: "<<strerror(errno);
+            close(epoll_fd);
+            return;
+        }
+    }
+    if (can2Socket >0){
+        struct epoll_event ev2;
+        ev2.events = EPOLLIN;
+        ev2.data.fd = can2Socket;
+        if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, can2Socket, &ev2) < 0) { // - EPOLL_CTL_ADD: 添加监控
+            qCWarning(can)<<"Epoll add failed: "<<strerror(errno);
+            close(epoll_fd);
+            return;
+        }
+    }
     /*- EPOLLIN:  文件描述符可读
       - EPOLLOUT: 文件描述符可写
       - EPOLLERR: 发生错误
       - EPOLLHUP: 挂起（对端关闭）
       - EPOLLET:  边缘触发模式（默认是水平触发）*/
-    ev.data.fd = canSocket;
-    if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, canSocket, &ev) < 0) { // - EPOLL_CTL_ADD: 添加监控
-        QString error = QString("Epoll add failed: %1").arg(strerror(errno));
-        emit errorOccurred(error);
-        close(epoll_fd);
-        return;
-    }
 
     struct epoll_event events[10];// 数组大小10表示一次最多处理10个就绪事件
+    struct can_frame frame;
 
     while (!m_stopRequested.load()) {
         // - 10: 最多返回的事件数量（数组大小）  - 100: 超时时间(毫秒)，100ms后即使没有事件也返回
         int nfds = epoll_wait(epoll_fd, events, 10, 100);
         if (nfds < 0) {
-            if (errno == EINTR) {
-                continue; // 被信号中断，继续
-            }
-            QString error = QString("Epoll wait error: %1").arg(strerror(errno));
-            emit errorOccurred(error);
+            if (errno == EINTR) {continue;}
+            qCWarning(can)<<"Epoll wait error:"<<strerror(errno);
             break;
         }
 
         for (int i = 0; i < nfds; i++) {
-            if (events[i].data.fd == canSocket) {
-                // 因为epoll是水平触发（默认），只要缓冲区有数据就会一直报告可读
-                while (true) {
-                    struct can_frame frame;
-                    int nbytes = read(canSocket, &frame, sizeof(frame));
-
-                    if (nbytes <= 0) {
-                        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                            break; // 没有更多数据 ← 跳出内层while->进入epoll内核态等待
-                        }
-                        QString error = QString("Read error: %1").arg(strerror(errno));
-                        emit errorOccurred(error);
-                        m_stopRequested.store(true);
-                        break;
-                    }
-
-                    if (nbytes == sizeof(frame)) {
-                        QByteArray data(reinterpret_cast<const char*>(frame.data), frame.can_dlc);
-                        qint64 timestamp = QDateTime::currentMSecsSinceEpoch();
-
-                        /*qDebug() << QString("CAN recv - ID: 0x%1, Len: %2, Data: %3,time: %4")
-                                    .arg(frame.can_id, 3, 16, QChar('0'))
-                                    .arg(frame.can_dlc)
-                                    .arg(QString(data.toHex(' ').toUpper()))
-                                    .arg(timestamp);*/
-
-                        emit frameReceived(frame.can_id, data, timestamp);
-                    }
+            // 因为epoll是水平触发（默认），只要缓冲区有数据就会一直报告可读
+            while (true) {
+                int nbytes = read(events[i].data.fd, &frame, sizeof(frame));
+                if (nbytes <= 0) {
+                    if (errno == EAGAIN || errno == EWOULDBLOCK) {break;}
+                    qCWarning(can)<<"Read error: %1"<<strerror(errno);
+                    m_stopRequested.store(true);
+                    break;
                 }
+
+                if (nbytes != sizeof(frame)) {qCWarning(can)<<"Occurred incomplete content: "<<frame.data<<"valid btyes: "<<frame.can_dlc;continue;}
+                QByteArray data(reinterpret_cast<const char*>(frame.data), frame.can_dlc);
+                if (events[i].data.fd == can0Socket) {listenProcessing(frame.can_id, data,"can0");}
+                if (events[i].data.fd == can1Socket) {listenProcessing(frame.can_id, data,"can1");}
+                if (events[i].data.fd == can2Socket) {listenProcessing(frame.can_id, data,"can2");}
             }
-            // 如果有多个socket被监控，这里会有其他else if分支
         }
     }
 
     close(epoll_fd);
-    qCInfo(can) << "CAN listener thread stopped";
+    qCDebug(can) << "CAN listener thread stopped";
     QThread::currentThread()->quit();
 }
 
-void CanWorker::listenProcessing(quint32 canId, const QByteArray &data, qint64 timestamp)
+// ========================== 信息处理部分 ===================================
+
+void CanWorker::listenProcessing(const quint32 &canId, const QByteArray &data,const QString &canface)
 {
-    if (!m_listening.load()) {return;}
-
-    m_receivedCount++;
     if (m_testing.load()) {
-        qCDebug(can) << QString("Test mode - Received frame %1: ID: 0x%2, Len: %3, data: %7, Total received: %5 frames, Time: %6)")
-                    .arg(m_receivedCount)
-                    .arg(canId, 0, 16)
-                    .arg(data.size())
-                    .arg(m_receivedCount)
-                    .arg(timestamp)
-                    .arg(QString(data.toHex(' ').toUpper()));
+        m_receivedCount++;
+        qCDebug(can)  << "Test mode - Received frame " << m_receivedCount<< ": ID: 0x" << QString::number(canId, 16).toUpper()
+                      << ", Len: " << data.size()<< ", data: " << QString(data.toHex(' ').toUpper())<< ", face: " << canface;
 
-        // 检查测试是否完成（比较测试函数的设定的数据量count的设定）
-        if (m_receivedCount >= 100 ) {
+        if (m_receivedCount >= 600) {
             qint64 elapsed = m_testtimer.elapsed();
+            double frameRate = (600 * 1000.0) / elapsed;
 
-            if (elapsed > 0) {
-                double frameRate = (m_receivedCount * 1000.0) / elapsed;
+            qCDebug(can) << QString(
+                "CAN Loopback Test Result: "
+                "Test duration: %1 ms  "
+                "Frame rate: %2 fps  "
+            ).arg(elapsed).arg(frameRate, 0, 'f', 2);
 
-                QString result = QString(
-                    "================"
-                    "CAN Loopback Test Result: "
-                    "Test duration: %1 ms  "
-                    "Frames sent: %2  "
-                    "Frames received: %3  "
-                    "Frame rate: %5 fps  "
-                    "Packet loss: %8%  "
-                    "================"
-                ).arg(elapsed)
-                 .arg(m_sentCount)
-                 .arg(m_receivedCount)
-                 .arg(frameRate, 0, 'f', 2)
-                 .arg(100.0 * (m_sentCount -m_receivedCount) / m_sentCount, 0, 'f', 2);
-
-                qCDebug(can) << result;
-            }
             m_testing.store(false);
         }
-
-        //qint64 elapsed = m_testtimer.elapsed();
-        //qDebug() << "serial-can test time:" <<elapsed;
-
-    } else {
-        qCDebug(can) << QString("Normal mode - Received: ID: 0x%1, Data: %2, Total received: %3 frames, Time: %4")
-                    .arg(canId, 0, 16)
-                    .arg(QString(data.toHex(' ').toUpper()))
-                    .arg(m_receivedCount)
-                    .arg(timestamp);
-    }
-}
-
-
-void CanWorker::testLoopback()
-{
-    quint32 testId = 0x123;
-    const QByteArray &testData = QByteArray::fromHex("1122334455667788");
-    int count = 100;
-    int intervalMs = 0;
-
-    if (m_canSocket < 0) {return;}
-
-    QByteArray data = testData;
-    if (data.size() > 8) {
-        data = data.left(8); //取前八位
+        return;
     }
 
-    if (!m_testing.load()){
-        m_testing.store(true);
-        qCDebug(can) << QString("开始回环测试...ID: 0x%1, 数据: %2, 次数: %3, 间隔: %4ms")
-                    .arg(testId, 0, 16)
-                    .arg(QString(data.toHex()))
-                    .arg(count)
-                    .arg(intervalMs);
-    }else{
-        qCCritical(can) << "Testing has now begun" ;
-    }
+    qCDebug(can) << QString("Normal mode - Received: ID: 0x%1, Data: %2, Total received: %3 frames")
+                .arg(canId, 0, 16).arg(QString(data.toHex(' ').toUpper())).arg(m_receivedCount);
+    emit frameReceived(canId,data,canface);
 
-    m_testtimer.start();
-
-    for (int i = 0; i < count; i++) {
-       // 将 i 的最低字节存入 data 数组的最后一个位置
-       if (data.size() > 0) {
-           data[data.size() - 1] = static_cast<char>(i & 0xFF);
-       }
-
-       if (!sendFrame(testId, data)) {
-           qCDebug(can) << QString("  第%1帧: 发送失败").arg(i+1);
-       }
-    }
 }
 
-void CanWorker::testserialloop(){
-    //m_testing.store(true);
-    m_testtimer.start();
-    const QByteArray &testData = QByteArray::fromHex("1122334455667788");
-    emit SerialSendRequest(testData);
-}
-
-
-CanWorker::~CanWorker()
-{
-    closeCan();
-    qCDebug(can) << "CAN~ delete finished";
-}
-
-void CanWorker::closeCan()
+bool CanWorker::sendFrame(quint32 canId, const QByteArray &data,const QString &canface)
 {
     QMutexLocker locker(&m_Mutex);
-
-    if (m_listening.load()) {
-        m_stopRequested.store(true);
-
-       if (m_listenThread && m_listenThread->isRunning()) {
-           m_listenThread->quit();
-           m_listenThread->wait(1000); // 等待1秒
-           m_listenThread->deleteLater();
-           delete m_listenThread;
-           m_listenThread = nullptr;// 内存释放 + 指针安全
-           m_listening.store(false);
-           qCDebug(can) << "CAN listening closed";
-       }
-    }
-
-    if (m_canSocket >= 0) {
-        shutdown(m_canSocket, SHUT_RDWR);
-        close(m_canSocket);
-        m_canSocket = -1;
-        qCDebug(can) << "CAN socket closed";
-    }
-
-}
-
-
-void CanWorker::forwardSerialData(const QByteArray &data)
-{
-    quint32 testId = 0x123;
-    qint64 elapsed = m_testtimer.elapsed();
-    qCDebug(can) << "serial-can test time:" <<elapsed;
-    sendFrame(testId, data);
-}
-
-bool CanWorker::sendFrame(quint32 canId, const QByteArray &data)
-{
-    QMutexLocker locker(&m_Mutex);
-
-    if (m_canSocket < 0) {
-        qCWarning(can) << "CAN socket not open";
-        emit errorOccurred("CAN socket not open");
-        return false;
-    }
 
     if (data.size() > 8) {
         qCWarning(can) << "CAN data length cannot exceed 8 bytes";
-        emit errorOccurred("Data too long");
         return false;
     }
 
@@ -390,32 +250,94 @@ bool CanWorker::sendFrame(quint32 canId, const QByteArray &data)
     frame.can_dlc = static_cast<quint8>(data.size());
     memcpy(frame.data, data.constData(), data.size());
 
-    return sendFrame_en(frame);
-}
+    int bytesSent = 0;
+    if (canface=="can0"){bytesSent=write(m_can0Socket, &frame, sizeof(frame));}
+    if (canface=="can1"){bytesSent=write(m_can1Socket, &frame, sizeof(frame));}
+    if (canface=="can2"){bytesSent=write(m_can2Socket, &frame, sizeof(frame));}
 
-bool CanWorker::sendFrame_en(const can_frame &frame)
-{
-    if (m_canSocket < 0) {
-        qCWarning(can) << "CAN socket not open";
-        emit errorOccurred("CAN socket not open");
-        return false;
-    }
+    //usleep(1);
 
-    int bytesSent = write(m_canSocket, &frame, sizeof(frame));
     if (bytesSent != sizeof(frame)) {
-        QString error = QString("Send failed: %1").arg(strerror(errno));
-        qCCritical(can) << error;
-        emit frameSenterror(frame.can_id, error);
+        qCCritical(can) << "Send failed: %1" <<strerror(errno);
         return false;
     }
 
-    m_sentCount++;
-    QByteArray dataArray(reinterpret_cast<const char*>(frame.data), frame.can_dlc);
-    qCDebug(can) << QString("CAN sent - ID: 0x%1, Len: %3, Data: %2, Total received: %4")
-                .arg(frame.can_id, 3, 16, QChar('0'))
-                .arg(QString(dataArray.toHex(' ').toUpper()))
-                .arg(frame.can_dlc)
-                .arg(m_sentCount);
-
+    qCDebug(can) << QString("CAN sent - ID: %1 Data:%2 ").arg(canId, 0, 16).arg(QString(data.toHex(' ').toUpper()));
     return true;
 }
+
+void CanWorker::testLoopback()
+{
+    if (m_testing.load()) {return;}
+
+    quint32 testId = 0x123;
+    QByteArray data = QByteArray::fromHex("1122334455667788");
+    int count = 600;
+
+    m_testing.store(true);
+    qCDebug(can) << QString("开始回环测试...ID: 0x%1, 总帧数: %2").arg(testId, 0, 16).arg(count);
+
+    m_testtimer.start();
+    for (int i = 0; i < count; i++) {
+       //data[data.size() - 1] = static_cast<char>(i & 0xFF);
+       if (!sendFrame(testId, data,"can0")) {
+           qCDebug(can) << QString("第%1帧: 发送失败").arg(i+1);return;
+       }
+    }
+}
+
+void CanWorker::testserialloop(){
+    const QByteArray &testData = QByteArray::fromHex("1122334455667788");
+    m_testtimer.start();
+    emit SerialSendRequest(testData);
+}
+
+void CanWorker::forwardSerialData(const QByteArray &data)
+{
+    Q_UNUSED(data)
+    qint64 elapsed = m_testtimer.elapsed();
+    qCDebug(can) << "serial-can test time:" <<elapsed;
+}
+
+// ========================== 析构部分 ===================================
+
+CanWorker::~CanWorker()
+{
+    qCDebug(can) << "CAN~ delete finished";
+    closeCan();
+}
+
+void CanWorker::closeCan()
+{
+    QMutexLocker locker(&m_Mutex);
+
+    m_stopRequested.store(true);
+    m_testing.store(false);
+   if (m_listenThread) {
+       m_listenThread->quit();
+       m_listenThread->wait(1000); // 等待1秒
+       m_listenThread->deleteLater();
+       delete m_listenThread;
+       m_listenThread = nullptr;// 内存释放 + 指针安全
+   }
+
+    if (m_can0Socket >= 0) {
+        shutdown(m_can0Socket, SHUT_RDWR);
+        close(m_can0Socket);
+        m_can0Socket = -1;
+    }
+    if (m_can1Socket >= 0) {
+        shutdown(m_can1Socket, SHUT_RDWR);
+        close(m_can1Socket);
+        m_can1Socket = -1;
+    }
+    if (m_can2Socket >= 0) {
+        shutdown(m_can2Socket, SHUT_RDWR);
+        close(m_can2Socket);
+        m_can2Socket = -1;
+    }
+}
+
+
+
+

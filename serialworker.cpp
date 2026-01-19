@@ -83,10 +83,11 @@ void SerialWorker::handleReadyRead()
 
             m_isTesting.store(false);
         }
-    } else {
-        // 正常模式
-        emit serialDataReceived(data);
+        return;
     }
+
+    // 正常模式
+    emit serialDataReceived(data);
 }
 
 void SerialWorker::writeSerialData(const QByteArray &data)

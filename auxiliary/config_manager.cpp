@@ -22,6 +22,8 @@ bool ConfigManager::s_enableDisplay = true;
 
 bool ConfigManager::s_enableUartMess = true;
 
+bool ConfigManager::s_enableCanMess = true;
+
 // ===================== 初始化方法 =====================
 
 bool ConfigManager::init(const QString &configDir)
@@ -48,6 +50,8 @@ bool ConfigManager::init(const QString &configDir)
     s_enableDisplay = s_settings->value("Display/EnableDisplay").toBool();
 
     s_enableUartMess = s_settings->value("Uart/EnableUartMess").toBool();
+
+    s_enableCanMess = s_settings->value("Can/EnableCanMess").toBool();
 
     return true;
 }
