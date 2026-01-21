@@ -1,8 +1,12 @@
 <RCC>
     <qresource prefix="/">
         <file>qml/main.qml</file>
-        <file>qml/Component/Gauge.qml</file>
-        <file>qml/Component/DigitalDisplay.qml</file>
+        <file>qml/Component/DigitalCard.qml</file>
         <file>qml/Component/WaveformDisplay.qml</file>
+        <file>qml/Component/qmldir</file>
+        <file>qml/Component/SetBox.qml</file>
+        <file>qml/Component/test.qml</file>
+        <file>qml/Component/PopupButton.qml</file>
+        <file>qml/Component/SidebarButton.qml</file>
     </qresource>
 </RCC>

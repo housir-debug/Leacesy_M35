@@ -1,0 +1,4 @@
+module Component
+DigitalCard     1.0 DigitalCard.qml
+SetBox          1.0 SetBox.qml
+WaveformDisplay 1.0 WaveformDisplay.qml

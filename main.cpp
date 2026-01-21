@@ -89,12 +89,10 @@ int main(int argc, char *argv[])
 {
     qputenv("QT_IM_MODULE", QByteArray("qtvirtualkeyboard"));
 
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-#endif
-
-    QGuiApplication app(argc, argv);
     QGuiApplication::setApplicationName("Leacesy Instrument");
+    QGuiApplication app(argc, argv);
+
     QString appPath = QGuiApplication::applicationDirPath();
     QDir appDir(appPath);
 
@@ -106,52 +104,50 @@ int main(int argc, char *argv[])
         if (ConfigManager::s_enablelogfile){QObject::connect(&app, &QGuiApplication::aboutToQuit, []{shutdownLogger();});}
     }else{return 1;}
 
+    std::unique_ptr<WebServer> webServer;
     if (ConfigManager::s_enableWebServer){
-        WebServer *webServer =  new WebServer(&app);
+        webServer.reset(new WebServer(&app));
         if (!webServer->start()) {return 1;}
     }
 
+    std::unique_ptr<TcpServerManager> vxiServer;
     if (ConfigManager::s_enableVXIServer){
-        TcpServerManager *vxiServer = new TcpServerManager();
+        vxiServer.reset(new TcpServerManager());
         if(!vxiServer->startServer()){return 1;}
-
-        QObject::connect(&app, &QGuiApplication::aboutToQuit,vxiServer, &TcpServerManager::stopServer);
-        QObject::connect(&app, &QGuiApplication::aboutToQuit,vxiServer, &QObject::deleteLater);
     }
 
+    std::unique_ptr<SerialWorker> Uart_4;
+    std::unique_ptr<SerialWorker> Uart_5;
     if (ConfigManager::s_enableUartMess){
-        SerialWorker *Uart_8 = new SerialWorker();
-        if(!Uart_8->initSerialPort("/dev/ttyS8", QSerialPort::Baud115200)){return 1;}
+        Uart_4.reset(new SerialWorker());
+        if(!Uart_4->initSerialPort("/dev/ttyS4", QSerialPort::Baud38400)){return 1;}
+        Uart_5.reset(new SerialWorker());
+        if(!Uart_5->initSerialPort("/dev/ttyS5", QSerialPort::Baud38400)){return 1;}
 
-        QObject::connect(&app, &QGuiApplication::aboutToQuit,Uart_8, &SerialWorker::closeSerial);
-        QObject::connect(&app, &QGuiApplication::aboutToQuit,Uart_8, &QObject::deleteLater);
-
-        QMetaObject::invokeMethod(Uart_8, &SerialWorker::startLoopbackTest);
+        //QMetaObject::invokeMethod(Uart_4.get(), &SerialWorker::startLoopbackTest);
         //QTimer::singleShot(300, &app, &QGuiApplication::quit);
     }
 
+    std::unique_ptr<CanWorker> canWorker;
+    std::unique_ptr<QThread> canThread;
     if (ConfigManager::s_enableCanMess){
-        CanWorker *canWorker = new CanWorker();
-        QThread *canThread = new QThread();
-
-        canWorker->moveToThread(canThread);
+        canWorker.reset(new CanWorker());
+        canThread.reset(new QThread());
+        canWorker->moveToThread(canThread.get());
         canThread->setObjectName("can_worker");
         canThread->start();
 
-        QObject::connect(&app, &QGuiApplication::aboutToQuit,canWorker, &CanWorker::closeCan);
-        QObject::connect(canThread, &QThread::finished,canWorker, &QObject::deleteLater);
-        QObject::connect(canThread, &QThread::finished,canThread, &QObject::deleteLater);
-
-        QMetaObject::invokeMethod(canWorker, [canWorker]() {
-            canWorker->initialize("all", 1000000);  // all
-            canWorker->testLoopback();
+        CanWorker* workerPtr = canWorker.get();
+        QMetaObject::invokeMethod(canWorker.get(), [workerPtr]() {
+            workerPtr->initialize("all", 1000000);  // all
+            workerPtr->testLoopback();
         }, Qt::QueuedConnection);//Blocking
-
-        QTimer::singleShot(300, &app, &QGuiApplication::quit);
+        //QTimer::singleShot(300, &app, &QGuiApplication::quit);
     }
 
+    QQmlApplicationEngine engine;
     if (ConfigManager::s_enableDisplay){
-        QQmlApplicationEngine engine;
+        engine.addImportPath(QStringLiteral("qrc:/qml"));
         const QUrl url(QStringLiteral("qrc:/qml/main.qml"));
         QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,&app, [url](QObject *obj, const QUrl &objUrl) {
             if (!obj && url == objUrl){QCoreApplication::exit(-1);}
