@@ -14,6 +14,7 @@ HEADERS += \
     serialworker.h \
     auxiliary/simple_logger.h \
     auxiliary/config_manager.h \
+    uartmanager.h \
     vxi_11/scpimanager.h \
     vxi_11/tcpserver.h \
     vxi_11/tirpcloader.h \
@@ -25,6 +26,7 @@ SOURCES += \
     serialworker.cpp \
     auxiliary/simple_logger.cpp \
     auxiliary/config_manager.cpp \
+    uartmanager.cpp \
     vxi_11/scpimanager.cpp \
     vxi_11/tcpserver.cpp \
     vxi_11/tirpcloader.cpp \

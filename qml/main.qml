@@ -23,6 +23,8 @@ ApplicationWindow {
                 id: channel_1
                 channelName: "CH1"
                 scale: 1.6
+                voltage: Uart_bridge.ch1_Voltage
+                current: Uart_bridge.ch1_Current
             }
 
             DigitalCard {

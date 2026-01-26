@@ -140,8 +140,7 @@ Item {
 
                     Text {
                         id: voltageText
-                        text: (root.current >= 0 ? "" : "-") + root.voltage.toFixed(
-                                  4) + " " + root.voltageUnit
+                        text: root.voltage.toFixed(4) + " " + root.voltageUnit
                         color: "#27ae60"
                         font.pixelSize: 30
                         font.bold: true
@@ -151,8 +150,7 @@ Item {
 
                     Text {
                         id: currentText
-                        text: (root.current >= 0 ? "" : "-") + root.current.toFixed(
-                                  4) + " " + root.currentUnit
+                        text: root.current.toFixed(4) + " " + root.currentUnit
                         color: "#e74c3c"
                         font.pixelSize: 30
                         font.bold: true
