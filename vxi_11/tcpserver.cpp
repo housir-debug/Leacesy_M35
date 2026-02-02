@@ -10,11 +10,7 @@
 
 Q_LOGGING_CATEGORY(tcp, "tcp:")
 
-TcpServerManager::TcpServerManager(QObject *parent)
-    : QObject(parent)
-{
-    m_scpiManager = new ScpiManager(this);
-}
+TcpServerManager::TcpServerManager(QObject *parent): QObject(parent){ }
 
 void TcpServerManager::forwardCanData(quint32 canId, const QByteArray &data,const QString &canface)
 {
@@ -63,10 +59,12 @@ bool TcpServerManager::startServer()
     if (m_state.load() != STATE_STOPPED) {return false;}
 
     if (!m_serverThread){
+        m_tcpServer = new QTcpServer(this);
+        m_scpiManager = new ScpiManager(this);
+
         m_cleanupTimer = new QTimer(this);
         m_cleanupTimer->setInterval(5000); // 5秒
 
-        m_tcpServer = new QTcpServer(this);
         m_serverThread = new QThread(this);
         m_serverThread->setObjectName("TcpServer");
     }
@@ -75,6 +73,7 @@ bool TcpServerManager::startServer()
         m_state.store(STATE_STARTING);
         this->moveToThread(m_serverThread);
         m_tcpServer->moveToThread(m_serverThread);
+        m_scpiManager->moveToThread(m_serverThread);
         m_cleanupTimer->moveToThread(m_serverThread);
     }
 

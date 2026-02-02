@@ -8,7 +8,6 @@
 #include <QString>
 #include <QMutex>
 #include "auxiliary/config_manager.h"
-#include "scpimanager.h"
 
 Q_DECLARE_LOGGING_CATEGORY(web)
 

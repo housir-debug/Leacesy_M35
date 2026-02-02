@@ -1,43 +1,72 @@
 #pragma once
 
+#include <QQmlApplicationEngine>
 #include <QObject>
-#include <QDebug>
+#include <QLoggingCategory>
 
-class SerialBridge : public QObject {
+Q_DECLARE_LOGGING_CATEGORY(ubridge)
+
+class SerialBridge : public QObject
+{
     Q_OBJECT
-    Q_PROPERTY(float ch1_Voltage READ Uart4_Voltage NOTIFY Uart4_VoltageChanged)
-    Q_PROPERTY(float ch1_Current READ Uart4_Current NOTIFY Uart4_CurrentChanged)
-    Q_PROPERTY(float ch2_Voltage READ Uart5_Voltage NOTIFY Uart5_VoltageChanged)
-    Q_PROPERTY(float ch2_Current READ Uart5_Current NOTIFY Uart5_CurrentChanged)
+    Q_PROPERTY(int ch1_status_v MEMBER mUart4_status_v NOTIFY Uart4_StatusChanged)
+    //Q_PROPERTY(QString ch1_status MEMBER mUart4_status NOTIFY Uart4_StatusChanged)
+    Q_PROPERTY(float ch1_Voltage MEMBER mUart4_Voltage NOTIFY Uart4_VoltageChanged)
+    Q_PROPERTY(float ch1_Current MEMBER mUart4_Current NOTIFY Uart4_CurrentChanged)
+    Q_PROPERTY(bool ch1_Current_Unit MEMBER mUart4_Current_Unit NOTIFY Uart4_Current_Unit_Changed)
+    Q_PROPERTY(int ch2_status_v MEMBER mUart5_status_v NOTIFY Uart5_StatusChanged)
+    //Q_PROPERTY(QString ch2_status MEMBER mUart5_status NOTIFY Uart5_StatusChanged)
+    Q_PROPERTY(float ch2_Voltage MEMBER mUart5_Voltage NOTIFY Uart5_VoltageChanged)
+    Q_PROPERTY(float ch2_Current MEMBER mUart5_Current NOTIFY Uart5_CurrentChanged)
+    Q_PROPERTY(bool ch2_Current_Unit MEMBER mUart5_Current_Unit NOTIFY Uart5_Current_Unit_Changed)
+
+signals:
+    // to C++ model control
+    void sendFrame_Uart4(quint8 cmd, quint8 func, quint8 ch, const QByteArray& param);
+    void sendFrame_Uart5(quint8 cmd, quint8 func, quint8 ch, const QByteArray& param);
+
+    // to qml engine property
+    void Uart4_StatusChanged();
+    void Uart4_VoltageChanged();
+    void Uart4_CurrentChanged();
+    void Uart4_Current_Unit_Changed();
+    void Uart5_StatusChanged();
+    void Uart5_VoltageChanged();
+    void Uart5_CurrentChanged();
+    void Uart5_Current_Unit_Changed();
+
+private:
+    // to qml engine property variate
+    int mUart4_status_v{0};
+    QString mUart4_status{""};
+    float mUart4_Voltage{0.0f};
+    float mUart4_Current{0.0f};
+    bool mUart4_Current_Unit{false};
+    int mUart5_status_v{0};
+    QString mUart5_status{""};
+    float mUart5_Voltage{0.0f};
+    float mUart5_Current{0.0f};
+    bool mUart5_Current_Unit{false};
+
+    // Own member variables
+    QByteArray m_param;
 
 public:
     explicit SerialBridge(QObject *parent = nullptr);
     ~SerialBridge();
 
-    // uart model slot function
+    // qml procress
+    Q_INVOKABLE void onChannel_1_Toggled(bool status);
+    Q_INVOKABLE void onChannel_2_Toggled(bool status);
+    Q_INVOKABLE QString onAll_Channel_Change(bool status);
+    Q_INVOKABLE QString onCurrent_Unit_Change();
+    void setupQmlConnections(QQmlApplicationEngine &engine);
+
+    // C++ model signal to this for qml engine
     void update_Uart4_Voltage(float voltage);
     void update_Uart4_Current(float current);
+    void update_Uart4_status(QByteArray status);
     void update_Uart5_Voltage(float voltage);
     void update_Uart5_Current(float current);
-
-    // Qt property call
-    float Uart4_Voltage() const { return mUart4_Voltage; }
-    float Uart4_Current() const { return mUart4_Current; }
-    float Uart5_Voltage() const { return mUart5_Voltage; }
-    float Uart5_Current() const { return mUart5_Current; }
-
-signals:
-    void Uart4_VoltageChanged();
-    void Uart4_CurrentChanged();
-    void Uart5_VoltageChanged();
-    void Uart5_CurrentChanged();
-
-private:
-    float mUart4_Voltage{0.0f};
-    float mUart4_Current{0.0f};
-    float mUart5_Voltage{0.0f};
-    float mUart5_Current{0.0f};
-
-    // Q_INVOKABLE float getCurrent(int channel = 1) const;
-    // static constexpr float EPSILON = 0.001f;
+    void update_Uart5_status(QByteArray status);
 };

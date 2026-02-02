@@ -28,7 +28,7 @@ bool SerialWorker::initSerialPort(const QString &portName,
         m_serialPort->setStopBits(stopBits);
 
         m_refreshtimer = new QTimer;
-        m_refreshtimer->setInterval(600); // ms
+        m_refreshtimer->setInterval(180); // ms
 
         m_serialThread = new QThread(this);
         m_serialThread->setObjectName(QString("%1_worker").arg(portName));
@@ -85,29 +85,28 @@ void SerialWorker::writeFrame(quint8 cmd, quint8 func, quint8 ch, const QByteArr
     quint8 checksum = length + cmd + func + ch; // The check code is taken from the lowest 8 bits.
     for (char byte : param) {checksum += static_cast<quint8>(byte);}
 
-    QByteArray frame;
-    frame.reserve(length + 4);  // Pre-allocation enhances performance
+    m_writebuffer.clear();
+    m_writebuffer.reserve(length + 4);  // Pre-allocation enhances performance
 
-    frame.append(HEADER_HIGH);
-    frame.append(HEADER_LOW);
-    frame.append(length);
-    frame.append(cmd);
-    frame.append(func);
-    frame.append(ch);
-    frame.append(param);
-    frame.append(checksum);
-    frame.append(END_MARKER);
+    m_writebuffer.append(HEADER_HIGH);
+    m_writebuffer.append(HEADER_LOW);
+    m_writebuffer.append(length);
+    m_writebuffer.append(cmd);
+    m_writebuffer.append(func);
+    m_writebuffer.append(ch);
+    m_writebuffer.append(param);
+    m_writebuffer.append(checksum);
+    m_writebuffer.append(END_MARKER);
 
-    writeSerialData(frame);
+    writeSerialData(m_writebuffer);
 }
 
-void SerialWorker::writeSerialData(const QByteArray &data)
+void SerialWorker::writeSerialData(const QByteArray& data)
 {
     QMutexLocker locker(&m_WriteMutex);
-
     if (!m_serialPort) {return;}
-    qCDebug(uart)<< m_portName << "Send: " << data.toHex(' ');
 
+    qCDebug(uart)<< m_portName << "Send: " << data.toHex(' ');
     if (m_serialPort->write(data) != data.size()) {
         qCWarning(uart) << m_portName << "written buffer overflow!!!";
         return;
@@ -123,9 +122,8 @@ void SerialWorker::handleReadyRead()
     if (data.isEmpty()){return;}
 
     emit serialDataReceived(data);
-
-    if(m_portName=="/dev/ttyS4"){qCDebug(uart) <<m_portName<<"(我)Received" << data.toHex(' ');
-    }else{qCDebug(uart) <<m_portName<<"(电芯)Received" << data.toHex(' ');}
+    if(m_portName=="/dev/ttyS4"){qCDebug(uart) <<m_portName<<"(我<-收)Received" << data.toHex(' ');
+    }else{qCDebug(uart) <<m_portName<<"(发->电芯)Received" << data.toHex(' ');}
 
     // Test progressing
     if (m_isTesting.load()) {
@@ -169,25 +167,25 @@ void SerialWorker::handleReadyRead()
     }
 
     // Handling of abnormal protocol responses
-    m_buffer.append(data);
-    if (m_buffer.size() >= 3){
-        if(static_cast<quint8>(m_buffer[0]) == HEADER_LOW && static_cast<quint8>(m_buffer[1]) == HEADER_HIGH){
-            quint8 lengthB = static_cast<quint8>(m_buffer[2]);
-            if (m_buffer.size() < lengthB + 4){return;}
+    m_readbuffer.append(data);
+    if (m_readbuffer.size() >= 3){
+        if(static_cast<quint8>(m_readbuffer[0]) == HEADER_LOW && static_cast<quint8>(m_readbuffer[1]) == HEADER_HIGH){
+            quint8 lengthB = static_cast<quint8>(m_readbuffer[2]);
+            if (m_readbuffer.size() < lengthB + 4){return;}
 
             if(static_cast<quint8>(data[lengthB + 3]) == END_MARKER){
-                handleuartrequest(lengthB,m_buffer);
-                m_buffer.remove(0,lengthB + 4);
+                handleuartrequest(lengthB,m_readbuffer);
+                m_readbuffer.remove(0,lengthB + 4);
                 return;
             }
         }
 
-        m_buffer.clear();
+        m_readbuffer.clear();
         return;
     }
 }
 
-bool SerialWorker::handleuartrequest(quint8 length,const QByteArray &data){
+bool SerialWorker::handleuartrequest(quint8 length,const QByteArray& data){
     quint8 cmd = static_cast<quint8>(data[3]);
     quint8 func = static_cast<quint8>(data[4]);
     quint8 ch = static_cast<quint8>(data[5]);
@@ -248,11 +246,17 @@ bool SerialWorker::handleuartrequest(quint8 length,const QByteArray &data){
 // ========================== 协议处理部分 ===================================
 
 void SerialWorker::handleOutputcmd(quint8 func, quint8 ch, const QByteArray& param){
-    Q_UNUSED(ch);Q_UNUSED(param);
+    Q_UNUSED(ch);
+
     switch (func){
-        case 0x80:break;
-        case 0x00:break;
-        case 0x01:break;
+        case 0x80:{   // query output status
+            quint8 raw = static_cast<quint8>(param[0]);
+            if (raw == 0x00){qCDebug(uart) <<m_portName<<"Output has been turned off.";}
+            else{qCDebug(uart) <<m_portName<<"Output has been turned on.";}
+            break;
+        }
+        case 0x00:qCDebug(uart) <<m_portName<<"Output OFF";break;
+        case 0x01:qCDebug(uart) <<m_portName<<"Output ON";break;
         case 0x08:break;
         case 0x88:break;
         case 0x09:break;
@@ -262,6 +266,7 @@ void SerialWorker::handleOutputcmd(quint8 func, quint8 ch, const QByteArray& par
 
 void SerialWorker::handleSettingcmd(quint8 func, quint8 ch, const QByteArray& param){
     Q_UNUSED(ch);Q_UNUSED(param);
+
     switch (func){
         case 0x80:break;
         case 0x00:break;
@@ -286,6 +291,7 @@ void SerialWorker::handleSettingcmd(quint8 func, quint8 ch, const QByteArray& pa
 
 void SerialWorker::handleControlcmd(quint8 func, quint8 ch, const QByteArray& param){
     Q_UNUSED(ch);Q_UNUSED(param);
+
     switch (func){
         case 0x80:break;
         case 0x00:break;
@@ -313,6 +319,9 @@ void SerialWorker::handleMeasurementcmd(quint8 func, quint8 ch, const QByteArray
 
     quint32 raw = qFromBigEndian<quint32>(reinterpret_cast<const uchar*>(param.constData()));
     float shf;   memcpy(&shf, &raw, sizeof(float));
+    float EPSILON = 0.00001f;
+    if (qAbs(shf) < 1e-4){EPSILON = 0.00000001f;}
+
     switch (func){
         case 0x80: // voltage /V
                 qCDebug(uart) << "voltage raw:" << shf << "last:" << lastVoltage;
@@ -409,9 +418,10 @@ void SerialWorker::handleMeasurementcmd(quint8 func, quint8 ch, const QByteArray
 }
 
 void SerialWorker::handleRegistercmd(quint8 func, quint8 ch, const QByteArray& param){
-    Q_UNUSED(ch);Q_UNUSED(param);
+    Q_UNUSED(ch);
+
     switch (func){
-        case 0x80:break;
+        case 0x80:emit statusChanged(param);break;
         case 0x81:break;
         case 0x82:break;
         case 0x83:break;
@@ -423,6 +433,7 @@ void SerialWorker::handleRegistercmd(quint8 func, quint8 ch, const QByteArray& p
 
 void SerialWorker::handleCalibratecmd(quint8 func, quint8 ch, const QByteArray& param){
     Q_UNUSED(ch);Q_UNUSED(param);
+
     switch (func){
         case 0x00:break;
         case 0x01:break;
@@ -445,6 +456,7 @@ void SerialWorker::handleCalibrationcmd(quint8 func, quint8 ch, const QByteArray
 
 void SerialWorker::handleTriggercmd(quint8 func, quint8 ch, const QByteArray& param){
     Q_UNUSED(ch);Q_UNUSED(param);
+
     switch (func){
         case 0x00:break;
         case 0x01:break;
@@ -472,6 +484,7 @@ void SerialWorker::handleTriggercmd(quint8 func, quint8 ch, const QByteArray& pa
 
 void SerialWorker::handleISPcmd(quint8 func, quint8 ch, const QByteArray& param){
     Q_UNUSED(ch);Q_UNUSED(param);
+
     switch (func){
         case 0x80:break;
         case 0x00:break;
@@ -482,6 +495,7 @@ void SerialWorker::handleISPcmd(quint8 func, quint8 ch, const QByteArray& param)
 
 void SerialWorker::handleSNcmd(quint8 func, quint8 ch, const QByteArray& param){
     Q_UNUSED(ch);Q_UNUSED(param);
+
     switch (func){
         case 0x80:break;
         case 0x00:break;
@@ -498,6 +512,7 @@ void SerialWorker::handleSNcmd(quint8 func, quint8 ch, const QByteArray& param){
 
 void SerialWorker::handleIDcmd(quint8 func, quint8 ch, const QByteArray& param){
     Q_UNUSED(ch);Q_UNUSED(param);
+
     switch (func){
         case 0x81:break;
         case 0x82:break;
@@ -508,6 +523,7 @@ void SerialWorker::handleIDcmd(quint8 func, quint8 ch, const QByteArray& param){
 
 void SerialWorker::handleErrorcmd(quint8 func, quint8 ch, const QByteArray& param){
     Q_UNUSED(ch);Q_UNUSED(param);
+
     switch (func){
         case 0x00:qCDebug(uart) << "Error Response: CheckSum error";      break;
         case 0x01:qCDebug(uart) << "Error Response: Unknow command";      break;

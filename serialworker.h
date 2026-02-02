@@ -15,6 +15,19 @@ class SerialWorker : public QObject
 {
     Q_OBJECT
 
+signals:
+    void serialDataReceived(const QByteArray &data);
+    void statusChanged(QByteArray status);
+    void voltageChanged(float measure);
+    void currentChanged(float measure);
+    void currentUnitChanged(bool status);
+    void smallcurrentChanged(float measure);
+    void temperatureChanged(float measure);
+    void sinktemperatureChanged(float measure);
+    void DVMACDCVoltageChanged(float measure);
+    void DVMVoltageChanged(float measure);
+
+
 public:
     explicit SerialWorker(QObject *parent = nullptr);
     ~SerialWorker();
@@ -26,13 +39,13 @@ public:
                         QSerialPort::StopBits stopBits = QSerialPort::OneStop);
 
     void writeFrame(quint8 cmd, quint8 func, quint8 ch, const QByteArray& param);
-    void writeSerialData(const QByteArray &data);
+    void writeSerialData(const QByteArray& data);
 
     void closeSerial();
 
 private:
     void handleReadyRead();
-    bool handleuartrequest(quint8 length,const QByteArray &data);
+    bool handleuartrequest(quint8 length,const QByteArray& data);
     void handleOutputcmd(quint8 func, quint8 ch, const QByteArray& param);
     void handleSettingcmd(quint8 func, quint8 ch, const QByteArray& param);
     void handleControlcmd(quint8 func, quint8 ch, const QByteArray& param);
@@ -47,18 +60,6 @@ private:
     void handleErrorcmd(quint8 func, quint8 ch, const QByteArray& param);
     void startLoopbackTest();
 
-signals:
-    void serialDataReceived(const QByteArray &data);
-    void sendUartFrame(quint8 cmd, quint8 func, quint8 ch, const QByteArray& param);
-
-    void voltageChanged(float measure);
-    void currentChanged(float measure);
-    void smallcurrentChanged(float measure);
-    void temperatureChanged(float measure);
-    void sinktemperatureChanged(float measure);
-    void DVMACDCVoltageChanged(float measure);
-    void DVMVoltageChanged(float measure);
-
 private:
     float lastVoltage{0.0f};
     float lastCurrent{0.0f};
@@ -71,15 +72,15 @@ private:
     static constexpr quint8 HEADER_HIGH = 0xAA;
     static constexpr quint8 HEADER_LOW = 0x55;
     static constexpr quint8 END_MARKER = 0xEE;
-    static constexpr float EPSILON = 0.0001f;
 
     QMutex m_WriteMutex;
-    QByteArray m_buffer;
+    QByteArray m_readbuffer;
+    QByteArray m_writebuffer;
 
-    QString m_portName{""};
     QTimer *m_refreshtimer{nullptr};
     QThread *m_serialThread{nullptr};
     QSerialPort *m_serialPort{nullptr};
+    QString m_portName{""};
 
     QElapsedTimer m_testTimer;
     std::atomic<bool> m_isTesting{false};

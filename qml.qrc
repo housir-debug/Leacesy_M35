@@ -8,5 +8,6 @@
         <file>qml/Component/test.qml</file>
         <file>qml/Component/PopupButton.qml</file>
         <file>qml/Component/SidebarButton.qml</file>
+        <file>qml/Component/KeyinputBox.qml</file>
     </qresource>
 </RCC>
