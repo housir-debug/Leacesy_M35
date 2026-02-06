@@ -2,6 +2,7 @@
 
 #include <QQmlApplicationEngine>
 #include <QObject>
+#include <QtCore>
 #include <QLoggingCategory>
 
 Q_DECLARE_LOGGING_CATEGORY(ubridge)
@@ -14,6 +15,7 @@ class SerialBridge : public QObject
     Q_PROPERTY(float ch1_Voltage MEMBER mUart4_Voltage NOTIFY Uart4_VoltageChanged)
     Q_PROPERTY(float ch1_Current MEMBER mUart4_Current NOTIFY Uart4_CurrentChanged)
     Q_PROPERTY(bool ch1_Current_Unit MEMBER mUart4_Current_Unit NOTIFY Uart4_Current_Unit_Changed)
+
     Q_PROPERTY(int ch2_status_v MEMBER mUart5_status_v NOTIFY Uart5_StatusChanged)
     //Q_PROPERTY(QString ch2_status MEMBER mUart5_status NOTIFY Uart5_StatusChanged)
     Q_PROPERTY(float ch2_Voltage MEMBER mUart5_Voltage NOTIFY Uart5_VoltageChanged)
@@ -22,14 +24,15 @@ class SerialBridge : public QObject
 
 signals:
     // to C++ model control
-    void sendFrame_Uart4(quint8 cmd, quint8 func, quint8 ch, const QByteArray& param);
-    void sendFrame_Uart5(quint8 cmd, quint8 func, quint8 ch, const QByteArray& param);
+    void sendFrame_Uart4(quint8 cmd, quint8 func, const QByteArray& param);
+    void sendFrame_Uart5(quint8 cmd, quint8 func, const QByteArray& param);
 
     // to qml engine property
     void Uart4_StatusChanged();
     void Uart4_VoltageChanged();
     void Uart4_CurrentChanged();
     void Uart4_Current_Unit_Changed();
+
     void Uart5_StatusChanged();
     void Uart5_VoltageChanged();
     void Uart5_CurrentChanged();
@@ -42,6 +45,7 @@ private:
     float mUart4_Voltage{0.0f};
     float mUart4_Current{0.0f};
     bool mUart4_Current_Unit{false};
+
     int mUart5_status_v{0};
     QString mUart5_status{""};
     float mUart5_Voltage{0.0f};
@@ -49,18 +53,12 @@ private:
     bool mUart5_Current_Unit{false};
 
     // Own member variables
-    QByteArray m_param;
+    QByteArray m_Unit_buffer;
+    QByteArray m_Status_buffer;
 
 public:
     explicit SerialBridge(QObject *parent = nullptr);
     ~SerialBridge();
-
-    // qml procress
-    Q_INVOKABLE void onChannel_1_Toggled(bool status);
-    Q_INVOKABLE void onChannel_2_Toggled(bool status);
-    Q_INVOKABLE QString onAll_Channel_Change(bool status);
-    Q_INVOKABLE QString onCurrent_Unit_Change();
-    void setupQmlConnections(QQmlApplicationEngine &engine);
 
     // C++ model signal to this for qml engine
     void update_Uart4_Voltage(float voltage);
@@ -69,4 +67,11 @@ public:
     void update_Uart5_Voltage(float voltage);
     void update_Uart5_Current(float current);
     void update_Uart5_status(QByteArray status);
+
+    // qml procress
+    Q_INVOKABLE void setChannel_Output(int channel,bool switchs);
+    Q_INVOKABLE void setChannel_Setstatus(int channel,int model,float value);
+    Q_INVOKABLE QString setChannel_CurrentUnit();
+    void toAll_Channel(quint8 cmd,quint8 func,QByteArray param);
+    // void setupQmlConnections(QQmlApplicationEngine &engine);
 };

@@ -7,6 +7,7 @@ Item {
     height: 360
 
     signal clicked
+    signal doLongPressAction
 
     property real voltage: 0.0
     property real current: 0.0
@@ -218,10 +219,21 @@ Item {
             id: mouseArea
             anchors.fill: parent
             enabled: root.is_enclick
+            pressAndHoldInterval: 1000
 
             onPressed: {
                 root.is_pressed = true
                 pressAnimation.start()
+            }
+
+            onPressAndHold: {
+                //console.log("长按1秒触发")  // 不会再触发后续事件
+                root.is_pressed = false
+                releaseAnimation.start()
+
+                if (!root.channelEnabled) {
+                    root.doLongPressAction()
+                }
             }
 
             onReleased: {

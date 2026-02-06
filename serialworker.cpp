@@ -4,7 +4,12 @@
 
 Q_LOGGING_CATEGORY(uart, "uart:")
 
-SerialWorker::SerialWorker(QObject *parent): QObject(parent){}
+SerialWorker::SerialWorker(QObject *parent): QObject(parent){
+    portChannelMap["/dev/ttyS4"] = 0x01;
+    portChannelMap["/dev/ttyS5"] = 0x02;
+    portChannelMap["/dev/ttyS6"] = 0x03;
+    portChannelMap["/dev/ttyS7"] = 0x04;
+}
 
 bool SerialWorker::initSerialPort(const QString &portName,
                                  qint32 baudRate,
@@ -12,13 +17,17 @@ bool SerialWorker::initSerialPort(const QString &portName,
                                  QSerialPort::Parity parity,
                                  QSerialPort::StopBits stopBits)
 {
-    if (m_serialPort) {return false;}
-
     if (!m_serialThread){
-        m_portName = portName;
+        auto it = portChannelMap.find(portName);
+        if (it != portChannelMap.end()) {
+            m_channel = it.value();
+        } else {
+            qWarning() << "Unknown port:" << portName;
+            return false;
+        }
 
         m_serialPort = new QSerialPort(this);
-        m_serialPort->setFlowControl(QSerialPort::NoFlowControl);// 大多数情况使用
+        m_serialPort->setFlowControl(QSerialPort::NoFlowControl); // In the majority situation
         //m_serialPort->setReadBufferSize(1024 * 1024); // 1MB buffer
 
         m_serialPort->setPortName(portName);
@@ -46,31 +55,63 @@ bool SerialWorker::initSerialPort(const QString &portName,
         connect(m_serialPort, &QSerialPort::readyRead, this, &SerialWorker::handleReadyRead);
         connect(m_serialPort, &QSerialPort::errorOccurred, this, [this](QSerialPort::SerialPortError error) {
             if (error == QSerialPort::NoError) {return;}
-            qCWarning(uart) << QString("Serial port: %1 error: %2").arg(this->m_portName,m_serialPort->errorString());
+            qCWarning(uart) <<"Serial Channel_"<<m_channel<<" error: "<<m_serialPort->errorString();
         });
         connect(m_refreshtimer,&QTimer::timeout,this,[this]{
             static int step = 0;
             switch (step) {
-                case 0:  writeFrame(0x04,0x80,0x01,""); break;
-                case 1:  writeFrame(0x04,0x81,0x01,""); break;
-                case 2:  writeFrame(0x05,0x80,0x01,""); break;
+                case 0:  writeFrame(0x04,0x80,""); break;
+                case 1:  writeFrame(0x04,0x81,""); break;
+                case 2:  writeFrame(0x05,0x80,""); break;
             }
             step = (step + 1) % 3;
-
-            /*writeFrame(0x04,0x80,0x01,"");QThread::msleep(7);
-            writeFrame(0x04,0x81,0x01,"");QThread::msleep(7);
-            writeFrame(0x05,0x80,0x01,"");*/
         });
 
         QMetaObject::invokeMethod(this, [this]() {
-            if (!m_serialPort->open(QIODevice::ReadWrite)) {
-                qCWarning(uart) << "Failed open port:"<< m_portName << "Error:" << m_serialPort->errorString();
-                delete m_serialPort;
-                m_serialPort = nullptr;
+            if (m_serialPort->open(QIODevice::ReadWrite)) {
+                m_writebuffer.append(QByteArray::fromHex("aa 55 04 01 00 01 06 ee"));
+                writeSerialData(m_writebuffer,true);
+                m_writebuffer.clear();
+                m_writebuffer.append(QByteArray::fromHex("aa 55 05 04 0e 01 00 18 ee"));
+                writeSerialData(m_writebuffer,true);
+                m_writebuffer.clear();
+                m_writebuffer.append(QByteArray::fromHex("aa 55 08 04 0c 01 3f 80 00 00 d8 ee"));
+                writeSerialData(m_writebuffer,true);
+                m_writebuffer.clear();
+                m_writebuffer.append(QByteArray::fromHex("aa 55 08 04 1e 01 37 82 dc bf 7f ee"));
+                writeSerialData(m_writebuffer,true);
+                m_writebuffer.clear();
+                m_writebuffer.append(QByteArray::fromHex("aa 55 05 04 0f 01 01 1a ee"));
+                writeSerialData(m_writebuffer,true);
+                m_writebuffer.clear();
+                m_writebuffer.append(QByteArray::fromHex("aa 55 08 02 00 01 00 00 00 00 0b ee"));
+                writeSerialData(m_writebuffer,true);
+                m_writebuffer.clear();
+                m_writebuffer.append(QByteArray::fromHex("aa 55 08 02 01 01 3f 80 00 00 cb ee"));
+                writeSerialData(m_writebuffer,true);
+                m_writebuffer.clear();
+                m_writebuffer.append(QByteArray::fromHex("aa 55 08 04 1f 01 ff ff ff ff 28 ee"));
+                writeSerialData(m_writebuffer,true);
+                m_writebuffer.clear();
+                m_writebuffer.append(QByteArray::fromHex("aa 55 08 02 03 01 41 00 00 00 4f ee"));
+                writeSerialData(m_writebuffer,true);
+                m_writebuffer.clear();
+                m_writebuffer.append(QByteArray::fromHex("aa 55 06 04 1d 01 00 01 29 ee"));
+                writeSerialData(m_writebuffer,true);
+                m_writebuffer.clear();
+                m_writebuffer.append(QByteArray::fromHex("aa 55 08 02 02 01 00 00 00 00 0d ee"));
+                writeSerialData(m_writebuffer,true);
+                m_writebuffer.clear();
+
+                //m_refreshtimer->start();
+                // startLoopbackTest();   // Self-assessment
+                // QTimer::singleShot(0,this,[this](){writeFrame();});
+            }else{
+                qCWarning(uart) << "Failed open Channel_"<<this->m_channel << "Error:" << m_serialPort->errorString();
+                delete m_serialPort;m_serialPort = nullptr;
+                delete m_refreshtimer;m_refreshtimer = nullptr;
             }
-            m_refreshtimer->start();
-            // startLoopbackTest();   // Self-assessment
-         }, Qt::QueuedConnection);
+        }, Qt::QueuedConnection);
 
         return true;
     }
@@ -80,9 +121,9 @@ bool SerialWorker::initSerialPort(const QString &portName,
 
 // ========================== 信息处理部分 ===================================
 
-void SerialWorker::writeFrame(quint8 cmd, quint8 func, quint8 ch, const QByteArray& param) {
-    quint8 length = 4 + param.size();  // （ Command+Function+Channel+CheckSum ）+Parameter
-    quint8 checksum = length + cmd + func + ch; // The check code is taken from the lowest 8 bits.
+void SerialWorker::writeFrame(quint8 cmd, quint8 func, const QByteArray& param) {
+    quint8 length = 4 + param.size();  //  Command+Function+Channel+CheckSum  + Parameter
+    quint8 checksum = length + cmd + func + m_channel; // The check code is taken from the lowest 8 bits.
     for (char byte : param) {checksum += static_cast<quint8>(byte);}
 
     m_writebuffer.clear();
@@ -93,43 +134,45 @@ void SerialWorker::writeFrame(quint8 cmd, quint8 func, quint8 ch, const QByteArr
     m_writebuffer.append(length);
     m_writebuffer.append(cmd);
     m_writebuffer.append(func);
-    m_writebuffer.append(ch);
+    m_writebuffer.append(m_channel);
     m_writebuffer.append(param);
     m_writebuffer.append(checksum);
     m_writebuffer.append(END_MARKER);
 
-    writeSerialData(m_writebuffer);
+    writeSerialData(m_writebuffer,false);
 }
 
-void SerialWorker::writeSerialData(const QByteArray& data)
+void SerialWorker::writeSerialData(const QByteArray& data,bool isforce)
 {
-    QMutexLocker locker(&m_WriteMutex);
     if (!m_serialPort) {return;}
+    qCDebug(uart)<<"Channel_"<<m_channel<<" Send: " << data.toHex(' ');
 
-    qCDebug(uart)<< m_portName << "Send: " << data.toHex(' ');
-    if (m_serialPort->write(data) != data.size()) {
-        qCWarning(uart) << m_portName << "written buffer overflow!!!";
-        return;
+    QMutexLocker locker(&m_WriteMutex);
+    int result = m_serialPort->write(data);
+
+    if (result != data.size()) {
+        qCCritical(uart) <<"Channel_"<<m_channel<<" QSerialPort written buffer overflow!!!";
     }
 
-    // m_serialPort->flush();   //The same event is sent multiple times, and multiple messages will be sent together.
-    // qCDebug(uart) << "Flush result:" << flushed<< "bytes waiting:" << m_serialPort->bytesToWrite();
+    if(isforce){
+        m_serialPort->flush();   // The same event is sent multiple times, and multiple messages will be sent together.
+        qCDebug(uart) << "Flush writing result bytes waiting:" << m_serialPort->bytesToWrite();
+        QThread::msleep(6);
+    }
 }
 
 void SerialWorker::handleReadyRead()
 {
-    QByteArray data = m_serialPort->readAll();
-    if (data.isEmpty()){return;}
+    m_readbuffer.append(m_serialPort->readAll());
+    if (m_readbuffer.isEmpty()){return;}
 
-    emit serialDataReceived(data);
-    if(m_portName=="/dev/ttyS4"){qCDebug(uart) <<m_portName<<"(我<-收)Received" << data.toHex(' ');
-    }else{qCDebug(uart) <<m_portName<<"(发->电芯)Received" << data.toHex(' ');}
+    emit serialDataReceived(m_readbuffer);
+    if(m_channel==1){qCDebug(uart) <<"Channel_"<<m_channel<<" (我<-收)Received" << m_readbuffer.toHex(' ');
+    }else{qCDebug(uart) <<"Channel_"<<m_channel<<" (发->电芯)Received" << m_readbuffer.toHex(' ');}
 
     // Test progressing
     if (m_isTesting.load()) {
-        m_bytesReceived += data.size();
-
-        if (m_bytesReceived >= 1024) {  // 1 KB
+        if (m_readbuffer.size() >= 1024) {  // 1 KB
             qint64 elapsed = m_testTimer.elapsed(); // ms
             double speedKBps =  (1024 * 1000.0) / (elapsed * 1024);
             double speedBps = 1024 * 1000.0 / elapsed;
@@ -141,45 +184,26 @@ void SerialWorker::handleReadyRead()
             ).arg(elapsed).arg(speedKBps, 0, 'f', 2).arg(speedBps * 8, 0, 'f', 0);
 
             m_isTesting.store(false);
-            return;
+            m_readbuffer.clear();
         }
-
         return;
     }
 
     // Normal response processing of the protocol
-    if (data.size() >= 3){
-        if(static_cast<quint8>(data[0]) == HEADER_LOW && static_cast<quint8>(data[1]) == HEADER_HIGH){
-            quint8 lengthA = static_cast<quint8>(data[2]);
-
-            if(data.size() == lengthA + 4){
-                if(static_cast<quint8>(data[lengthA + 3]) != END_MARKER){
-                    qCWarning(uart) <<m_portName<<"Received data format Error!!!";
-                    return;
-                }
-
-                handleuartrequest(lengthA,data);
-                data.remove(0,lengthA + 4);
-                if(data != nullptr){handleReadyRead();}
-                return;
-            }
-        }
-    }
-
-    // Handling of abnormal protocol responses
-    m_readbuffer.append(data);
     if (m_readbuffer.size() >= 3){
         if(static_cast<quint8>(m_readbuffer[0]) == HEADER_LOW && static_cast<quint8>(m_readbuffer[1]) == HEADER_HIGH){
             quint8 lengthB = static_cast<quint8>(m_readbuffer[2]);
             if (m_readbuffer.size() < lengthB + 4){return;}
 
-            if(static_cast<quint8>(data[lengthB + 3]) == END_MARKER){
+            if(static_cast<quint8>(m_readbuffer[lengthB + 3]) == END_MARKER){
                 handleuartrequest(lengthB,m_readbuffer);
                 m_readbuffer.remove(0,lengthB + 4);
+                if(!m_readbuffer.isEmpty()){handleReadyRead();}
                 return;
             }
         }
 
+        qCWarning(uart) <<"Channel_"<<m_channel<<" Received data format Error!!!";
         m_readbuffer.clear();
         return;
     }
@@ -191,53 +215,55 @@ bool SerialWorker::handleuartrequest(quint8 length,const QByteArray& data){
     quint8 ch = static_cast<quint8>(data[5]);
     quint8 Checksum = length + cmd + func + ch; // The check code is taken from the lowest 8 bits.
 
-    QByteArray param;
-    for (int i = 6; i < length+2; i++) {
-        param.append(static_cast<quint8>(data[i]));
-        Checksum += static_cast<quint8>(data[i]);
-    }
+    m_readparam.clear();
+    m_readparam= data.mid(6, length - 4);   // length - Command+Function+Channel+CheckSum
+    for (char byte : m_readparam) {Checksum += static_cast<quint8>(byte);}
 
     if(static_cast<quint8>(data[length + 2]) != Checksum){
-        qCDebug(uart) <<m_portName<<"Received data incorrect!!!";
+        qCDebug(uart) <<"Channel_"<<m_channel<<" Received data incorrect!!!";
         return false;
     }
 
     switch (cmd) {
         case 0x01:
-            handleOutputcmd(func,ch,param);            break;
+            handleOutputcmd(func,ch,m_readparam);            break;
 
         case 0x02:
-            handleSettingcmd(func, ch, param);         break;
+            handleSettingcmd(func, ch, m_readparam);         break;
 
         case 0x03:
-            handleControlcmd(func, ch, param);         break;
+            handleControlcmd(func, ch, m_readparam);         break;
 
         case 0x04:
-            handleMeasurementcmd(func, ch, param);     break;
+            handleMeasurementcmd(func, ch, m_readparam);     break;
 
         case 0x05:
-            handleRegistercmd(func, ch, param);        break;
+            handleRegistercmd(func, ch, m_readparam);        break;
 
         case 0x06:
-            handleCalibratecmd(func, ch, param);       break;
+            handleCalibratecmd(func, ch, m_readparam);       break;
 
         case 0x07:
-            handleCalibrationcmd(func, ch, param);     break;
+            handleCalibrationcmd(func, ch, m_readparam);     break;
 
         case 0x08:
-            handleTriggercmd(func, ch, param);         break;
+            handleTriggercmd(func, ch, m_readparam);         break;
 
         case 0x09:
-            handleISPcmd(func, ch, param);             break;
+            handleISPcmd(func, ch, m_readparam);             break;
 
         case 0x10:
-            handleSNcmd(func, ch, param);              break;
+            handleSNcmd(func, ch, m_readparam);              break;
 
         case 0x11:
-            handleIDcmd(func, ch, param);              break;
+            handleIDcmd(func, ch, m_readparam);              break;
 
         case 0xFF:
-            handleErrorcmd(func, ch, param);              break;
+            handleErrorcmd(func, ch, m_readparam);           break;
+
+        default:
+            qCWarning(uart) <<"Channel_"<<m_channel<<" Occuring unKnown Command!!!";
+            return false;
     }
 
     return true;
@@ -251,12 +277,12 @@ void SerialWorker::handleOutputcmd(quint8 func, quint8 ch, const QByteArray& par
     switch (func){
         case 0x80:{   // query output status
             quint8 raw = static_cast<quint8>(param[0]);
-            if (raw == 0x00){qCDebug(uart) <<m_portName<<"Output has been turned off.";}
-            else{qCDebug(uart) <<m_portName<<"Output has been turned on.";}
+            if (raw == 0x00){qCDebug(uart) <<"Channel_"<<m_channel<<" Output has been turned off.";}
+            else{qCDebug(uart) <<"Channel_"<<m_channel<<" Output has been turned on.";}
             break;
         }
-        case 0x00:qCDebug(uart) <<m_portName<<"Output OFF";break;
-        case 0x01:qCDebug(uart) <<m_portName<<"Output ON";break;
+        case 0x00:qCDebug(uart) <<"Channel_"<<m_channel<<" Output OFF";break;
+        case 0x01:qCDebug(uart) <<"Channel_"<<m_channel<<" Output ON";break;
         case 0x08:break;
         case 0x88:break;
         case 0x09:break;
@@ -539,7 +565,7 @@ void SerialWorker::handleErrorcmd(quint8 func, quint8 ch, const QByteArray& para
 
 SerialWorker::~SerialWorker()
 {
-    qCDebug(uart) << "Serial~ delete finished ："<< m_portName;
+    qCDebug(uart) << "Serial~ delete finished ："<<"Channel_"<<m_channel;
     closeSerial();
 }
 
@@ -572,7 +598,6 @@ void SerialWorker::startLoopbackTest()
     if (m_isTesting.load()) {return;}
 
     m_isTesting.store(true);
-    m_bytesReceived = 0;
 
     // 生成测试数据（1KB）
     QByteArray testData;
@@ -582,6 +607,6 @@ void SerialWorker::startLoopbackTest()
     qCDebug(uart) << "Starting loopback test (connect TX to RX for testing)...";
     qCDebug(uart) << "Sending" << testData.size() << "bytes of test data";
     m_testTimer.start();
-    writeSerialData(testData);
+    writeSerialData(testData,false);
 }
 

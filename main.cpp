@@ -55,7 +55,7 @@ void Test_eth_Serial(const QString &portName)
     QObject::connect(QGuiApplication::instance(), &QGuiApplication::aboutToQuit,tcpServer, &QObject::deleteLater);
 
     QObject::connect(serialWorker, &SerialWorker::serialDataReceived,tcpServer, &TcpServerManager::forwardSerialData);
-    QObject::connect(tcpServer, &TcpServerManager::SerialSendRequest,serialWorker, &SerialWorker::writeSerialData);
+    //QObject::connect(tcpServer, &TcpServerManager::SerialSendRequest,serialWorker, &SerialWorker::writeSerialData);
 }
 
 void Test_can_serial(const QString &cansocket,const QString &portName)
@@ -78,7 +78,7 @@ void Test_can_serial(const QString &cansocket,const QString &portName)
     QObject::connect(canThread, &QThread::finished,canThread, &QObject::deleteLater);
 
     QObject::connect(serialWorker, &SerialWorker::serialDataReceived,canWorker, &CanWorker::forwardSerialData);
-    QObject::connect(canWorker, &CanWorker::SerialSendRequest,serialWorker, &SerialWorker::writeSerialData);
+    //QObject::connect(canWorker, &CanWorker::SerialSendRequest,serialWorker, &SerialWorker::writeSerialData);
 
     QMetaObject::invokeMethod(canWorker, [canWorker, &cansocket]() {
         canWorker->initialize(cansocket, 1000000);
@@ -90,7 +90,7 @@ void Test_can_serial(const QString &cansocket,const QString &portName)
 
 int main(int argc, char *argv[])
 {
-    qputenv("QT_IM_MODULE", QByteArray("qtvirtualkeyboard"));
+    //qputenv("QT_IM_MODULE", QByteArray("qtvirtualkeyboard"));
 
     QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     QGuiApplication::setApplicationName("Leacesy Instrument");
@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
         Uart_bridge.reset(new SerialBridge());
         engine.rootContext()->setContextProperty("Uart_bridge", Uart_bridge.get());
         engine.addImportPath(QStringLiteral("qrc:/qml"));
-        const QUrl url(QStringLiteral("qrc:/qml/Component/test.qml"));   //main.qml
+        const QUrl url(QStringLiteral("qrc:/qml/main.qml"));   //main.qml   Component/test.qml
         QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,&app, [url](QObject *obj, const QUrl &objUrl) {
             if (!obj && url == objUrl){QCoreApplication::exit(-1);}
         }, Qt::QueuedConnection);
@@ -126,10 +126,10 @@ int main(int argc, char *argv[])
         Uart_4.reset(new SerialWorker());
         if(!Uart_4->initSerialPort("/dev/ttyS4", QSerialPort::Baud38400)){return 1;}
         /*Uart_5.reset(new SerialWorker());
-        if(!Uart_5->initSerialPort("/dev/ttyS5", QSerialPort::Baud38400)){return 1;}
+        if(!Uart_5->initSerialPort("/dev/ttyS5", QSerialPort::Baud38400)){return 1;}*/
 
-        QObject::connect(Uart_4.get(),&SerialWorker::serialDataReceived,Uart_5.get(),&SerialWorker::writeSerialData);
-        QObject::connect(Uart_5.get(),&SerialWorker::serialDataReceived,Uart_4.get(),&SerialWorker::writeSerialData);*/
+        //QObject::connect(Uart_4.get(),&SerialWorker::serialDataReceived,Uart_5.get(),&SerialWorker::writeSerialData);
+        //QObject::connect(Uart_5.get(),&SerialWorker::serialDataReceived,Uart_4.get(),&SerialWorker::writeSerialData);
 
         QObject::connect(Uart_4.get(),&SerialWorker::voltageChanged,Uart_bridge.get(),&SerialBridge::update_Uart4_Voltage);
         QObject::connect(Uart_4.get(),&SerialWorker::currentChanged,Uart_bridge.get(),&SerialBridge::update_Uart4_Current);

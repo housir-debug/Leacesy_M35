@@ -9,72 +9,98 @@ SerialBridge::~SerialBridge() {}
 
 // ********************* qml调用处理 **************************
 
-void SerialBridge::onChannel_1_Toggled(bool status){
-    qDebug(ubridge) << "onChannel_1_Toggled当前状态为："<<status;
-    if(status){
-        emit sendFrame_Uart4(0x01,0x01,0x01,"");
-    }else{
-        emit sendFrame_Uart4(0x01,0x00,0x01,"");
+void SerialBridge::setChannel_Output(int channel,bool switchs){
+    qDebug(ubridge) << "onChannel_2_Toggled当前状态为："<<switchs;
+    quint8 func = switchs ? 0x01 : 0x00;
+
+    switch (channel) {
+    case 1: // ch_1
+        return emit sendFrame_Uart4(0x01,func,"");
+    case 2: // ch_2
+        return emit sendFrame_Uart5(0x01,func,"");
+    default:// all
+        return toAll_Channel(0x01,func,"");
     }
 }
 
-void SerialBridge::onChannel_2_Toggled(bool status){
-    qDebug(ubridge) << "onChannel_2_Toggled当前状态为："<<status;
-    if(status){
-        emit sendFrame_Uart5(0x01,0x01,0x02,"");
-    }else{
-        emit sendFrame_Uart5(0x01,0x00,0x02,"");
+void SerialBridge::setChannel_Setstatus(int channel,int model,float value){
+    quint32 intValue;
+    memcpy(&intValue, &value, sizeof(float));
+    intValue = qToBigEndian(intValue);
+
+    m_Status_buffer.clear();
+    m_Status_buffer.append(reinterpret_cast<const char*>(&intValue),sizeof(quint32));
+
+    switch (channel){
+        case 1: // ch_1
+            switch (model){
+            case 1:// cv
+                return emit sendFrame_Uart4(0x02,0x00,m_Status_buffer);
+            case 2:// cc
+                return emit sendFrame_Uart4(0x02,0x01,m_Status_buffer);
+            case 3:// ovp
+                return emit sendFrame_Uart4(0x02,0x03,m_Status_buffer);
+            default:
+                return;
+            }
+        case 2: // ch_2
+            switch (model){
+            case 1:// cv
+                return emit sendFrame_Uart5(0x02,0x00,m_Status_buffer);
+            case 2:// cc
+                return emit sendFrame_Uart5(0x02,0x01,m_Status_buffer);
+            case 3:// ovp
+                return emit sendFrame_Uart5(0x02,0x03,m_Status_buffer);
+            default:
+                return;
+            }
+        default: // all
+            switch (model){
+            case 1:// cv
+                return toAll_Channel(0x02,0x00,m_Status_buffer);
+            case 2:// cc
+                return toAll_Channel(0x02,0x01,m_Status_buffer);
+            case 3:// ovp
+                return toAll_Channel(0x02,0x03,m_Status_buffer);
+            default:
+                return;
+            }
     }
 }
 
-QString SerialBridge::onAll_Channel_Change(bool status){
-    qDebug(ubridge) << "onAll_Channel_Change当前状态为："<<status;
-    QString switchs = "";
-    if(status){
-        switchs = "OFF";  // all on
-        emit sendFrame_Uart4(0x01,0x01,0x01,"");
-        emit sendFrame_Uart5(0x01,0x01,0x02,"");
-    }else{
-        switchs = "ON";  //  all false
-        emit sendFrame_Uart4(0x01,0x00,0x01,"");
-        emit sendFrame_Uart5(0x01,0x00,0x02,"");
-    }
-
-    return switchs;
-}
-
-QString SerialBridge::onCurrent_Unit_Change(){
+QString SerialBridge::setChannel_CurrentUnit(){
     QString unit = "";
 
-    m_param.clear();
+    m_Unit_buffer.clear();
     static int step = 0;
     switch (step) {
         case 0:
             unit = "mA";
-            m_param.append(0x01);  // default A ->mA
-            emit sendFrame_Uart4(0x04,0x0E,0x01,m_param);
-            emit sendFrame_Uart5(0x04,0x0E,0x02,m_param);
+            m_Unit_buffer.append(0x01);    // default A ->mA
             break;
         case 1:
             unit = "Auto";
-            m_param.append(0x10);  // mA ->auto
-            emit sendFrame_Uart4(0x04,0x0E,0x01,m_param);
-            emit sendFrame_Uart5(0x04,0x0E,0x02,m_param);
+            m_Unit_buffer.append(0x10);    // mA ->auto
             break;
         case 2:
             unit = "A";
-            m_param.append(1,0x00);  // auto ->A
-            emit sendFrame_Uart4(0x04,0x0E,0x01,m_param);
-            emit sendFrame_Uart5(0x04,0x0E,0x02,m_param);
+            m_Unit_buffer.append(1,0x00);  // auto ->A
             break;
     }
+    toAll_Channel(0x04,0x0E,m_Unit_buffer);
     step = (step + 1) % 3;
 
     return unit;
 }
 
-// ----
-void SerialBridge::setupQmlConnections(QQmlApplicationEngine &engine)
+// --------------------------  辅助函数  ----------------------------
+
+void SerialBridge::toAll_Channel(quint8 cmd,quint8 func,QByteArray param){
+    emit sendFrame_Uart4(cmd,func,param);
+    emit sendFrame_Uart5(cmd,func,param);
+}
+
+/*void SerialBridge::setupQmlConnections(QQmlApplicationEngine &engine)
 {
     const auto rootObjects = engine.rootObjects();
     if (rootObjects.isEmpty()) {
@@ -95,7 +121,7 @@ void SerialBridge::setupQmlConnections(QQmlApplicationEngine &engine)
         QObject::connect(channel2, SIGNAL(channelToggled(bool)),
                         this, SLOT(onChannel_2_Toggled(bool)));
     }
-}
+}*/
 
 // ********************* C++槽函数具体实现 ****************************
 

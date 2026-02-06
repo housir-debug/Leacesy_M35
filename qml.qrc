@@ -9,5 +9,8 @@
         <file>qml/Component/PopupButton.qml</file>
         <file>qml/Component/SidebarButton.qml</file>
         <file>qml/Component/KeyinputBox.qml</file>
+        <file>qml/SettingPage.qml</file>
+        <file>qml/HomePage.qml</file>
+        <file>qml/SystemPage.qml</file>
     </qresource>
 </RCC>

@@ -79,9 +79,9 @@ Item {
             }
 
             onReleased: {
-                root.clicked()
                 root.is_pressed = false
                 releaseAnimation.start()
+                root.clicked()
             }
         }
     }

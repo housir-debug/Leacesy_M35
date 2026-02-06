@@ -1,4 +1,5 @@
 #pragma once
+#include <QMap>
 #include <QtCore>
 #include <QMutex>
 #include <QTimer>
@@ -37,11 +38,10 @@ public:
                         QSerialPort::DataBits dataBits = QSerialPort::Data8,
                         QSerialPort::Parity parity = QSerialPort::NoParity,
                         QSerialPort::StopBits stopBits = QSerialPort::OneStop);
-
-    void writeFrame(quint8 cmd, quint8 func, quint8 ch, const QByteArray& param);
-    void writeSerialData(const QByteArray& data);
-
     void closeSerial();
+
+    void writeFrame(quint8 cmd, quint8 func, const QByteArray& param);
+    void writeSerialData(const QByteArray& data,bool isforce);
 
 private:
     void handleReadyRead();
@@ -73,17 +73,19 @@ private:
     static constexpr quint8 HEADER_LOW = 0x55;
     static constexpr quint8 END_MARKER = 0xEE;
 
-    QMutex m_WriteMutex;
-    QByteArray m_readbuffer;
-    QByteArray m_writebuffer;
+    QMap<QString, quint8> portChannelMap;
+    quint8 m_channel{0};
 
+    QSerialPort *m_serialPort{nullptr};
     QTimer *m_refreshtimer{nullptr};
     QThread *m_serialThread{nullptr};
-    QSerialPort *m_serialPort{nullptr};
-    QString m_portName{""};
+
+    QMutex m_WriteMutex;
+    QByteArray m_writebuffer;
+    QByteArray m_readbuffer;
+    QByteArray m_readparam;
 
     QElapsedTimer m_testTimer;
     std::atomic<bool> m_isTesting{false};
-    std::atomic<qint64> m_bytesReceived{0};
 };
 
