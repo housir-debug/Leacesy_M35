@@ -1,77 +1,90 @@
 // tirpcloader.cpp
 #include "tirpcloader.h"
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 Q_LOGGING_CATEGORY(libtripc, "LIBTRIPC:")
 
-typedef int bool_t;
-
-TirpcDynamicLoader& TirpcDynamicLoader::instance()
-{
+TirpcDynamicLoader& TirpcDynamicLoader::instance(){
     static TirpcDynamicLoader loader;
     return loader;
 }
 
-bool TirpcDynamicLoader::load()
-{
+bool TirpcDynamicLoader::load(){
+    QMutexLocker locker(&m_mutex);
     if (m_loaded) {return true;}
 
-    const char* lib_names[] = {
-        "libtirpc.so.3",
-        "libtirpc.so",
-        "libtirpc.so.3.0.0",
-        "libtirpc.so.1",
-        "libtirpc.so.2",
-        nullptr
-    };
+    const char* lib_names[] = {"libtirpc.so.3","libtirpc.so.1","libtirpc.so",nullptr};
 
     for (int i = 0; lib_names[i] != nullptr; i++) {
         m_library.setFileName(lib_names[i]);
-
         if (m_library.load()) {
             if (resolveFunctions()) {
                 m_loaded = true;
-                qCDebug(libtripc) << "成功加载:" << lib_names[i];
+                qCDebug(libtripc)<<"Dynamic loading:"<<lib_names[i];
                 return true;
             }
+
             m_library.unload();
-        } else {qCDebug(libtripc) << "加载失败:" << m_library.errorString();}
+        }
     }
+
+    qCDebug(libtripc)<<"Failed Loaded Libtirpc Library";
     return false;
 }
 
-bool TirpcDynamicLoader::resolveFunctions()
-{
+bool TirpcDynamicLoader::resolveFunctions(){
     m_pmap_set = (pmap_set_t)m_library.resolve("pmap_set");
     m_pmap_unset = (pmap_unset_t)m_library.resolve("pmap_unset");
+    m_pmap_getport = (pmap_getport_t)m_library.resolve("pmap_getport");
 
-    if (!m_pmap_set || !m_pmap_unset) {
-        qCWarning(libtripc) << "pmap_set:" << (m_pmap_set ? "成功" : "失败")<< "pmap_unset:" << (m_pmap_unset ? "成功" : "失败");
-        return false;
-    }
-    return true;
+    return (m_pmap_set && m_pmap_unset && m_pmap_getport);
 }
 
+// ================================= 具体操作部分 =================================
+
+bool TirpcDynamicLoader::smart_pmap_set(quint32 program, quint32 version, int protocol, quint16 port) {
+    QMutexLocker locker(&m_mutex);
+    if (!m_loaded){ return false;}
+
+    quint16 currentPort = pmap_getport(program, version, protocol);
+    if (currentPort == port) {
+        qCDebug(libtripc)<<"Program: "<<program<<"Already Registered Port: "<<port;
+        return true;
+    }
+
+    if (currentPort != 0) {
+        qCDebug(libtripc)<<"(Found "<<currentPort<< ").Port Mismatch Re-Updating...";
+        m_pmap_unset(program, version); // Directly bind the function
+    }
+
+    bool_t res = m_pmap_set(program, version, protocol, port);
+    if (res) {
+        qCDebug(libtripc)<<"Successfully Registered Program: "<<program<<" port: "<<port;
+    } else {
+        qCWarning(libtripc)<<"Failed Register Program: "<<program;
+    }
+
+    return res != 0;
+}
+
+quint16 TirpcDynamicLoader::pmap_getport(quint32 program, quint32 version, int protocol) {
+    if (!m_loaded || !m_pmap_getport) {return 0;}
+
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = inet_addr("127.0.0.1"); // check local rpcbind
+
+    return m_pmap_getport(&addr, program, version, protocol);
+}
 
 bool TirpcDynamicLoader::pmap_set(quint32 program, quint32 version, int protocol, quint16 port)
 {
-    if (!m_loaded || !m_pmap_set) {
-        return false;
-    }
-
-    bool_t result = m_pmap_set(program, version, protocol, port);
-    qCDebug(libtripc) << "pmap_set: program=" << program<< ",version=" << version<< ",protocol=" << protocol<< ",port=" << port;
-
-    return result != 0;
+    return m_loaded && m_pmap_set && m_pmap_set(program, version, protocol, port);
 }
 
-bool TirpcDynamicLoader::pmap_unset(quint32 program, quint32 version, int protocol, quint16 port)
+bool TirpcDynamicLoader::pmap_unset(quint32 program, quint32 version)
 {
-    if (!m_loaded || !m_pmap_unset) {
-        return false;
-    }
-
-    bool_t result = m_pmap_unset(program, version, protocol, port);
-    qCDebug(libtripc) << "pmap_unset: program=" << program<< ",version=" << version<< ",protocol=" << protocol<< ",port=" << port;
-
-    return result != 0;
+    return m_loaded && m_pmap_unset && m_pmap_unset(program, version);
 }

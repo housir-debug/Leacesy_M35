@@ -1,10 +1,8 @@
+#include <QDir>
+#include <QThread>
 #include <QQmlContext>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
-#include <QTimer>
-#include <QDir>
-#include <QThread>
-#include <QLoggingCategory>
 #include "auxiliary/simple_logger.h"
 #include "auxiliary/config_manager.h"
 #include "auxiliary/scpimanager.h"
@@ -13,78 +11,6 @@
 #include "serialworker.h"
 #include "uartmanager.h"
 #include "canworker.h"
-
-/*void Test_eth_can(const QString &cansocket){
-    CanWorker *canWorker = new CanWorker();
-    QThread *canThread = new QThread();
-
-    canWorker->moveToThread(canThread);
-    canThread->setObjectName("can_worker");
-    canThread->start();
-
-    QObject::connect(QGuiApplication::instance(), &QGuiApplication::aboutToQuit,canWorker, &CanWorker::closeCan);
-    QObject::connect(canThread, &QThread::finished,canWorker, &QObject::deleteLater);
-    QObject::connect(canThread, &QThread::finished,canThread, &QObject::deleteLater);
-
-    QMetaObject::invokeMethod(canWorker, [canWorker, &cansocket]() {
-        canWorker->initialize(cansocket, 1000000);
-    }, Qt::BlockingQueuedConnection);
-
-    TcpServerManager *tcpServer = new TcpServerManager();
-    tcpServer->startServer();
-
-    QObject::connect(QGuiApplication::instance(), &QGuiApplication::aboutToQuit,tcpServer, &TcpServerManager::stopServer);
-    QObject::connect(QGuiApplication::instance(), &QGuiApplication::aboutToQuit,tcpServer, &QObject::deleteLater);
-
-    QObject::connect(canWorker, &CanWorker::frameReceived,tcpServer, &TcpServerManager::forwardCanData);
-    QObject::connect(tcpServer, &TcpServerManager::canSendRequest,canWorker, &CanWorker::sendFrame);
-}
-
-void Test_eth_Serial(const QString &portName)
-{
-    SerialWorker *serialWorker = new SerialWorker();
-    serialWorker->initSerialPort(portName, QSerialPort::Baud115200);
-
-    QObject::connect(QGuiApplication::instance(), &QGuiApplication::aboutToQuit,serialWorker, &SerialWorker::closeSerial);
-    QObject::connect(QGuiApplication::instance(), &QGuiApplication::aboutToQuit,serialWorker, &QObject::deleteLater);
-
-    TcpServerManager *tcpServer = new TcpServerManager();
-    tcpServer->startServer();
-
-    QObject::connect(QGuiApplication::instance(), &QGuiApplication::aboutToQuit,tcpServer, &TcpServerManager::stopServer);
-    QObject::connect(QGuiApplication::instance(), &QGuiApplication::aboutToQuit,tcpServer, &QObject::deleteLater);
-
-    QObject::connect(serialWorker, &SerialWorker::serialDataReceived,tcpServer, &TcpServerManager::forwardSerialData);
-    //QObject::connect(tcpServer, &TcpServerManager::SerialSendRequest,serialWorker, &SerialWorker::writeSerialData);
-}
-
-void Test_can_serial(const QString &cansocket,const QString &portName)
-{
-    SerialWorker *serialWorker = new SerialWorker();
-    serialWorker->initSerialPort(portName, QSerialPort::Baud115200);
-
-    QObject::connect(QGuiApplication::instance(), &QGuiApplication::aboutToQuit,serialWorker, &SerialWorker::closeSerial);
-    QObject::connect(QGuiApplication::instance(), &QGuiApplication::aboutToQuit,serialWorker, &QObject::deleteLater);
-
-    CanWorker *canWorker = new CanWorker();
-    QThread *canThread = new QThread();
-
-    canWorker->moveToThread(canThread);
-    canThread->setObjectName("can_worker");
-    canThread->start();
-
-    QObject::connect(QGuiApplication::instance(), &QGuiApplication::aboutToQuit,canWorker, &CanWorker::closeCan);
-    QObject::connect(canThread, &QThread::finished,canWorker, &QObject::deleteLater);
-    QObject::connect(canThread, &QThread::finished,canThread, &QObject::deleteLater);
-
-    QObject::connect(serialWorker, &SerialWorker::serialDataReceived,canWorker, &CanWorker::forwardSerialData);
-    //QObject::connect(canWorker, &CanWorker::SerialSendRequest,serialWorker, &SerialWorker::writeSerialData);
-
-    QMetaObject::invokeMethod(canWorker, [canWorker, &cansocket]() {
-        canWorker->initialize(cansocket, 1000000);
-        canWorker->testserialloop();
-    }, Qt::BlockingQueuedConnection);
-}*/
 
 int main(int argc, char *argv[])
 {
@@ -129,10 +55,10 @@ int main(int argc, char *argv[])
         //QObject::connect(Uart_4.get(),&SerialWorker::serialDataReceived,Uart_5.get(),&SerialWorker::writeSerialData);
         //QObject::connect(Uart_5.get(),&SerialWorker::serialDataReceived,Uart_4.get(),&SerialWorker::writeSerialData);
 
-        QObject::connect(Uart_4.get(),&SerialWorker::voltageChanged,Uart_bridge.get(),&SerialBridge::update_Uart4_Voltage);
-        QObject::connect(Uart_4.get(),&SerialWorker::currentChanged,Uart_bridge.get(),&SerialBridge::update_Uart4_Current);
-        QObject::connect(Uart_4.get(),&SerialWorker::statusChanged,Uart_bridge.get(),&SerialBridge::update_Uart4_status);
-        QObject::connect(Uart_bridge.get(),&SerialBridge::sendFrame_Uart4,Uart_4.get(),&SerialWorker::writeFrame);
+        QObject::connect(Uart_4.get(),&SerialWorker::voltageChanged,Uart_bridge.get(),&SerialBridge::update_Voltage,Qt::DirectConnection);
+        QObject::connect(Uart_4.get(),&SerialWorker::currentChanged,Uart_bridge.get(),&SerialBridge::update_CurrentAndUnit,Qt::DirectConnection);
+        QObject::connect(Uart_4.get(),&SerialWorker::statusChanged,Uart_bridge.get(),&SerialBridge::update_status,Qt::DirectConnection);
+        QObject::connect(Uart_bridge.get(),&SerialBridge::sendFrame_Uart4,Uart_4.get(),&SerialWorker::writeFrame,Qt::QueuedConnection);
 
         // QObject::connect(Uart_5.get(),&SerialWorker::voltageChanged,Uart_bridge.get(),&SerialBridge::update_Uart5_Voltage);
         // QObject::connect(Uart_5.get(),&SerialWorker::currentChanged,Uart_bridge.get(),&SerialBridge::update_Uart5_Current);
@@ -153,6 +79,10 @@ int main(int argc, char *argv[])
         vxiscpi.reset(new ScpiManager());
         vxiServer.reset(new TcpServerManager(vxiscpi.get()));
         if(!vxiServer->startServer()){return 1;}
+
+        QObject::connect(Uart_4.get(),&SerialWorker::channelreturnstatus,vxiscpi.get(),&ScpiManager::processCHStateResponse,Qt::DirectConnection);
+        QObject::connect(Uart_4.get(),&SerialWorker::channelreturnvalue,vxiscpi.get(),&ScpiManager::processCHvalueResponse,Qt::DirectConnection);
+        QObject::connect(vxiscpi.get(),&ScpiManager::sendFrame_Uart4,Uart_4.get(),&SerialWorker::writeFrame,Qt::QueuedConnection);
     }
 
     std::unique_ptr<CanWorker> canWorker;
@@ -171,10 +101,6 @@ int main(int argc, char *argv[])
         }, Qt::QueuedConnection);//Blocking
         //QTimer::singleShot(300, &app, &QGuiApplication::quit);
     }
-
-    //Test_eth_can("can1");
-    //Test_eth_Serial("/dev/ttyS5");
-    //Test_can_serial("can0","/dev/ttyS4");
 
     return app.exec();
 }

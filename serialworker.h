@@ -15,16 +15,20 @@ class SerialWorker : public QObject
     Q_OBJECT
 
 signals:
-    void serialDataReceived(const QByteArray &data);
-    void statusChanged(QByteArray status);
-    void voltageChanged(float measure);
-    void currentChanged(float measure);
-    void currentUnitChanged(bool status);
-    void smallcurrentChanged(float measure);
-    void temperatureChanged(float measure);
-    void sinktemperatureChanged(float measure);
-    void DVMACDCVoltageChanged(float measure);
-    void DVMVoltageChanged(float measure);
+    void serialDataReceived(const QByteArray &data,bool isforce);
+    void statusChanged(int ch,QByteArray status);
+    void voltageChanged(int ch,float measure);
+    void currentChanged(int ch,float measure);
+    void currentUnitChanged(int ch,bool status);
+    void smallcurrentChanged(int ch,float measure);
+    void temperatureChanged(int ch,float measure);
+    void sinktemperatureChanged(int ch,float measure);
+    void DVMACDCVoltageChanged(int ch,float measure);
+    void DVMVoltageChanged(int ch,float measure);
+
+    // to SCPI Command Query
+    void channelreturnstatus(bool state);
+    void channelreturnvalue(float value);
 
 public:
     explicit SerialWorker(QObject *parent = nullptr);
@@ -35,7 +39,6 @@ public:
                         QSerialPort::DataBits dataBits = QSerialPort::Data8,
                         QSerialPort::Parity parity = QSerialPort::NoParity,
                         QSerialPort::StopBits stopBits = QSerialPort::OneStop);
-    void closeSerial();
 
     void writeFrame(quint8 cmd, quint8 func, const QByteArray& param);
     void writeSerialData(const QByteArray& data,bool isforce);
@@ -77,7 +80,6 @@ private:
     QTimer *m_refreshtimer{nullptr};
     QThread *m_serialThread{nullptr};
 
-    QMutex m_WriteMutex;
     QByteArray m_writebuffer;
     QByteArray m_readbuffer;
     QByteArray m_readparam;

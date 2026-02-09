@@ -91,135 +91,102 @@ QString SerialBridge::setChannel_CurrentUnit(){
     return unit;
 }
 
-// ===========================  辅助函数  ============================
+// - Auxiliary function ----------
 
 void SerialBridge::toAll_Channel(quint8 cmd,quint8 func,QByteArray param){
     emit sendFrame_Uart4(cmd,func,param);
     emit sendFrame_Uart5(cmd,func,param);
 }
 
-/*void SerialBridge::setupQmlConnections(QQmlApplicationEngine &engine)
-{
-    const auto rootObjects = engine.rootObjects();
-    if (rootObjects.isEmpty()) {
-        qWarning() << "No root objects loaded yet!";
-        return;
-    }
-
-    QObject *rootObject = rootObjects.first();
-
-    QObject *channel1 = rootObject->findChild<QObject*>("channel_1");
-    if (channel1) {
-        QObject::connect(channel1, SIGNAL(channelToggled(bool)),
-                        this, SLOT(onChannel_1_Toggled(bool)));
-    }
-
-    QObject *channel2 = rootObject->findChild<QObject*>("channel_2");
-    if (channel2) {
-        QObject::connect(channel2, SIGNAL(channelToggled(bool)),
-                        this, SLOT(onChannel_2_Toggled(bool)));
-    }
-}*/
-
 // ============================  槽函数  =============================
 
-void SerialBridge::update_Uart4_Voltage(float voltage){
-    mUart4_Voltage = voltage;
-    emit Uart4_VoltageChanged();
-}
-
-void SerialBridge::update_Uart4_Current(float current){
-    mUart4_Current = current;
-
-    if (qAbs(mUart4_Current) < 1e-4){
-        mUart4_Current *= 1000.0f;
-        if (mUart4_Current_Unit == false){
-            mUart4_Current_Unit = true;  // mA
-            emit Uart4_Current_Unit_Changed();
-        }
-    }else{
-        if (mUart4_Current_Unit == true){
-            mUart4_Current_Unit = false;  // A
-            emit Uart4_Current_Unit_Changed();
-        }
+void SerialBridge::update_Voltage(int ch,float voltage){
+    switch (ch){
+    case 1:
+        mCH1_Voltage = voltage;
+        emit CH1_VoltageChanged();
+        return;
+    case 2:
+        mCH2_Voltage = voltage;
+        emit CH2_VoltageChanged();
+        return;
     }
-
-    emit Uart4_CurrentChanged();
 }
 
-void SerialBridge::update_Uart4_status(QByteArray status){
+void SerialBridge::update_CurrentAndUnit(int ch,float current){
+    bool newUnit = (qAbs(current) < 1e-4); // true: mA   false: A
+    if (newUnit) {current *= 1000.0f;}
+
+    switch (ch){
+        case 1:
+            mCH1_Current = current;
+            emit CH1_CurrentChanged();
+            if (mCH1_Current_Unit != newUnit){ // true: mA   false: A
+                mCH1_Current_Unit = !mCH1_Current_Unit;
+                emit CH1_Current_Unit_Changed();
+            }
+            return;
+        case 2:
+            mCH2_Current = current;
+            emit CH2_CurrentChanged();
+            if (mCH2_Current_Unit != newUnit){
+                mCH2_Current_Unit = !mCH2_Current_Unit;
+                emit CH2_Current_Unit_Changed();
+            }
+            return;
+    }
+}
+
+void SerialBridge::update_status(int ch,QByteArray status){
     if (status.size() < 2) {return;}
 
     quint16 value = (static_cast<quint8>(status[0]) << 8) | static_cast<quint8>(status[1]);
     QString binaryStr = QString("%1").arg(value, 16, 2, QLatin1Char('0'));
 
-    if (mUart4_status != binaryStr) {
-        mUart4_status = binaryStr;
-        qCDebug(uart_bridge) << "事件状态改变为: " << binaryStr;
+    switch (ch){
+        case 1:
+            if (mCH1_status != binaryStr) {
+                mCH1_status = binaryStr;
+                qCDebug(uart_bridge) << "事件状态改变为: " << binaryStr;
 
-        mUart4_status_v = 0;
-        if (mUart4_status[14] == "1"){   // cv
-            mUart4_status_v = 1;
-            qCDebug(uart_bridge) << "状态: " << mUart4_status_v;
-        }
-        if (mUart4_status[13] == "1"){   // cc
-            mUart4_status_v = 2;
-            qCDebug(uart_bridge) << "状态: " << mUart4_status_v;
-        }
-        if (mUart4_status[11] == "1"){   // ov
-            mUart4_status_v = 3;
-            qCDebug(uart_bridge) << "状态: " << mUart4_status_v;
-        }
+                mCH1_status_v = 0;
+                if (mCH1_status[14] == "1"){   // cv
+                    mCH1_status_v = 1;
+                    qCDebug(uart_bridge) << "状态: " << mCH1_status_v;
+                }
+                if (mCH1_status[13] == "1"){   // cc
+                    mCH1_status_v = 2;
+                    qCDebug(uart_bridge) << "状态: " << mCH1_status_v;
+                }
+                if (mCH1_status[11] == "1"){   // ov
+                    mCH1_status_v = 3;
+                    qCDebug(uart_bridge) << "状态: " << mCH1_status_v;
+                }
 
-        emit Uart4_StatusChanged();
-    }
-}
+                emit CH1_StatusChanged();
+            }
+            return;
+        case 2:
+            if (mCH2_status != binaryStr) {
+                mCH2_status = binaryStr;
+                qCDebug(uart_bridge) << "事件状态改变为: " << binaryStr;
 
-void SerialBridge::update_Uart5_Voltage(float voltage){
-    mUart5_Voltage = voltage;
-    emit Uart5_VoltageChanged();
-}
+                mCH2_status_v = 0;
+                if (mCH2_status[14] == "1"){   // cv
+                    mCH2_status_v = 1;
+                    qCDebug(uart_bridge) << "状态: " << mCH2_status_v;
+                }
+                if (mCH2_status[13] == "1"){   // cc
+                    mCH2_status_v = 2;
+                    qCDebug(uart_bridge) << "状态: " << mCH2_status_v;
+                }
+                if (mCH2_status[11] == "1"){   // ov
+                    mCH2_status_v = 3;
+                    qCDebug(uart_bridge) << "状态: " << mCH2_status_v;
+                }
 
-void SerialBridge::update_Uart5_Current(float current){
-    mUart5_Current = current;
-
-    if (qAbs(mUart5_Current) < 1e-4){
-        mUart5_Current *= 1000.0f;
-        if (mUart5_Current_Unit == false){
-            mUart5_Current_Unit = true;  // mA
-            emit Uart5_Current_Unit_Changed();
-        }
-    }else{
-        if (mUart5_Current_Unit == true){
-            mUart5_Current_Unit = false;  // A
-            emit Uart5_Current_Unit_Changed();
-        }
-    }
-
-    emit Uart5_CurrentChanged();
-}
-
-void SerialBridge::update_Uart5_status(QByteArray status){
-    if (status.size() < 2) {return;}
-
-    quint16 value = (static_cast<quint8>(status[0]) << 8) | static_cast<quint8>(status[1]);
-    QString binaryStr = QString("%1").arg(value, 16, 2, QLatin1Char('0'));
-
-    if (mUart5_status != binaryStr) {
-        mUart5_status = binaryStr;
-        qDebug(uart_bridge) << "事件状态: " << binaryStr;
-        if (mUart5_status[14] == "1"){   // cv
-            mUart5_status_v = 1;
-            qCDebug(uart_bridge) << "状态: " << mUart5_status_v;
-        }
-        if (mUart5_status[13] == "1"){   // cc
-            mUart5_status_v = 2;
-            qCDebug(uart_bridge) << "状态: " << mUart5_status_v;
-        }
-        if (mUart5_status[11] == "1"){   // ov
-            mUart5_status_v = 3;
-            qCDebug(uart_bridge) << "状态: " << mUart5_status_v;
-        }
-        emit Uart5_StatusChanged();
+                emit CH1_StatusChanged();
+            }
+            return;
     }
 }

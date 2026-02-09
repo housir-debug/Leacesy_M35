@@ -1,9 +1,11 @@
 #include "simple_logger.h"
-#include <QFile>
-#include <QTextStream>
+#include "auxiliary/config_manager.h"
+#include <QMutex>
 #include <QDateTime>
 #include <QDir>
-#include <QFileInfo>
+//#include <QFile>
+//#include <QTextStream>
+//#include <QFileInfo>
 
 
 Q_LOGGING_CATEGORY(log, "log:")
@@ -90,10 +92,22 @@ namespace {
 
 void loggermanage(const QString &loglevel,const QString &parentPath) {
     QString rules;
-    if (loglevel == "debug")        {rules = "*.debug=true\n*.info=true\n*.warning=true";}
+    if (loglevel == "debug"){rules = "*.debug=true\n*.info=true\n*.warning=true";}
     else if (loglevel == "warning") {rules = "*.debug=false\n*.info=false\n*.warning=true";}
     else if (loglevel == "release") {rules = "*.debug=false\n*.info=false\n*.warning=false";}
-    else {rules = "";}
+    else if (loglevel == "self-define"){
+        rules = "app.debug=false"
+                "log.debug=false"
+                "can.debug=false"
+                "web.debug=false"
+                "tcp.debug=false"
+                "scpi.debug=false"
+                "libtripc.debug=false"
+                "uart_channel.debug=false"
+                "uart_bridge.debug=false"
+                "*.info=false"
+                "*.warning=false";
+    }else {rules = "";}
     QLoggingCategory::setFilterRules(rules);
 
     //格式化加时间，比直接时间戳延时更多

@@ -1,5 +1,4 @@
-#ifndef CONFIG_MANAGER_H
-#define CONFIG_MANAGER_H
+#pragma once
 
 #include <QSettings>
 #include <QString>
@@ -34,5 +33,3 @@ private:
     ~ConfigManager() = delete;
     Q_DISABLE_COPY(ConfigManager)
 };
-
-#endif // CONFIG_MANAGER_H

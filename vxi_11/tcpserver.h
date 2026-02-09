@@ -1,32 +1,89 @@
-#ifndef TCPSERVER_H
-#define TCPSERVER_H
-
-#include <QObject>
+#pragma once
 #include <QTcpServer>
-#include <QTcpSocket>
-#include <QThread>
-#include <QMutex>
-#include <QTimer>
-#include <atomic>
-#include <memory>
 #include <QDateTime>
-#include <QLoggingCategory>
-#include <QMap>
-#include <unistd.h>
+#include <QTimer>
+#include <QElapsedTimer>
 #include "auxiliary/scpimanager.h"
-#include "tirpcloader.h"
-#include "canworker.h"
+//#include <QLoggingCategory>
+//#include <QThread>
+//#include <QMutex>
+//#include <atomic>
+//#include <memory>
+//#include <QMap>
 
 Q_DECLARE_LOGGING_CATEGORY(tcp)
 
-namespace Vxi11 {
-    constexpr quint32 DEVICE_CORE = 395183;    //->device
-    constexpr quint32 DEVICE_ASYNC = 395184;   //->device
-    constexpr quint32 DEVICE_INTR = 395185;    //<-device
+class TcpServerManager : public QObject
+{
+    Q_OBJECT
 
-    constexpr quint32 DEVICE_CORE_VERSION = 1;
-    constexpr quint32 DEVICE_ASYNC_VERSION  = 1;
-    constexpr quint32 DEVICE_INTR_VERSION = 1;
+signals:
+    void is_Remotemodel(bool model);
+    void Uart_VXISendRequest(const QByteArray &data);
+    void Can_VXISendRequest(const QByteArray &data);
+
+public:
+    explicit TcpServerManager(ScpiManager* scpi,QObject *parent = nullptr);
+    ~TcpServerManager();
+
+    void send_toAllClients(const QByteArray &data,bool isforce);
+    bool startServer();
+
+private:
+    bool registerWithRpcbind();
+    void onNewConnection();
+    void processClientData(QTcpSocket *client);
+    void handleVxi11RpcCall(QTcpSocket* client,const uchar* address);
+
+    void handleCreateLink(QTcpSocket* client,const quint32 xid);
+    void handleDeviceWrite(QTcpSocket* client,const quint32 xid,const uchar* address);
+    void handleDeviceRead(QTcpSocket* client,const quint32 xid,const uchar* address);
+    void handleDeviceReadStb(QTcpSocket* client,const quint32 xid,const uchar* address);
+    void handleDeviceTrigger(QTcpSocket* client,const quint32 xid,const uchar* address);
+    void handleDeviceClear(QTcpSocket* client,const quint32 xid,const uchar* address);
+    void handleDeviceRemote(QTcpSocket* client,const quint32 xid,const uchar* address);
+    void handleDeviceLocal(QTcpSocket* client,const quint32 xid,const uchar* address);
+    void handleDeviceLock(QTcpSocket* client,const quint32 xid,const uchar* address);
+    void handleDeviceUnlock(QTcpSocket* client,const quint32 xid,const uchar* address);
+    void handleDeviceEnableSrq(QTcpSocket* client,const quint32 xid,const uchar* address);
+    void handleDeviceDocmd(QTcpSocket* client,const quint32 xid,const uchar* address);
+    void handleDestroyLink(QTcpSocket* client,const quint32 xid,const uchar* address);
+    void handleCreateIntrChan(QTcpSocket* client,const quint32 xid,const uchar* address);
+    void handleDestroyIntrChan(QTcpSocket* client,const quint32 xid,const uchar* address);
+    void createErrorResponse(quint32 xid, quint32 error);
+
+private:
+    struct DeviceLink {
+        QTcpSocket* client;
+        quint32 id;
+        bool lock;
+        bool aborted;
+        QDateTime createTime;
+        QByteArray VxiScpi_response;
+
+        DeviceLink() :  client(nullptr), id(0), lock(false), aborted(false) {}
+    };
+
+    quint32 m_nextLinkId{1};
+    QMap<quint32, DeviceLink> m_deviceLinks;
+    //QElapsedTimer m_testtimer;
+
+    QList<QTcpSocket*> m_clients;
+    int m_vxiport{5025};
+    QByteArray m_readbuffer;
+    QByteArray m_responsebuffer;
+
+    ScpiManager* m_scpiManager{nullptr};
+    QTcpServer *m_tcpServer{nullptr};
+    QTimer *m_cleanupTimer{nullptr};
+    QThread *m_serverThread{nullptr};
+};
+
+namespace Vxi11 {
+    constexpr quint8  HEADER = 0x80;
+    constexpr quint32 DEVICE_CORE  = 395183;    // -> device
+    constexpr quint32 DEVICE_ASYNC = 395184;    // -> device
+    constexpr quint32 DEVICE_INTR  = 395185;    // <- device
 
     enum ErrorCode : quint32 {
         NO_ERROR                        = 0,    // 无错误
@@ -101,82 +158,3 @@ namespace Vxi11 {
     };
 }
 
-class TcpServerManager : public QObject
-{
-    Q_OBJECT
-
-public:
-    explicit TcpServerManager(ScpiManager* scpi,QObject *parent = nullptr);
-    ~TcpServerManager();
-
-    bool startServer();
-    void stopServer();
-
-    void forwardCanData(quint32 canId, const QByteArray &data,const QString &canface);
-    void forwardSerialData(const QByteArray &data);
-
-signals:
-    void canSendRequest(quint32 canId, const QByteArray &data,const QString &canface);
-    void SerialSendRequest(const QByteArray &data);
-
-private:
-    void sendToAllClients(const QByteArray &data);
-
-    void onNewConnection();
-    bool registerWithRpcbind();
-
-    void processClientData(QTcpSocket *client,const QByteArray newdata);
-    void handleVxi11RpcCall(QTcpSocket* client, const QByteArray &data);
-
-    void handleCreateLink(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
-    void handleDeviceWrite(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
-    void handleDeviceRead(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
-    void handleDeviceReadStb(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
-    void handleDeviceTrigger(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
-    void handleDeviceClear(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
-    void handleDeviceRemote(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
-    void handleDeviceLocal(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
-    void handleDeviceLock(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
-    void handleDeviceUnlock(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
-    void handleDeviceEnableSrq(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
-    void handleDeviceDocmd(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
-    void handleDestroyLink(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
-    void handleCreateIntrChan(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
-    void handleDestroyIntrChan(QTcpSocket* client, const QByteArray &data,const quint32 &xid);
-
-    QByteArray createErrorResponse(quint32 xid, quint32 error);
-
-private:
-    struct DeviceLink {
-        QTcpSocket* client;
-        quint32 id;
-        bool lock;
-        bool aborted;
-        QDateTime createTime;
-        QByteArray pending_Vxi_Scpi_response;
-
-        DeviceLink() :  client(nullptr), id(0), lock(false), aborted(false) {}
-    };
-
-    enum ServerState {
-        STATE_STOPPED,
-        STATE_STARTING,
-        STATE_RUNNING,
-        STATE_STOPPING
-    };
-
-    QMutex m_Mutex;
-    QList<QTcpSocket*> m_clients;
-    QElapsedTimer m_testtimer;
-    QMap<quint32, DeviceLink> m_deviceLinks;
-
-    quint32 m_nextLinkId{1};
-    std::atomic<ServerState> m_state{STATE_STOPPED};
-
-    ScpiManager* m_scpiManager{nullptr};
-    QThread *m_serverThread{nullptr};
-    QTcpServer *m_tcpServer{nullptr};
-    QTimer *m_cleanupTimer{nullptr};
-};
-
-#endif // TCPSERVER_H

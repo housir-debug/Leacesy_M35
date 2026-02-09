@@ -11,6 +11,15 @@
 Q_LOGGING_CATEGORY(web, "WEB:")
 
 WebServer::WebServer(QObject *parent) : QObject(parent){}
+WebServer::~WebServer()
+{
+    qCDebug(web)<< "webServer destroyed";
+    if (m_server) {
+        m_server->close();
+        delete m_server;
+        m_server = nullptr;
+    }
+}
 
 bool WebServer::start()
 {
@@ -37,17 +46,17 @@ void WebServer::onNewConnection()
 
     connect(client, &QTcpSocket::errorOccurred,this, [client](QAbstractSocket::SocketError error){
          qCWarning(web) << "Socket error from" << client->peerAddress().toString()<<client->peerPort()<< ":" << client->errorString() << "|" << error;
-    });
+    },Qt::DirectConnection);
     connect(client, &QTcpSocket::disconnected,this, [client](){
         qCDebug(web) << "Client disconnected:" << client->peerAddress().toString()<<client->peerPort();
         client->deleteLater();
-    });
+    },Qt::DirectConnection);
     connect(client, &QTcpSocket::readyRead,this,[this,client]{
         QByteArray rawData = client->readAll();
-        qCDebug(web) << "RECEIVED FROM" << client->peerAddress().toString()<<client->peerPort()<< "Raw request:";
+        qCDebug(web) << "WEB RECEIVED FROM" << client->peerAddress().toString()<<client->peerPort()<< "Raw request:";
         qCDebug(web) << rawData.constData();
         this->handleHttpRequest(client, rawData);
-    });
+    },Qt::DirectConnection);
 }
 
 // ===================== 信息处理部分 =================================
@@ -195,21 +204,4 @@ QString WebServer::generateHtmlPage()
     QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss");
     return html.arg(ConfigManager::s_model,ConfigManager::s_serialNumber,
                     ConfigManager::s_firmwareVersion ,timestamp);
-}
-
-// ==================== 析构部分 ====================
-
-WebServer::~WebServer()
-{
-    stop();
-    qCDebug(web)<< "webServer destroyed";
-}
-
-void WebServer::stop()
-{
-    if (m_server) {
-        m_server->close();
-        delete m_server;
-        m_server = nullptr;
-    }
 }

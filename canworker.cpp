@@ -17,8 +17,37 @@
 Q_LOGGING_CATEGORY(can, "CAN:");
 
 CanWorker::CanWorker(QObject *parent): QObject(parent){}
+CanWorker::~CanWorker()
+{
+    qCDebug(can) << "CAN~ delete finished";
+    m_stopRequested.store(true);
+    m_testing.store(false);
+   if (m_listenThread) {
+       m_listenThread->quit();
+       m_listenThread->wait(1000); // 等待1秒
+       m_listenThread->deleteLater();
+       delete m_listenThread;
+       m_listenThread = nullptr;// 内存释放 + 指针安全
+   }
 
-bool CanWorker::initialize(const QString &interface, const int &bitrate)
+    if (m_can0Socket >= 0) {
+        shutdown(m_can0Socket, SHUT_RDWR);
+        close(m_can0Socket);
+        m_can0Socket = -1;
+    }
+    if (m_can1Socket >= 0) {
+        shutdown(m_can1Socket, SHUT_RDWR);
+        close(m_can1Socket);
+        m_can1Socket = -1;
+    }
+    if (m_can2Socket >= 0) {
+        shutdown(m_can2Socket, SHUT_RDWR);
+        close(m_can2Socket);
+        m_can2Socket = -1;
+    }
+}
+
+bool CanWorker::initialize(const QString &interface, int bitrate)
 {
     if (m_can0Socket>=0||m_can1Socket>=0||m_can2Socket>=0) {return false;}
 
@@ -30,6 +59,7 @@ bool CanWorker::initialize(const QString &interface, const int &bitrate)
                 commands << QString("ip link set %1 type can bitrate %2").arg(iface).arg(bitrate);
                 commands << QString("ip link set %1 type can restart-ms 18").arg(iface);
                 commands << QString("ip link set %1 txqueuelen 1000").arg(iface);
+                commands << QString("ip link set %1 type can loopback on").arg(iface);
                 commands << QString("ip link set %1 up").arg(iface);
         }
 
@@ -40,7 +70,6 @@ bool CanWorker::initialize(const QString &interface, const int &bitrate)
             if (ret != 0) {return false;}
         }
 
-        QThread::msleep(10);
         bool success= true;
         success= success && initializeSocket("can0",m_can0Socket);
         success= success && initializeSocket("can1",m_can1Socket);
@@ -65,7 +94,6 @@ bool CanWorker::initialize(const QString &interface, const int &bitrate)
             if (ret != 0) {return false;}
         }
 
-        QThread::msleep(10);
         bool success= false;
         if(interface == "can0"){success=initializeSocket(interface,m_can0Socket);}
         if(interface == "can1"){success=initializeSocket(interface,m_can1Socket);}
@@ -120,15 +148,14 @@ bool CanWorker::initializeSocket(const QString &interfaceName, int &socketFd)
     int recv_own_msgs = 0; // 0不接收 | 1; 在内核socket中直接环回到接收缓冲区--不阻塞物理发送
     setsockopt(socketFd, SOL_CAN_RAW, CAN_RAW_RECV_OWN_MSGS, &recv_own_msgs, sizeof(recv_own_msgs));
 
-    int sndbuf_size = 100000 * sizeof(struct can_frame);  // format 1000fp | write bufsize
-    setsockopt(socketFd, SOL_SOCKET, SO_SNDBUF, &sndbuf_size, sizeof(sndbuf_size));
-
     return true;
 }
 
+// ========================== 监听部分 ===================================
+
 void CanWorker::listenLoop()
 {
-    int epoll_fd = epoll_create1(EPOLL_CLOEXEC);//设置close-on-exec标志，进程exec时自动关闭
+    int epoll_fd = epoll_create1(EPOLL_CLOEXEC);//close-on-exec mark，Automatic shutdown with progress exec
     if (epoll_fd < 0) {
         qCWarning(can)<<"Epoll create failed: "<<strerror(errno);
         return;
@@ -136,8 +163,6 @@ void CanWorker::listenLoop()
 
     int can0Socket = -1;int can1Socket = -1;int can2Socket = -1;
     {
-        // 不能直接访问成员变量，需要加锁或使用原子变量
-        QMutexLocker locker(&m_Mutex);
         if (m_can0Socket > 0) {can0Socket = m_can0Socket;}
         if (m_can1Socket > 0) {can1Socket = m_can1Socket;}
         if (m_can2Socket > 0) {can2Socket = m_can2Socket;}
@@ -203,6 +228,7 @@ void CanWorker::listenLoop()
                 }
 
                 if (nbytes != sizeof(frame)) {qCWarning(can)<<"Occurred incomplete content: "<<frame.data<<"valid btyes: "<<frame.can_dlc;continue;}
+
                 QByteArray data(reinterpret_cast<const char*>(frame.data), frame.can_dlc);
                 if (events[i].data.fd == can0Socket) {listenProcessing(frame.can_id, data,"can0");}
                 if (events[i].data.fd == can1Socket) {listenProcessing(frame.can_id, data,"can1");}
@@ -216,18 +242,16 @@ void CanWorker::listenLoop()
     QThread::currentThread()->quit();
 }
 
-// ========================== 信息处理部分 ===================================
-
-void CanWorker::listenProcessing(const quint32 &canId, const QByteArray &data,const QString &canface)
+void CanWorker::listenProcessing(quint32 canId, const QByteArray &data,const QString &canface)
 {
     if (m_testing.load()) {
         m_receivedCount++;
         qCDebug(can)  << "Test mode - Received frame " << m_receivedCount<< ": ID: 0x" << QString::number(canId, 16).toUpper()
                       << ", Len: " << data.size()<< ", data: " << QString(data.toHex(' ').toUpper())<< ", face: " << canface;
 
-        if (m_receivedCount >= 600) {
+        if (m_receivedCount >= 1000) {
             qint64 elapsed = m_testtimer.elapsed();
-            double frameRate = (600 * 1000.0) / elapsed;
+            double frameRate = (1000 * 1000.0) / elapsed;
 
             qCDebug(can) << QString(
                 "CAN Loopback Test Result: "
@@ -242,14 +266,13 @@ void CanWorker::listenProcessing(const quint32 &canId, const QByteArray &data,co
 
     qCDebug(can) << QString("Normal mode - Received: ID: 0x%1, Data: %2, Total received: %3 frames")
                 .arg(canId, 0, 16).arg(QString(data.toHex(' ').toUpper())).arg(m_receivedCount);
-    emit frameReceived(canId,data,canface);
 
 }
 
+// ========================== 发送部分 ===================================
+
 bool CanWorker::sendFrame(quint32 canId, const QByteArray &data,const QString &canface)
 {
-    QMutexLocker locker(&m_Mutex);
-
     if (data.size() > 8) {
         qCWarning(can) << "CAN data length cannot exceed 8 bytes";
         return false;
@@ -267,7 +290,7 @@ bool CanWorker::sendFrame(quint32 canId, const QByteArray &data,const QString &c
     if (canface=="can1"){bytesSent=write(m_can1Socket, &frame, sizeof(frame));}
     if (canface=="can2"){bytesSent=write(m_can2Socket, &frame, sizeof(frame));}
 
-    //usleep(1);
+    usleep(18);
 
     if (bytesSent != sizeof(frame)) {
         qCCritical(can) << "Send failed: %1" <<strerror(errno);
@@ -284,7 +307,7 @@ void CanWorker::testLoopback()
 
     quint32 testId = 0x123;
     QByteArray data = QByteArray::fromHex("1122334455667788");
-    int count = 600;
+    int count = 1000;
 
     m_testing.store(true);
     qCDebug(can) << QString("开始回环测试...ID: 0x%1, 总帧数: %2").arg(testId, 0, 16).arg(count);
@@ -297,59 +320,3 @@ void CanWorker::testLoopback()
        }
     }
 }
-
-void CanWorker::testserialloop(){
-    const QByteArray &testData = QByteArray::fromHex("1122334455667788");
-    m_testtimer.start();
-    emit SerialSendRequest(testData);
-}
-
-void CanWorker::forwardSerialData(const QByteArray &data)
-{
-    Q_UNUSED(data)
-    qint64 elapsed = m_testtimer.elapsed();
-    qCDebug(can) << "serial-can test time:" <<elapsed;
-}
-
-// ========================== 析构部分 ===================================
-
-CanWorker::~CanWorker()
-{
-    qCDebug(can) << "CAN~ delete finished";
-    closeCan();
-}
-
-void CanWorker::closeCan()
-{
-    QMutexLocker locker(&m_Mutex);
-
-    m_stopRequested.store(true);
-    m_testing.store(false);
-   if (m_listenThread) {
-       m_listenThread->quit();
-       m_listenThread->wait(1000); // 等待1秒
-       m_listenThread->deleteLater();
-       delete m_listenThread;
-       m_listenThread = nullptr;// 内存释放 + 指针安全
-   }
-
-    if (m_can0Socket >= 0) {
-        shutdown(m_can0Socket, SHUT_RDWR);
-        close(m_can0Socket);
-        m_can0Socket = -1;
-    }
-    if (m_can1Socket >= 0) {
-        shutdown(m_can1Socket, SHUT_RDWR);
-        close(m_can1Socket);
-        m_can1Socket = -1;
-    }
-    if (m_can2Socket >= 0) {
-        shutdown(m_can2Socket, SHUT_RDWR);
-        close(m_can2Socket);
-        m_can2Socket = -1;
-    }
-}
-
-
-
-

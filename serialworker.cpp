@@ -11,6 +11,28 @@ SerialWorker::SerialWorker(QObject *parent): QObject(parent){
     portChannelMap["/dev/ttyS6"] = 0x03;
     portChannelMap["/dev/ttyS7"] = 0x04;
 }
+SerialWorker::~SerialWorker()
+{
+    qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Serial~Destruct Finished.";
+    m_isTesting.store(false);
+    m_refreshtimer->stop();
+
+    if (m_serialPort) {
+        if (m_serialPort->isOpen()) {m_serialPort->close();}
+        delete m_serialPort;
+        delete m_refreshtimer;
+        m_serialPort = nullptr;
+        m_refreshtimer = nullptr;
+    }
+
+    if (m_serialThread) {
+        m_serialThread->quit();
+        m_serialThread->wait(1000);// 等待1秒
+        m_serialThread->deleteLater();
+        delete m_serialThread;
+        m_serialThread = nullptr;
+    }
+}
 
 bool SerialWorker::initSerialPort(const QString &portName,
                                  qint32 baudRate,
@@ -53,11 +75,11 @@ bool SerialWorker::initSerialPort(const QString &portName,
     if (!m_serialThread->isRunning()) {
         m_serialThread->start();
 
-        connect(m_serialPort, &QSerialPort::readyRead, this, &SerialWorker::handleReadyRead);
+        connect(m_serialPort, &QSerialPort::readyRead, this, &SerialWorker::handleReadyRead, Qt::DirectConnection);
         connect(m_serialPort, &QSerialPort::errorOccurred, this, [this](QSerialPort::SerialPortError error) {
             if (error == QSerialPort::NoError) {return;}
             qCWarning(uart_channel) <<"Channel_"<<m_channel<<" Occur Error: "<<m_serialPort->errorString();
-        });
+        }, Qt::DirectConnection);
         connect(m_refreshtimer,&QTimer::timeout,this,[this]{
             static int step = 0;
             switch (step) {
@@ -66,7 +88,7 @@ bool SerialWorker::initSerialPort(const QString &portName,
                 case 2:  writeFrame(0x05,0x80,""); break;
             }
             step = (step + 1) % 3;
-        });
+        }, Qt::DirectConnection);
 
         QMetaObject::invokeMethod(this, [this]() {
             if (m_serialPort->open(QIODevice::ReadWrite)) {
@@ -104,13 +126,9 @@ bool SerialWorker::initSerialPort(const QString &portName,
                 writeSerialData(m_writebuffer,true);
                 m_writebuffer.clear();
 
-                //m_refreshtimer->start();
+                m_refreshtimer->start();
                 // startLoopbackTest();   // Self-assessment
                 // QTimer::singleShot(0,this,[this](){writeFrame();});
-            }else{
-                qCWarning(uart_channel) <<"Channel_"<<m_channel<<"Failed Open! Error: "<<m_serialPort->errorString();
-                delete m_serialPort;m_serialPort = nullptr;
-                delete m_refreshtimer;m_refreshtimer = nullptr;
             }
         }, Qt::QueuedConnection);
 
@@ -148,9 +166,7 @@ void SerialWorker::writeSerialData(const QByteArray& data,bool isforce)
     if (!m_serialPort) {return;}
     qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Send: " << data.toHex(' ');
 
-    QMutexLocker locker(&m_WriteMutex);
     int result = m_serialPort->write(data);
-
     if (result != data.size()) {
         qCCritical(uart_channel)<<"Channel_"<<m_channel<<" QSerialPort Written Buffer Overflow!!!";
     }
@@ -167,7 +183,7 @@ void SerialWorker::handleReadyRead()
     m_readbuffer.append(m_serialPort->readAll());
     if (m_readbuffer.isEmpty()){return;}
 
-    emit serialDataReceived(m_readbuffer);
+    emit serialDataReceived(m_readbuffer,false);
     if(m_channel==1){qCDebug(uart_channel) <<"Channel_"<<m_channel<<" (我<-收)Received" << m_readbuffer.toHex(' ');
     }else{qCDebug(uart_channel) <<"Channel_"<<m_channel<<" (发->电芯)Received" << m_readbuffer.toHex(' ');}
 
@@ -278,16 +294,72 @@ void SerialWorker::handleOutputcmd(quint8 func, quint8 ch, const QByteArray& par
     switch (func){
         case 0x80:{   // query output status
             quint8 raw = static_cast<quint8>(param[0]);
-            if (raw == 0x00){qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Query Off.";}
-            else{qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Query On.";}
-            break;
+            if (raw == 0){
+                emit channelreturnstatus(false);
+                qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Query Off.";}
+            else{
+                emit channelreturnstatus(true);
+                qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Query On.";}
+            return;
         }
-        case 0x00:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Been OFF";break;
-        case 0x01:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Been ON";break;
-        case 0x08:break;
-        case 0x88:break;
-        case 0x09:break;
-        case 0x89:break;
+        case 0x00:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Been OFF";return;
+        case 0x01:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Been ON";return;
+        case 0x08:{
+            quint8 raw = static_cast<quint8>(param[0]);
+            if (raw == 0){
+                qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Bandwidth Been LOW.";}
+            else{
+                qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Bandwidth Been HIGH.";}
+            return;
+        }
+        case 0x88:{   // query output bandwidth
+            quint8 raw = static_cast<quint8>(param[0]);
+            if (raw == 0){
+                emit channelreturnstatus(false);
+                qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Query bandwidth low.";}
+            else{
+                emit channelreturnstatus(true);
+                qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Query bandwidth high.";}
+            return;
+        }
+        case 0x09:{
+            quint8 raw = static_cast<quint8>(param[0]);
+            switch (raw) {
+                case 1:
+                    qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output COMPMODE Been Llocal.";return;
+
+                case 2:
+                    qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output COMPMODE Been Lremote.";return;
+
+                case 3:
+                    qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output COMPMODE Been Hlocal.";return;
+
+                case 4:
+                    qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output COMPMODE Been Hremote.";return;
+
+                default:
+                    return;
+            }
+        }
+        case 0x89:{   // query output compmode
+            quint8 raw = static_cast<quint8>(param[0]);
+            switch (raw) {
+                case 1:
+                    emit channelreturnvalue(1);
+                    qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Query COMPMODE Llocal.";return;
+                case 2:
+                    emit channelreturnvalue(2);
+                    qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Query COMPMODE Lremote.";return;
+                case 3:
+                    emit channelreturnvalue(3);
+                    qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Query COMPMODE Hlocal.";return;
+                case 4:
+                    emit channelreturnvalue(4);
+                    qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Query COMPMODE Hremote.";return;
+                default:
+                    return;
+            }
+        }
     }
 }
 
@@ -346,56 +418,62 @@ void SerialWorker::handleMeasurementcmd(quint8 func, quint8 ch, const QByteArray
 
     quint32 raw = qFromBigEndian<quint32>(reinterpret_cast<const uchar*>(param.constData()));
     float shf;   memcpy(&shf, &raw, sizeof(float));
-    float EPSILON = 0.00001f;
-    if (qAbs(shf) < 1e-4){EPSILON = 0.00000001f;}
+    float EPSILON = qAbs(shf) < 1e-4? 0.00000001f : 0.00001f;
 
     switch (func){
         case 0x80: // voltage /V
                 qCDebug(uart_channel)<<"Voltage Present:"<<shf<<"Last:"<<lastVoltage;
                 if (qAbs(shf - lastVoltage) >= EPSILON) {
-                    emit voltageChanged(shf);
+                    emit voltageChanged(m_channel,shf);
+                    // emit channelreturnvalue(shf);
                     lastVoltage = shf;
                 }
                 break;
         case 0x81: // current /A
                 qCDebug(uart_channel)<<"Current Present:"<<shf<<"Last:"<<lastCurrent;
                 if (qAbs(shf - lastCurrent) >= EPSILON) {
-                    emit currentChanged(shf);
+                    emit currentChanged(m_channel,shf);
+                    // emit channelreturnvalue(shf);
                     lastCurrent = shf;
                 }
                 break;
         case 0x82: // small current /mA
                 qCDebug(uart_channel)<<"Small Current Present:"<<shf<<"Last:"<<lastSmallCurrent;
                 if (qAbs(shf - lastSmallCurrent) >= EPSILON) {
-                    emit smallcurrentChanged(shf);
+                    emit smallcurrentChanged(m_channel,shf);
+                    // emit channelreturnvalue(shf);
                     lastSmallCurrent = shf;
                 }
                 break;
         case 0x83: // board temperature /degC
                 qCDebug(uart_channel)<<"Board Temperature Present:"<<shf<<"Last:"<<lasttemper;
                 if (qAbs(shf - lasttemper) >= EPSILON) {
-                    emit temperatureChanged(shf);
+                    emit temperatureChanged(m_channel,shf);
+                    // emit channelreturnvalue(shf);
                     lasttemper = shf;
                 }
                 break;
         case 0x84: // heatsink temperature /degC
                 qCDebug(uart_channel)<<"Heatsink Temperature Present:"<<shf<<"Last:"<<lastheatsinktemper;
                 if (qAbs(shf - lastheatsinktemper) >= EPSILON) {
-                    emit sinktemperatureChanged(shf);
+                    emit sinktemperatureChanged(m_channel,shf);
+                    // emit channelreturnvalue(shf);
                     lastheatsinktemper = shf;
                 }
                 break;
         case 0x85: // DVM ACDC voltage /V
                 qCDebug(uart_channel)<<"DVM ACDC Voltage Present:"<<shf<<"Last:"<<lastDVMACDCVoltage;
                 if (qAbs(shf - lastDVMACDCVoltage) >= EPSILON) {
-                    emit DVMACDCVoltageChanged(shf);
+                    emit DVMACDCVoltageChanged(m_channel,shf);
+                    // emit channelreturnvalue(shf);
                     lastDVMACDCVoltage = shf;
                 }
                 break;
         case 0x86: // DVM voltage /V
                 qCDebug(uart_channel) << "DVM Voltage Present:"<<shf<<"Last:"<<lastDVMVoltage;
                 if (qAbs(shf - lastDVMVoltage) >= EPSILON) {
-                    emit DVMVoltageChanged(shf);
+                    emit DVMVoltageChanged(m_channel,shf);
+                    // emit channelreturnvalue(shf);
                     lastDVMVoltage = shf;
                 }
                 break;
@@ -448,7 +526,7 @@ void SerialWorker::handleRegistercmd(quint8 func, quint8 ch, const QByteArray& p
     Q_UNUSED(ch);
 
     switch (func){
-        case 0x80:emit statusChanged(param);break;
+        case 0x80:emit statusChanged(m_channel,param);break;
         case 0x81:break;
         case 0x82:break;
         case 0x83:break;
@@ -562,36 +640,6 @@ void SerialWorker::handleErrorcmd(quint8 func, quint8 ch, const QByteArray& para
     }
 }
 
-// ========================== 析构部分 ===================================
-
-SerialWorker::~SerialWorker()
-{
-    qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Serial~Destruct Finished.";
-    closeSerial();
-}
-
-void SerialWorker::closeSerial()
-{
-    m_isTesting.store(false);
-    m_refreshtimer->stop();
-
-    if (m_serialPort) {
-        if (m_serialPort->isOpen()) {m_serialPort->close();}
-        delete m_serialPort;
-        delete m_refreshtimer;
-        m_serialPort = nullptr;
-        m_refreshtimer = nullptr;
-    }
-
-    if (m_serialThread) {
-        m_serialThread->quit();
-        m_serialThread->wait(1000);// 等待1秒
-        m_serialThread->deleteLater();
-        delete m_serialThread;
-        m_serialThread = nullptr;
-    }
-}
-
 // ========================== 模块性能自测 ===================================
 
 void SerialWorker::startLoopbackTest()
@@ -610,4 +658,3 @@ void SerialWorker::startLoopbackTest()
     m_testTimer.start();
     writeSerialData(testData,false);
 }
-

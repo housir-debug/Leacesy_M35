@@ -4,8 +4,6 @@
 #include <QMutex>
 //#include <QString>
 
-
-
 Q_DECLARE_LOGGING_CATEGORY(web)
 
 class WebServer : public QObject
@@ -16,7 +14,6 @@ public:
     ~WebServer();
 
     bool start();
-    void stop();
 
 private:
     void onNewConnection();

@@ -1,5 +1,4 @@
-#ifndef SCPIMANAGER_H
-#define SCPIMANAGER_H
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
@@ -12,6 +11,7 @@ extern "C" {
 #include <QObject>
 #include <QByteArray>
 #include <QMutex>
+#include <QWaitCondition>
 #include <QLoggingCategory>
 
 Q_DECLARE_LOGGING_CATEGORY(scpi)
@@ -30,6 +30,10 @@ public:
 
     QByteArray processCommand(const QByteArray &command);
 
+    // --- 查询写入 -command Auxiliary function ---
+    void processCHStateResponse(bool state);
+    void processCHvalueResponse(float value);
+
 private:
     // --- libscpi 静态回调接口 ---
     static size_t staticWrite(scpi_t* context, const char* data, size_t len);
@@ -38,25 +42,34 @@ private:
     static scpi_result_t staticFlush(scpi_t* context);
     static scpi_result_t staticControl(scpi_t* context, scpi_ctrl_name_t ctrl, scpi_reg_val_t val);
 
-    // --- 具体指令处理函数 ---
-    static scpi_result_t scpiNetworkIpQ(scpi_t* context);
+    // --- 执行 -command function ---
+    static scpi_result_t SCPI_OutputState(scpi_t* context);
+    static scpi_result_t SCPI_OutputBand(scpi_t* context);
+    static scpi_result_t SCPI_OutputCompMode(scpi_t* context);
+
+    // --- 查询 -command function ---
+    static scpi_result_t SCPI_OutputStateQ(scpi_t* context);
+    static scpi_result_t SCPI_OutputBandQ(scpi_t* context);
+    static scpi_result_t SCPI_OutputCompModeQ(scpi_t* context);
 
 private:
+    static const scpi_command_t m_scpiCommands[];
+
+    bool m_CHStateReturn{false};
+    float m_CHvalueReturn{0.0f};
+
+    QMutex m_syncMutex;
+    QWaitCondition m_syncCondition;
+    bool m_UartResponse_Return = false;
+
     scpi_t m_scpiContext;
     scpi_interface_t m_interface;
-
     char m_inputBuffer[256];
     scpi_error_t m_errorQueue[10];
 
     QByteArray m_responseBuffer;
-    QMutex m_mutex;
-
     QByteArray m_idnManufacturer;
     QByteArray m_idnModel;
     QByteArray m_idnSerialNumber;
     QByteArray m_idnVersion;
-
-    static const scpi_command_t m_scpiCommands[];
 };
-
-#endif // SCPIMANAGER_H
