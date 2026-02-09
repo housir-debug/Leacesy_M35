@@ -1,24 +1,10 @@
-#ifndef CANWORKER_H
-#define CANWORKER_H
-
-#include <QObject>
+#pragma once
 #include <QMutex>
-#include <QThread>
-#include <QDebug>
-#include <QDateTime>
-#include <QAtomicInteger>
+#include <QElapsedTimer>
 #include <QLoggingCategory>
-
-// Linux SocketCAN头文件
-#include <linux/can.h>
-#include <linux/can/raw.h>
-#include <unistd.h>
-#include <sys/socket.h>
-#include <sys/ioctl.h>
-#include <sys/epoll.h>
-#include <net/if.h>
-#include <fcntl.h>
-#include <cstring>
+//#include <QThread>
+//#include <QDateTime>
+//#include <QAtomicInteger>
 
 Q_DECLARE_LOGGING_CATEGORY(can);
 
@@ -63,4 +49,3 @@ private:
     std::atomic<qint64> m_receivedCount{0};
 };
 
-#endif // CANWORKER_H

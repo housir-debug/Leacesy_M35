@@ -1,8 +1,20 @@
 #include "canworker.h"
+#include <QtCore>
+
+// Linux SocketCAN
+#include <linux/can/raw.h>
+#include <sys/epoll.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <unistd.h>
+#include <fcntl.h>
+//#include <linux/can.h>
+//#include <sys/socket.h>
+//#include <cstring>
 
 // ========================== 初始化部分 ===================================
 
-Q_LOGGING_CATEGORY(can, "can:");
+Q_LOGGING_CATEGORY(can, "CAN:");
 
 CanWorker::CanWorker(QObject *parent): QObject(parent){}
 

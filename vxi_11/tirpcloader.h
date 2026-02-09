@@ -1,6 +1,4 @@
-#ifndef TIRPCLOADER_H
-#define TIRPCLOADER_H
-
+#pragma once
 #include <QLoggingCategory>
 #include <QLibrary>
 
@@ -90,6 +88,3 @@ private:
     pmap_set_t m_pmap_set = nullptr;
     pmap_unset_t m_pmap_unset = nullptr;
 };
-
-
-#endif // TIRPCLOADER_H

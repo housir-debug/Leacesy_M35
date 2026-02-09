@@ -13,7 +13,6 @@
 #include <QLoggingCategory>
 #include <QMap>
 #include <unistd.h>
-//#include "auxiliary/config_manager.h"
 #include "auxiliary/scpimanager.h"
 #include "tirpcloader.h"
 #include "canworker.h"
@@ -107,7 +106,7 @@ class TcpServerManager : public QObject
     Q_OBJECT
 
 public:
-    explicit TcpServerManager(QObject *parent = nullptr);
+    explicit TcpServerManager(ScpiManager* scpi,QObject *parent = nullptr);
     ~TcpServerManager();
 
     bool startServer();

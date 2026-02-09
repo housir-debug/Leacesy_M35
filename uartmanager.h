@@ -1,11 +1,8 @@
 #pragma once
-
-#include <QQmlApplicationEngine>
-#include <QObject>
-#include <QtCore>
 #include <QLoggingCategory>
+//#include <QQmlApplicationEngine>
 
-Q_DECLARE_LOGGING_CATEGORY(ubridge)
+Q_DECLARE_LOGGING_CATEGORY(uart_bridge)
 
 class SerialBridge : public QObject
 {
@@ -58,7 +55,7 @@ private:
 
 public:
     explicit SerialBridge(QObject *parent = nullptr);
-    ~SerialBridge();
+    ~SerialBridge() override = default;
 
     // C++ model signal to this for qml engine
     void update_Uart4_Voltage(float voltage);

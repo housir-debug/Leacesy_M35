@@ -1,16 +1,14 @@
 #pragma once
-#include <QMap>
-#include <QtCore>
 #include <QMutex>
 #include <QTimer>
-#include <QObject>
-#include <QThread>
-#include <QSerialPort>
-#include <QSerialPortInfo>
-#include <QLoggingCategory>
 #include <QElapsedTimer>
+#include <QLoggingCategory>
+#include <QSerialPort>
+//#include <QSerialPortInfo>
+//#include <QMap>
+//#include <QThread>
 
-Q_DECLARE_LOGGING_CATEGORY(uart)
+Q_DECLARE_LOGGING_CATEGORY(uart_channel)
 
 class SerialWorker : public QObject
 {
@@ -27,7 +25,6 @@ signals:
     void sinktemperatureChanged(float measure);
     void DVMACDCVoltageChanged(float measure);
     void DVMVoltageChanged(float measure);
-
 
 public:
     explicit SerialWorker(QObject *parent = nullptr);

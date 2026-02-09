@@ -1,13 +1,10 @@
-#ifndef WEBSERVER_H
-#define WEBSERVER_H
-
-#include <QObject>
-#include <QTcpServer>
-#include <QTcpSocket>
+#pragma once
 #include <QLoggingCategory>
-#include <QString>
+#include <QTcpServer>
 #include <QMutex>
-#include "auxiliary/config_manager.h"
+//#include <QString>
+
+
 
 Q_DECLARE_LOGGING_CATEGORY(web)
 
@@ -35,5 +32,3 @@ private:
     QTcpServer *m_server{nullptr};
     //QThread *m_serverThread{nullptr};
 };
-
-#endif // WEBSERVER_H

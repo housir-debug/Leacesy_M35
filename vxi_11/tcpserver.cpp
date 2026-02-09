@@ -6,11 +6,11 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
-// ===================== 初始化部分 =================================
+Q_LOGGING_CATEGORY(tcp, "TCP:")
 
-Q_LOGGING_CATEGORY(tcp, "tcp:")
+TcpServerManager::TcpServerManager(ScpiManager* scpi,QObject *parent): QObject(parent), m_scpiManager(scpi) {}
 
-TcpServerManager::TcpServerManager(QObject *parent): QObject(parent){ }
+// ===================== 信息转发部分 =================================
 
 void TcpServerManager::forwardCanData(quint32 canId, const QByteArray &data,const QString &canface)
 {
@@ -60,7 +60,7 @@ bool TcpServerManager::startServer()
 
     if (!m_serverThread){
         m_tcpServer = new QTcpServer(this);
-        m_scpiManager = new ScpiManager(this);
+        //m_scpiManager = new ScpiManager(this);
 
         m_cleanupTimer = new QTimer(this);
         m_cleanupTimer->setInterval(5000); // 5秒

@@ -14,7 +14,7 @@
 #include "uartmanager.h"
 #include "canworker.h"
 
-void Test_eth_can(const QString &cansocket){
+/*void Test_eth_can(const QString &cansocket){
     CanWorker *canWorker = new CanWorker();
     QThread *canThread = new QThread();
 
@@ -84,9 +84,7 @@ void Test_can_serial(const QString &cansocket,const QString &portName)
         canWorker->initialize(cansocket, 1000000);
         canWorker->testserialloop();
     }, Qt::BlockingQueuedConnection);
-}
-
-
+}*/
 
 int main(int argc, char *argv[])
 {
@@ -149,9 +147,11 @@ int main(int argc, char *argv[])
         if (!webServer->start()) {return 1;}
     }
 
+    std::unique_ptr<ScpiManager> vxiscpi;
     std::unique_ptr<TcpServerManager> vxiServer;
     if (ConfigManager::s_enableVXIServer){
-        vxiServer.reset(new TcpServerManager());
+        vxiscpi.reset(new ScpiManager());
+        vxiServer.reset(new TcpServerManager(vxiscpi.get()));
         if(!vxiServer->startServer()){return 1;}
     }
 

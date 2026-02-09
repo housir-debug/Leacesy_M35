@@ -1,13 +1,14 @@
 #include "web_server.h"
-#include <QNetworkInterface>
-#include <QDebug>
+#include "auxiliary/config_manager.h"
+#include <QTcpSocket>
 #include <QDateTime>
-#include <QJsonObject>
-#include <QJsonDocument>
+//#include <QNetworkInterface>
+//#include <QJsonObject>
+//#include <QJsonDocument>
 
 // ===================== 初始化/启动部分 =================================
 
-Q_LOGGING_CATEGORY(web, "web:")
+Q_LOGGING_CATEGORY(web, "WEB:")
 
 WebServer::WebServer(QObject *parent) : QObject(parent){}
 

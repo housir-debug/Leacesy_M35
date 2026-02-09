@@ -1,7 +1,7 @@
 // tirpcloader.cpp
 #include "tirpcloader.h"
 
-Q_LOGGING_CATEGORY(libtripc, "libtripc:")
+Q_LOGGING_CATEGORY(libtripc, "LIBTRIPC:")
 
 typedef int bool_t;
 

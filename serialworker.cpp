@@ -1,8 +1,9 @@
 #include "serialworker.h"
+#include <QtCore>
 
 // ========================== 初始化部分 ===================================
 
-Q_LOGGING_CATEGORY(uart, "uart:")
+Q_LOGGING_CATEGORY(uart_channel, "UART_CHANNEL:")
 
 SerialWorker::SerialWorker(QObject *parent): QObject(parent){
     portChannelMap["/dev/ttyS4"] = 0x01;
@@ -22,7 +23,7 @@ bool SerialWorker::initSerialPort(const QString &portName,
         if (it != portChannelMap.end()) {
             m_channel = it.value();
         } else {
-            qWarning() << "Unknown port:" << portName;
+            qCWarning(uart_channel) << "Undefined Channel Serial Port: " << portName;
             return false;
         }
 
@@ -55,7 +56,7 @@ bool SerialWorker::initSerialPort(const QString &portName,
         connect(m_serialPort, &QSerialPort::readyRead, this, &SerialWorker::handleReadyRead);
         connect(m_serialPort, &QSerialPort::errorOccurred, this, [this](QSerialPort::SerialPortError error) {
             if (error == QSerialPort::NoError) {return;}
-            qCWarning(uart) <<"Serial Channel_"<<m_channel<<" error: "<<m_serialPort->errorString();
+            qCWarning(uart_channel) <<"Channel_"<<m_channel<<" Occur Error: "<<m_serialPort->errorString();
         });
         connect(m_refreshtimer,&QTimer::timeout,this,[this]{
             static int step = 0;
@@ -107,7 +108,7 @@ bool SerialWorker::initSerialPort(const QString &portName,
                 // startLoopbackTest();   // Self-assessment
                 // QTimer::singleShot(0,this,[this](){writeFrame();});
             }else{
-                qCWarning(uart) << "Failed open Channel_"<<this->m_channel << "Error:" << m_serialPort->errorString();
+                qCWarning(uart_channel) <<"Channel_"<<m_channel<<"Failed Open! Error: "<<m_serialPort->errorString();
                 delete m_serialPort;m_serialPort = nullptr;
                 delete m_refreshtimer;m_refreshtimer = nullptr;
             }
@@ -145,18 +146,18 @@ void SerialWorker::writeFrame(quint8 cmd, quint8 func, const QByteArray& param) 
 void SerialWorker::writeSerialData(const QByteArray& data,bool isforce)
 {
     if (!m_serialPort) {return;}
-    qCDebug(uart)<<"Channel_"<<m_channel<<" Send: " << data.toHex(' ');
+    qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Send: " << data.toHex(' ');
 
     QMutexLocker locker(&m_WriteMutex);
     int result = m_serialPort->write(data);
 
     if (result != data.size()) {
-        qCCritical(uart) <<"Channel_"<<m_channel<<" QSerialPort written buffer overflow!!!";
+        qCCritical(uart_channel)<<"Channel_"<<m_channel<<" QSerialPort Written Buffer Overflow!!!";
     }
 
     if(isforce){
         m_serialPort->flush();   // The same event is sent multiple times, and multiple messages will be sent together.
-        qCDebug(uart) << "Flush writing result bytes waiting:" << m_serialPort->bytesToWrite();
+        qCDebug(uart_channel)<<"Channel_"<<m_channel<<"QSerialPort Force Flush ";
         QThread::msleep(6);
     }
 }
@@ -167,8 +168,8 @@ void SerialWorker::handleReadyRead()
     if (m_readbuffer.isEmpty()){return;}
 
     emit serialDataReceived(m_readbuffer);
-    if(m_channel==1){qCDebug(uart) <<"Channel_"<<m_channel<<" (我<-收)Received" << m_readbuffer.toHex(' ');
-    }else{qCDebug(uart) <<"Channel_"<<m_channel<<" (发->电芯)Received" << m_readbuffer.toHex(' ');}
+    if(m_channel==1){qCDebug(uart_channel) <<"Channel_"<<m_channel<<" (我<-收)Received" << m_readbuffer.toHex(' ');
+    }else{qCDebug(uart_channel) <<"Channel_"<<m_channel<<" (发->电芯)Received" << m_readbuffer.toHex(' ');}
 
     // Test progressing
     if (m_isTesting.load()) {
@@ -177,7 +178,7 @@ void SerialWorker::handleReadyRead()
             double speedKBps =  (1024 * 1000.0) / (elapsed * 1024);
             double speedBps = 1024 * 1000.0 / elapsed;
 
-            qCDebug(uart) << "\n" << QString(
+            qCDebug(uart_channel) << "\n" << QString(
                 "Loopback Test Result:"
                 "Time elapsed: %1 ms"
                 "Speed: %2 KB/s (%3 bps)"
@@ -203,7 +204,7 @@ void SerialWorker::handleReadyRead()
             }
         }
 
-        qCWarning(uart) <<"Channel_"<<m_channel<<" Received data format Error!!!";
+        qCWarning(uart_channel)<<"Channel_"<<m_channel<<" Received Data Format Error!!!";
         m_readbuffer.clear();
         return;
     }
@@ -217,10 +218,10 @@ bool SerialWorker::handleuartrequest(quint8 length,const QByteArray& data){
 
     m_readparam.clear();
     m_readparam= data.mid(6, length - 4);   // length - Command+Function+Channel+CheckSum
-    for (char byte : m_readparam) {Checksum += static_cast<quint8>(byte);}
+    for (char byte : qAsConst(m_readparam)) {Checksum += static_cast<quint8>(byte);}
 
     if(static_cast<quint8>(data[length + 2]) != Checksum){
-        qCDebug(uart) <<"Channel_"<<m_channel<<" Received data incorrect!!!";
+        qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Received Data Incorrect!!!";
         return false;
     }
 
@@ -262,7 +263,7 @@ bool SerialWorker::handleuartrequest(quint8 length,const QByteArray& data){
             handleErrorcmd(func, ch, m_readparam);           break;
 
         default:
-            qCWarning(uart) <<"Channel_"<<m_channel<<" Occuring unKnown Command!!!";
+            qCWarning(uart_channel)<<"Channel_"<<m_channel<<" Occuring Unknown Command!!!";
             return false;
     }
 
@@ -277,12 +278,12 @@ void SerialWorker::handleOutputcmd(quint8 func, quint8 ch, const QByteArray& par
     switch (func){
         case 0x80:{   // query output status
             quint8 raw = static_cast<quint8>(param[0]);
-            if (raw == 0x00){qCDebug(uart) <<"Channel_"<<m_channel<<" Output has been turned off.";}
-            else{qCDebug(uart) <<"Channel_"<<m_channel<<" Output has been turned on.";}
+            if (raw == 0x00){qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Query Off.";}
+            else{qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Query On.";}
             break;
         }
-        case 0x00:qCDebug(uart) <<"Channel_"<<m_channel<<" Output OFF";break;
-        case 0x01:qCDebug(uart) <<"Channel_"<<m_channel<<" Output ON";break;
+        case 0x00:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Been OFF";break;
+        case 0x01:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Been ON";break;
         case 0x08:break;
         case 0x88:break;
         case 0x09:break;
@@ -350,49 +351,49 @@ void SerialWorker::handleMeasurementcmd(quint8 func, quint8 ch, const QByteArray
 
     switch (func){
         case 0x80: // voltage /V
-                qCDebug(uart) << "voltage raw:" << shf << "last:" << lastVoltage;
+                qCDebug(uart_channel)<<"Voltage Present:"<<shf<<"Last:"<<lastVoltage;
                 if (qAbs(shf - lastVoltage) >= EPSILON) {
                     emit voltageChanged(shf);
                     lastVoltage = shf;
                 }
                 break;
         case 0x81: // current /A
-                qCDebug(uart) << "current raw:" << shf << "last:" << lastCurrent;
+                qCDebug(uart_channel)<<"Current Present:"<<shf<<"Last:"<<lastCurrent;
                 if (qAbs(shf - lastCurrent) >= EPSILON) {
                     emit currentChanged(shf);
                     lastCurrent = shf;
                 }
                 break;
         case 0x82: // small current /mA
-                qCDebug(uart) << "small current raw:" << shf << "last:" << lastSmallCurrent;
+                qCDebug(uart_channel)<<"Small Current Present:"<<shf<<"Last:"<<lastSmallCurrent;
                 if (qAbs(shf - lastSmallCurrent) >= EPSILON) {
                     emit smallcurrentChanged(shf);
                     lastSmallCurrent = shf;
                 }
                 break;
         case 0x83: // board temperature /degC
-                qCDebug(uart) << "board temperature raw:" << shf << "last:" << lasttemper;
+                qCDebug(uart_channel)<<"Board Temperature Present:"<<shf<<"Last:"<<lasttemper;
                 if (qAbs(shf - lasttemper) >= EPSILON) {
                     emit temperatureChanged(shf);
                     lasttemper = shf;
                 }
                 break;
         case 0x84: // heatsink temperature /degC
-                qCDebug(uart) << "heatsink temperature raw:" << shf << "last:" << lastheatsinktemper;
+                qCDebug(uart_channel)<<"Heatsink Temperature Present:"<<shf<<"Last:"<<lastheatsinktemper;
                 if (qAbs(shf - lastheatsinktemper) >= EPSILON) {
                     emit sinktemperatureChanged(shf);
                     lastheatsinktemper = shf;
                 }
                 break;
         case 0x85: // DVM ACDC voltage /V
-                qCDebug(uart) << "DVM ACDC voltage raw:" << shf << "last:" << lastDVMACDCVoltage;
+                qCDebug(uart_channel)<<"DVM ACDC Voltage Present:"<<shf<<"Last:"<<lastDVMACDCVoltage;
                 if (qAbs(shf - lastDVMACDCVoltage) >= EPSILON) {
                     emit DVMACDCVoltageChanged(shf);
                     lastDVMACDCVoltage = shf;
                 }
                 break;
         case 0x86: // DVM voltage /V
-                qCDebug(uart) << "DVM voltage raw:" << shf << "last:" << lastDVMVoltage;
+                qCDebug(uart_channel) << "DVM Voltage Present:"<<shf<<"Last:"<<lastDVMVoltage;
                 if (qAbs(shf - lastDVMVoltage) >= EPSILON) {
                     emit DVMVoltageChanged(shf);
                     lastDVMVoltage = shf;
@@ -551,13 +552,13 @@ void SerialWorker::handleErrorcmd(quint8 func, quint8 ch, const QByteArray& para
     Q_UNUSED(ch);Q_UNUSED(param);
 
     switch (func){
-        case 0x00:qCDebug(uart) << "Error Response: CheckSum error";      break;
-        case 0x01:qCDebug(uart) << "Error Response: Unknow command";      break;
-        case 0x02:qCDebug(uart) << "Error Response: Unknow function";     break;
-        case 0x03:qCDebug(uart) << "Error Response: Error length";        break;
-        case 0x04:qCDebug(uart) << "Error Response: Invalid parameter";   break;
-        case 0x05:qCDebug(uart) << "Error Response: Illegal command";     break;
-        case 0x06:qCDebug(uart) << "Error Response: Unsupported command"; break;
+        case 0x00:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Error Response: CheckSum Error";      break;
+        case 0x01:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Error Response: Unknow Command";      break;
+        case 0x02:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Error Response: Unknow Function";     break;
+        case 0x03:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Error Response: Error Length";        break;
+        case 0x04:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Error Response: Invalid Parameter";   break;
+        case 0x05:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Error Response: Illegal Command";     break;
+        case 0x06:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Error Response: Unsupported Command"; break;
     }
 }
 
@@ -565,7 +566,7 @@ void SerialWorker::handleErrorcmd(quint8 func, quint8 ch, const QByteArray& para
 
 SerialWorker::~SerialWorker()
 {
-    qCDebug(uart) << "Serial~ delete finished ："<<"Channel_"<<m_channel;
+    qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Serial~Destruct Finished.";
     closeSerial();
 }
 
@@ -604,8 +605,8 @@ void SerialWorker::startLoopbackTest()
     testData.resize(1024);
     for (int i = 0; i < 1024; i++) {testData[i] = i % 256;}
 
-    qCDebug(uart) << "Starting loopback test (connect TX to RX for testing)...";
-    qCDebug(uart) << "Sending" << testData.size() << "bytes of test data";
+    qCDebug(uart_channel)<<"Starting Loopback Test (Connect TX to RX for testing)...";
+    qCDebug(uart_channel)<<"Sending"<<testData.size()<<"bytes of Test Data";
     m_testTimer.start();
     writeSerialData(testData,false);
 }
