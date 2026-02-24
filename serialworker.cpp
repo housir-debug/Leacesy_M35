@@ -126,7 +126,7 @@ bool SerialWorker::initSerialPort(const QString &portName,
                 writeSerialData(m_writebuffer,true);
                 m_writebuffer.clear();
 
-                m_refreshtimer->start();
+                //m_refreshtimer->start();
                 // startLoopbackTest();   // Self-assessment
                 // QTimer::singleShot(0,this,[this](){writeFrame();});
             }

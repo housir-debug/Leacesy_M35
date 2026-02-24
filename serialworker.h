@@ -29,6 +29,7 @@ signals:
     // to SCPI Command Query
     void channelreturnstatus(bool state);
     void channelreturnvalue(float value);
+    void channelreturnintvalue(int value);
 
 public:
     explicit SerialWorker(QObject *parent = nullptr);
