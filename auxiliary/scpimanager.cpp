@@ -385,9 +385,12 @@ bool ScpiManager::sendQueryCmd(scpi_t* context, quint8 cmd, quint8 func) {
         default:return false;
     }
 
-    self->m_syncCondition.wait(&self->m_syncMutex, 600);
-    if (!self->m_UartResponse_Return) {return false;}
+    if (!self->m_syncCondition.wait(&self->m_syncMutex, 600)) {
+        qCWarning(scpi) << "Query timeout - cmd:" << cmd << "func:" << func;
+        return false;
+    }
 
+    if (!self->m_UartResponse_Return) {return false;}
     return true;
 }
 
@@ -463,8 +466,7 @@ scpi_result_t ScpiManager::SCPI_ControlSystQ(scpi_t* context) {
     if(!sendQueryCmd(context,0x03,0x85)){return SCPI_RES_ERR;};
 
     auto* self = static_cast<ScpiManager*>(context->user_context);
-    int mode = self->m_CHvalueReturn;
-    switch (mode) {
+    switch (self->m_CHintvalueReturn) {
         case 0:SCPI_ResultMnemonic(context, "Reset");break;
         case 1:SCPI_ResultMnemonic(context, "Saved0");break;
         case 2:SCPI_ResultMnemonic(context, "Saved1");break;
@@ -616,6 +618,15 @@ QByteArray ScpiManager::processCommand(const QByteArray &command) {
 
 
 // ======================== 初化化模块 =================================
+
+QByteArray ScpiManager::m_idnManufacturer;
+QByteArray ScpiManager::m_idnModel;
+QByteArray ScpiManager::m_idnSerialNumber;
+QByteArray ScpiManager::m_idnVersion;
+
+scpi_interface_t ScpiManager::m_interface;
+char ScpiManager::m_inputBuffer[256] = {0};       // 初始化为0
+scpi_error_t ScpiManager::m_errorQueue[10] = {};  // 初始化为空
 
 ScpiManager::ScpiManager(QObject *parent) : QObject(parent) {
     // QString -> QByteArray
