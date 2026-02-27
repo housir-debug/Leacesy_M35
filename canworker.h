@@ -1,7 +1,10 @@
 #pragma once
 #include <QMutex>
+#include <QQueue>
 #include <QElapsedTimer>
+#include <QSocketNotifier>
 #include <QLoggingCategory>
+#include <linux/can/raw.h>
 //#include <QThread>
 //#include <QDateTime>
 //#include <QAtomicInteger>
@@ -19,26 +22,29 @@ public:
     explicit CanWorker(QObject *parent = nullptr);
     ~CanWorker();
 
-    bool initialize(const QString  &interface = "can0", int bitrate = 1000000);
     bool sendFrame(quint32 canId, const QByteArray &data,const QString &canface);
+
+    bool initialize(const QString  &interface = "can0", int bitrate = 1000000);
     void testLoopback();
 
 private:
-    bool initializeSocket(const QString &interfaceName, int &socketFd);
+    bool initializeSocket(const QString &interfaceName);
+    void handleWriteReady(int socketFd);
     void listenLoop();
-    void listenProcessing(quint32 canId, const QByteArray &data,const QString &canface);
+    void listenProcessing(quint32 canId,const QString &canface);
 
 private:
-    QElapsedTimer m_testtimer;
-
-    int m_can0Socket{-1};
-    int m_can1Socket{-1};
-    int m_can2Socket{-1};
+    QHash<QString, QSocketNotifier*> m_writeNotifiers;
+    QHash<QString, QQueue<struct can_frame>> m_sendQueues;
+    QHash<int, QString> m_fdToInterface;
 
     QThread *m_listenThread{nullptr};
-    std::atomic<bool> m_stopRequested{false};
+    std::atomic<bool> m_stopListen{false};
+    std::atomic<qint64> m_receivedCount{0};
+    QByteArray m_responsebuffer;
 
     std::atomic<bool> m_testing{false};
-    std::atomic<qint64> m_receivedCount{0};
+    QElapsedTimer m_testtimer;
+
 };
 
