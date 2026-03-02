@@ -13,9 +13,9 @@ void SerialBridge::setChannel_Output(int channel,bool switchs){
 
     switch (channel) {
     case 1: // ch_1
-        return emit sendFrame_Uart4(0x01,func,"");
+        return emit to_UartChannel1(0x01,func,"");
     case 2: // ch_2
-        return emit sendFrame_Uart5(0x01,func,"");
+        return emit to_UartChannel2(0x01,func,"");
     default:// all
         return toAll_Channel(0x01,func,"");
     }
@@ -33,22 +33,22 @@ void SerialBridge::setChannel_Setstatus(int channel,int model,float value){
         case 1: // ch_1
             switch (model){
             case 1:// cv
-                return emit sendFrame_Uart4(0x02,0x00,m_Status_buffer);
+                return emit to_UartChannel1(0x02,0x00,m_Status_buffer);
             case 2:// cc
-                return emit sendFrame_Uart4(0x02,0x01,m_Status_buffer);
+                return emit to_UartChannel1(0x02,0x01,m_Status_buffer);
             case 3:// ovp
-                return emit sendFrame_Uart4(0x02,0x03,m_Status_buffer);
+                return emit to_UartChannel1(0x02,0x03,m_Status_buffer);
             default:
                 return;
             }
         case 2: // ch_2
             switch (model){
             case 1:// cv
-                return emit sendFrame_Uart5(0x02,0x00,m_Status_buffer);
+                return emit to_UartChannel2(0x02,0x00,m_Status_buffer);
             case 2:// cc
-                return emit sendFrame_Uart5(0x02,0x01,m_Status_buffer);
+                return emit to_UartChannel2(0x02,0x01,m_Status_buffer);
             case 3:// ovp
-                return emit sendFrame_Uart5(0x02,0x03,m_Status_buffer);
+                return emit to_UartChannel2(0x02,0x03,m_Status_buffer);
             default:
                 return;
             }
@@ -94,13 +94,15 @@ QString SerialBridge::setChannel_CurrentUnit(){
 // - Auxiliary function ----------
 
 void SerialBridge::toAll_Channel(quint8 cmd,quint8 func,QByteArray param){
-    emit sendFrame_Uart4(cmd,func,param);
-    emit sendFrame_Uart5(cmd,func,param);
+    emit to_UartChannel1(cmd,func,param);
+    emit to_UartChannel2(cmd,func,param);
 }
 
 // ============================  槽函数  =============================
 
 void SerialBridge::update_Voltage(int ch,float voltage){
+    QMutexLocker locker(&mutex_Voltage);
+
     switch (ch){
     case 1:
         mCH1_Voltage = voltage;
@@ -114,6 +116,8 @@ void SerialBridge::update_Voltage(int ch,float voltage){
 }
 
 void SerialBridge::update_CurrentAndUnit(int ch,float current){
+    QMutexLocker locker(&mutex_CurrentAndUnit);
+
     bool newUnit = (qAbs(current) < 1e-4); // true: mA   false: A
     if (newUnit) {current *= 1000.0f;}
 
@@ -138,6 +142,7 @@ void SerialBridge::update_CurrentAndUnit(int ch,float current){
 }
 
 void SerialBridge::update_status(int ch,QByteArray status){
+    QMutexLocker locker(&mutex_status);
     if (status.size() < 2) {return;}
 
     quint16 value = (static_cast<quint8>(status[0]) << 8) | static_cast<quint8>(status[1]);

@@ -46,19 +46,19 @@ public:
 
 private:
     void handleReadyRead();
-    bool handleuartrequest(quint8 length,const QByteArray& data);
-    void handleOutputcmd(quint8 func, quint8 ch, const QByteArray& param);
-    void handleSettingcmd(quint8 func, quint8 ch, const QByteArray& param);
-    void handleControlcmd(quint8 func, quint8 ch, const QByteArray& param);
-    void handleMeasurementcmd(quint8 func, quint8 ch, const QByteArray& param);
-    void handleRegistercmd(quint8 func, quint8 ch, const QByteArray& param);
-    void handleCalibratecmd(quint8 func, quint8 ch, const QByteArray& param);
-    void handleCalibrationcmd(quint8 func, quint8 ch, const QByteArray& param);
-    void handleTriggercmd(quint8 func, quint8 ch, const QByteArray& param);
-    void handleISPcmd(quint8 func, quint8 ch, const QByteArray& param);
-    void handleSNcmd(quint8 func, quint8 ch, const QByteArray& param);
-    void handleIDcmd(quint8 func, quint8 ch, const QByteArray& param);
-    void handleErrorcmd(quint8 func, quint8 ch, const QByteArray& param);
+    void handleuartrequest       (quint8 length);
+    void handleOutputcmd         (quint8 func, quint8 ch);
+    void handleSettingcmd        (quint8 func, quint8 ch);
+    void handleControlcmd        (quint8 func, quint8 ch);
+    void handleMeasurementcmd    (quint8 func, quint8 ch);
+    void handleRegistercmd       (quint8 func, quint8 ch);
+    void handleCalibratecmd      (quint8 func, quint8 ch);
+    void handleCalibrationcmd    (quint8 func, quint8 ch);
+    void handleTriggercmd        (quint8 func, quint8 ch);
+    void handleISPcmd            (quint8 func, quint8 ch);
+    void handleSNcmd             (quint8 func, quint8 ch);
+    void handleIDcmd             (quint8 func, quint8 ch);
+    void handleErrorcmd          (quint8 func);
     void startLoopbackTest();
 
 private:

@@ -6,10 +6,40 @@
 Q_LOGGING_CATEGORY(uart_channel, "UART_CHANNEL:")
 
 SerialWorker::SerialWorker(QObject *parent): QObject(parent){
-    portChannelMap["/dev/ttyS4"] = 0x01;
-    portChannelMap["/dev/ttyS5"] = 0x02;
-    portChannelMap["/dev/ttyS6"] = 0x03;
-    portChannelMap["/dev/ttyS7"] = 0x04;
+    portChannelMap["/dev/ttyS3"]     = 0x01; // debug Uart
+    portChannelMap["/dev/ttyS4"]     = 0x02;
+    portChannelMap["/dev/ttyS5"]     = 0x03;
+    portChannelMap["/dev/ttyS7"]     = 0x04;
+    portChannelMap["/dev/ttyS8"]     = 0x05;
+    portChannelMap["/dev/ttyS9"]     = 0x06;
+    portChannelMap["/dev/ttyWCH0"]   = 0x07;
+    portChannelMap["/dev/ttyWCH1"]   = 0x08;
+    portChannelMap["/dev/ttyWCH2"]   = 0x09;
+    portChannelMap["/dev/ttyWCH3"]   = 0x0a;
+    portChannelMap["/dev/ttyWCH4"]   = 0x0b;
+    portChannelMap["/dev/ttyWCH5"]   = 0x0c;
+    portChannelMap["/dev/ttyWCH6"]   = 0x0d;
+    portChannelMap["/dev/ttyWCH7"]   = 0x0e;
+    portChannelMap["/dev/ttyWCH8"]   = 0x0f;
+    portChannelMap["/dev/ttyWCH9"]   = 0x10;
+    portChannelMap["/dev/ttyWCH10"]  = 0x11;
+    portChannelMap["/dev/ttyWCH11"]  = 0x12;
+    portChannelMap["/dev/ttyWCH12"]  = 0x13;
+    portChannelMap["/dev/ttyWCH13"]  = 0x14;
+    portChannelMap["/dev/ttyWCH14"]  = 0x15;
+    portChannelMap["/dev/ttyWCH15"]  = 0x16;
+    portChannelMap["/dev/ttyWCH16"]  = 0x17;
+    portChannelMap["/dev/ttyWCH17"]  = 0x18;
+    portChannelMap["/dev/ttyWCH18"]  = 0x19;
+    portChannelMap["/dev/ttyWCH19"]  = 0x1a;
+    portChannelMap["/dev/ttyWCH20"]  = 0x1b;
+    portChannelMap["/dev/ttyWCH21"]  = 0x1c;
+    portChannelMap["/dev/ttyWCH22"]  = 0x1d;
+    portChannelMap["/dev/ttyWCH23"]  = 0x1e;
+    portChannelMap["/dev/ttyWCH24"]  = 0x1f;
+    portChannelMap["/dev/ttyWCH25"]  = 0x20;
+    portChannelMap["/dev/ttyWCH26"]  = 0x21;
+    portChannelMap["/dev/ttyWCH27"]  = 0x22;
 }
 SerialWorker::~SerialWorker()
 {
@@ -92,7 +122,7 @@ bool SerialWorker::initSerialPort(const QString &portName,
 
         QMetaObject::invokeMethod(this, [this]() {
             if (m_serialPort->open(QIODevice::ReadWrite)) {
-                m_writebuffer.append(QByteArray::fromHex("aa 55 04 01 00 01 06 ee"));
+                /*m_writebuffer.append(QByteArray::fromHex("aa 55 04 01 00 01 06 ee"));
                 writeSerialData(m_writebuffer,true);
                 m_writebuffer.clear();
                 m_writebuffer.append(QByteArray::fromHex("aa 55 05 04 0e 01 00 18 ee"));
@@ -124,10 +154,10 @@ bool SerialWorker::initSerialPort(const QString &portName,
                 m_writebuffer.clear();
                 m_writebuffer.append(QByteArray::fromHex("aa 55 08 02 02 01 00 00 00 00 0d ee"));
                 writeSerialData(m_writebuffer,true);
-                m_writebuffer.clear();
+                m_writebuffer.clear();*/
 
                 //m_refreshtimer->start();
-                // startLoopbackTest();   // Self-assessment
+                startLoopbackTest();   // Self-assessment
                 // QTimer::singleShot(0,this,[this](){writeFrame();});
             }
         }, Qt::QueuedConnection);
@@ -163,10 +193,9 @@ void SerialWorker::writeFrame(quint8 cmd, quint8 func, const QByteArray& param) 
 
 void SerialWorker::writeSerialData(const QByteArray& data,bool isforce)
 {
-    if (!m_serialPort) {return;}
+    int result = m_serialPort->write(data);
     qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Send: " << data.toHex(' ');
 
-    int result = m_serialPort->write(data);
     if (result != data.size()) {
         qCCritical(uart_channel)<<"Channel_"<<m_channel<<" QSerialPort Written Buffer Overflow!!!";
     }
@@ -183,9 +212,8 @@ void SerialWorker::handleReadyRead()
     m_readbuffer.append(m_serialPort->readAll());
     if (m_readbuffer.isEmpty()){return;}
 
-    emit serialDataReceived(m_readbuffer,false);
-    if(m_channel==1){qCDebug(uart_channel) <<"Channel_"<<m_channel<<" (我<-收)Received" << m_readbuffer.toHex(' ');
-    }else{qCDebug(uart_channel) <<"Channel_"<<m_channel<<" (发->电芯)Received" << m_readbuffer.toHex(' ');}
+    // emit serialDataReceived(m_readbuffer,false); // Transit
+    qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Received: "<< m_readbuffer.toHex(' '); // <<(m_channel==1?"电芯发":"控制发")
 
     // Test progressing
     if (m_isTesting.load()) {
@@ -213,7 +241,7 @@ void SerialWorker::handleReadyRead()
             if (m_readbuffer.size() < lengthB + 4){return;}
 
             if(static_cast<quint8>(m_readbuffer[lengthB + 3]) == END_MARKER){
-                handleuartrequest(lengthB,m_readbuffer);
+                handleuartrequest(lengthB);
                 m_readbuffer.remove(0,lengthB + 4);
                 if(!m_readbuffer.isEmpty()){handleReadyRead();}
                 return;
@@ -226,145 +254,77 @@ void SerialWorker::handleReadyRead()
     }
 }
 
-bool SerialWorker::handleuartrequest(quint8 length,const QByteArray& data){
-    quint8 cmd = static_cast<quint8>(data[3]);
-    quint8 func = static_cast<quint8>(data[4]);
-    quint8 ch = static_cast<quint8>(data[5]);
+void SerialWorker::handleuartrequest(quint8 length){
+    quint8 cmd = static_cast<quint8>(m_readbuffer[3]);
+    quint8 func = static_cast<quint8>(m_readbuffer[4]);
+    quint8 ch = static_cast<quint8>(m_readbuffer[5]);
     quint8 Checksum = length + cmd + func + ch; // The check code is taken from the lowest 8 bits.
 
     m_readparam.clear();
-    m_readparam= data.mid(6, length - 4);   // length - Command+Function+Channel+CheckSum
+    m_readparam = m_readbuffer.mid(6, length - 4);   // length - Command+Function+Channel+CheckSum
     for (char byte : qAsConst(m_readparam)) {Checksum += static_cast<quint8>(byte);}
 
-    if(static_cast<quint8>(data[length + 2]) != Checksum){
+    if(static_cast<quint8>(m_readbuffer[length + 2]) != Checksum){
         qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Received Data Incorrect!!!";
-        return false;
+        return;
     }
 
     switch (cmd) {
-        case 0x01:
-            handleOutputcmd(func,ch,m_readparam);            break;
-
-        case 0x02:
-            handleSettingcmd(func, ch, m_readparam);         break;
-
-        case 0x03:
-            handleControlcmd(func, ch, m_readparam);         break;
-
-        case 0x04:
-            handleMeasurementcmd(func, ch, m_readparam);     break;
-
-        case 0x05:
-            handleRegistercmd(func, ch, m_readparam);        break;
-
-        case 0x06:
-            handleCalibratecmd(func, ch, m_readparam);       break;
-
-        case 0x07:
-            handleCalibrationcmd(func, ch, m_readparam);     break;
-
-        case 0x08:
-            handleTriggercmd(func, ch, m_readparam);         break;
-
-        case 0x09:
-            handleISPcmd(func, ch, m_readparam);             break;
-
-        case 0x10:
-            handleSNcmd(func, ch, m_readparam);              break;
-
-        case 0x11:
-            handleIDcmd(func, ch, m_readparam);              break;
-
-        case 0xFF:
-            handleErrorcmd(func, ch, m_readparam);           break;
+        case 0x01:handleOutputcmd          (func, ch);return;
+        case 0x02:handleSettingcmd         (func, ch);return;
+        case 0x03:handleControlcmd         (func, ch);return;
+        case 0x04:handleMeasurementcmd     (func, ch);return;
+        case 0x05:handleRegistercmd        (func, ch);return;
+        case 0x06:handleCalibratecmd       (func, ch);return;
+        case 0x07:handleCalibrationcmd     (func, ch);return;
+        case 0x08:handleTriggercmd         (func, ch);return;
+        case 0x09:handleISPcmd             (func, ch);return;
+        case 0x10:handleSNcmd              (func, ch);return;
+        case 0x11:handleIDcmd              (func, ch);return;
+        case 0xFF:handleErrorcmd           (func);    return;
 
         default:
             qCWarning(uart_channel)<<"Channel_"<<m_channel<<" Occuring Unknown Command!!!";
-            return false;
+            return;
     }
-
-    return true;
 }
 
 // ========================== 协议处理部分 ===================================
 
-void SerialWorker::handleOutputcmd(quint8 func, quint8 ch, const QByteArray& param){
+void SerialWorker::handleOutputcmd(quint8 func, quint8 ch){
     Q_UNUSED(ch);
+
+    quint8 raw = -1;
+    if (!m_readparam.isEmpty()){
+        raw = static_cast<quint8>(m_readparam[0]);
+    }
 
     switch (func){
         case 0x80:{   // query output status
-            quint8 raw = static_cast<quint8>(param[0]);
-            if (raw == 0){
-                emit channelreturnstatus(false);
-                qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Query Off.";}
-            else{
-                emit channelreturnstatus(true);
-                qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Query On.";}
+            bool status = raw==0 ? false:true;
+            emit channelreturnstatus(status);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Query: "<<status;
             return;
         }
         case 0x00:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Been OFF";return;
-        case 0x01:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Been ON";return;
-        case 0x08:{
-            quint8 raw = static_cast<quint8>(param[0]);
-            if (raw == 0){
-                qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Bandwidth Been LOW.";}
-            else{
-                qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Bandwidth Been HIGH.";}
-            return;
-        }
+        case 0x01:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Been ON"; return;
+        case 0x08:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Bandwidth Been "<<(raw==0 ? "LOW":"HIGH");return;
         case 0x88:{   // query output bandwidth
-            quint8 raw = static_cast<quint8>(param[0]);
-            if (raw == 0){
-                emit channelreturnstatus(false);
-                qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Query bandwidth low.";}
-            else{
-                emit channelreturnstatus(true);
-                qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Query bandwidth high.";}
+            bool status = raw==0 ? false:true;
+            emit channelreturnstatus(status);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Query: "<<(status ? "HIGH":"LOW");
             return;
         }
-        case 0x09:{
-            quint8 raw = static_cast<quint8>(param[0]);
-            switch (raw) {
-                case 1:
-                    qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output COMPMODE Been Llocal.";return;
-
-                case 2:
-                    qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output COMPMODE Been Lremote.";return;
-
-                case 3:
-                    qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output COMPMODE Been Hlocal.";return;
-
-                case 4:
-                    qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output COMPMODE Been Hremote.";return;
-
-                default:
-                    return;
-            }
-        }
+        case 0x09:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output COMPMODE(1=Llocal->4=Hremote) Been "<<raw;return;
         case 0x89:{   // query output compmode
-            quint8 raw = static_cast<quint8>(param[0]);
-            switch (raw) {
-                case 1:
-                    emit channelreturnvalue(1);
-                    qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Query COMPMODE Llocal.";return;
-                case 2:
-                    emit channelreturnvalue(2);
-                    qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Query COMPMODE Lremote.";return;
-                case 3:
-                    emit channelreturnvalue(3);
-                    qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Query COMPMODE Hlocal.";return;
-                case 4:
-                    emit channelreturnvalue(4);
-                    qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Query COMPMODE Hremote.";return;
-                default:
-                    return;
-            }
+            emit channelreturnvalue(raw);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output COMPMODE(1=Llocal->4=Hremote) Been "<<raw;return;
         }
     }
 }
 
-void SerialWorker::handleSettingcmd(quint8 func, quint8 ch, const QByteArray& param){
-    Q_UNUSED(ch);Q_UNUSED(param);
+void SerialWorker::handleSettingcmd(quint8 func, quint8 ch){
+    Q_UNUSED(ch);
 
     switch (func){
         case 0x80:break;
@@ -388,8 +348,8 @@ void SerialWorker::handleSettingcmd(quint8 func, quint8 ch, const QByteArray& pa
     }
 }
 
-void SerialWorker::handleControlcmd(quint8 func, quint8 ch, const QByteArray& param){
-    Q_UNUSED(ch);Q_UNUSED(param);
+void SerialWorker::handleControlcmd(quint8 func, quint8 ch){
+    Q_UNUSED(ch);
 
     switch (func){
         case 0x80:break;
@@ -413,10 +373,10 @@ void SerialWorker::handleControlcmd(quint8 func, quint8 ch, const QByteArray& pa
     }
 }
 
-void SerialWorker::handleMeasurementcmd(quint8 func, quint8 ch, const QByteArray& param){
+void SerialWorker::handleMeasurementcmd(quint8 func, quint8 ch){
     Q_UNUSED(ch);
 
-    quint32 raw = qFromBigEndian<quint32>(reinterpret_cast<const uchar*>(param.constData()));
+    quint32 raw = qFromBigEndian<quint32>(reinterpret_cast<const uchar*>(m_readparam.constData()));
     float shf;   memcpy(&shf, &raw, sizeof(float));
     float EPSILON = qAbs(shf) < 1e-4? 0.00000001f : 0.00001f;
 
@@ -522,11 +482,11 @@ void SerialWorker::handleMeasurementcmd(quint8 func, quint8 ch, const QByteArray
     }
 }
 
-void SerialWorker::handleRegistercmd(quint8 func, quint8 ch, const QByteArray& param){
+void SerialWorker::handleRegistercmd(quint8 func, quint8 ch){
     Q_UNUSED(ch);
 
     switch (func){
-        case 0x80:emit statusChanged(m_channel,param);break;
+        case 0x80:emit statusChanged(m_channel,m_readparam);break;
         case 0x81:break;
         case 0x82:break;
         case 0x83:break;
@@ -536,8 +496,8 @@ void SerialWorker::handleRegistercmd(quint8 func, quint8 ch, const QByteArray& p
     }
 }
 
-void SerialWorker::handleCalibratecmd(quint8 func, quint8 ch, const QByteArray& param){
-    Q_UNUSED(ch);Q_UNUSED(param);
+void SerialWorker::handleCalibratecmd(quint8 func, quint8 ch){
+    Q_UNUSED(ch);
 
     switch (func){
         case 0x00:break;
@@ -555,12 +515,12 @@ void SerialWorker::handleCalibratecmd(quint8 func, quint8 ch, const QByteArray& 
     }
 }
 
-void SerialWorker::handleCalibrationcmd(quint8 func, quint8 ch, const QByteArray& param){
-    Q_UNUSED(func);Q_UNUSED(ch);Q_UNUSED(param);
+void SerialWorker::handleCalibrationcmd(quint8 func, quint8 ch){
+    Q_UNUSED(func);Q_UNUSED(ch);
 }
 
-void SerialWorker::handleTriggercmd(quint8 func, quint8 ch, const QByteArray& param){
-    Q_UNUSED(ch);Q_UNUSED(param);
+void SerialWorker::handleTriggercmd(quint8 func, quint8 ch){
+    Q_UNUSED(ch);
 
     switch (func){
         case 0x00:break;
@@ -587,8 +547,8 @@ void SerialWorker::handleTriggercmd(quint8 func, quint8 ch, const QByteArray& pa
     }
 }
 
-void SerialWorker::handleISPcmd(quint8 func, quint8 ch, const QByteArray& param){
-    Q_UNUSED(ch);Q_UNUSED(param);
+void SerialWorker::handleISPcmd(quint8 func, quint8 ch){
+    Q_UNUSED(ch);
 
     switch (func){
         case 0x80:break;
@@ -598,8 +558,8 @@ void SerialWorker::handleISPcmd(quint8 func, quint8 ch, const QByteArray& param)
     }
 }
 
-void SerialWorker::handleSNcmd(quint8 func, quint8 ch, const QByteArray& param){
-    Q_UNUSED(ch);Q_UNUSED(param);
+void SerialWorker::handleSNcmd(quint8 func, quint8 ch){
+    Q_UNUSED(ch);
 
     switch (func){
         case 0x80:break;
@@ -615,8 +575,8 @@ void SerialWorker::handleSNcmd(quint8 func, quint8 ch, const QByteArray& param){
     }
 }
 
-void SerialWorker::handleIDcmd(quint8 func, quint8 ch, const QByteArray& param){
-    Q_UNUSED(ch);Q_UNUSED(param);
+void SerialWorker::handleIDcmd(quint8 func, quint8 ch){
+    Q_UNUSED(ch);
 
     switch (func){
         case 0x81:break;
@@ -626,9 +586,7 @@ void SerialWorker::handleIDcmd(quint8 func, quint8 ch, const QByteArray& param){
     }
 }
 
-void SerialWorker::handleErrorcmd(quint8 func, quint8 ch, const QByteArray& param){
-    Q_UNUSED(ch);Q_UNUSED(param);
-
+void SerialWorker::handleErrorcmd(quint8 func){
     switch (func){
         case 0x00:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Error Response: CheckSum Error";      break;
         case 0x01:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Error Response: Unknow Command";      break;
@@ -645,16 +603,14 @@ void SerialWorker::handleErrorcmd(quint8 func, quint8 ch, const QByteArray& para
 void SerialWorker::startLoopbackTest()
 {
     if (m_isTesting.load()) {return;}
-
     m_isTesting.store(true);
 
-    // 生成测试数据（1KB）
     QByteArray testData;
-    testData.resize(1024);
+    testData.resize(1024); // 1KB
     for (int i = 0; i < 1024; i++) {testData[i] = i % 256;}
 
     qCDebug(uart_channel)<<"Starting Loopback Test (Connect TX to RX for testing)...";
-    qCDebug(uart_channel)<<"Sending"<<testData.size()<<"bytes of Test Data";
+    qCDebug(uart_channel)<<"Sending 1024 bytes of Test Data";
     m_testTimer.start();
     writeSerialData(testData,false);
 }

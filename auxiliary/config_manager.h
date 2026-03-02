@@ -16,7 +16,6 @@ public:
     static QString s_firmwareVersion;
 
     static QString s_ipAddress;
-    static bool s_enableWebServer;
     static bool s_enableVXIServer;
 
     static QString s_loglevel;

@@ -21,14 +21,46 @@ class ScpiManager : public QObject {
 
 signals:
     // to C++ model control
-    void sendFrame_Uart4(quint8 cmd, quint8 func, const QByteArray& param);
-    void sendFrame_Uart5(quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel1 (quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel2 (quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel3 (quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel4 (quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel5 (quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel6 (quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel7 (quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel8 (quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel9 (quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel10(quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel11(quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel12(quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel13(quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel14(quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel15(quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel16(quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel17(quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel18(quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel19(quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel20(quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel21(quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel22(quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel23(quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel24(quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel25(quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel26(quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel27(quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel28(quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel29(quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel30(quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel31(quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel32(quint8 cmd, quint8 func, const QByteArray& param);
+    void to_UartChannel33(quint8 cmd, quint8 func, const QByteArray& param);
 
 public:
     explicit ScpiManager(QObject *parent = nullptr);
     ~ScpiManager() override = default;
 
     QByteArray processCommand(const QByteArray &command);
+
     // --- 查询写入 -command Auxiliary function ---
     void processCHStateResponse(bool state);
     void processCHvalueResponse(float value);

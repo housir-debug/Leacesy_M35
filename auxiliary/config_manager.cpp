@@ -12,7 +12,6 @@ QString ConfigManager::s_serialNumber = "SN123456789";
 QString ConfigManager::s_firmwareVersion = "1.0.0";
 
 QString ConfigManager::s_ipAddress = "127.0.0.1";
-bool ConfigManager::s_enableWebServer = true;
 bool ConfigManager::s_enableVXIServer = true;
 
 QString ConfigManager::s_loglevel = "debug";
@@ -41,7 +40,6 @@ bool ConfigManager::init(const QString &configDir)
     s_firmwareVersion = s_settings->value("Device/FirmwareVersion").toString();
 
     s_ipAddress = s_settings->value("Network/IPAddress").toString();
-    s_enableWebServer = s_settings->value("Network/EnableWebServer").toBool();
     s_enableVXIServer = s_settings->value("Network/EnableVXIServer").toBool();
 
     s_loglevel = s_settings->value("Logger/logLevel").toString();

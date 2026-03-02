@@ -32,25 +32,25 @@ public:
 private:
     bool registerWithRpcbind();
     void onNewConnection();
-    void processClientData(QTcpSocket *client);
-    void handleVxi11RpcCall(QTcpSocket* client,const uchar* address);
 
-    void handleCreateLink(QTcpSocket* client,const quint32 xid);
-    void handleDeviceWrite(QTcpSocket* client,const quint32 xid,const uchar* address);
-    void handleDeviceRead(QTcpSocket* client,const quint32 xid,const uchar* address);
-    void handleDeviceReadStb(QTcpSocket* client,const quint32 xid,const uchar* address);
-    void handleDeviceTrigger(QTcpSocket* client,const quint32 xid,const uchar* address);
-    void handleDeviceClear(QTcpSocket* client,const quint32 xid,const uchar* address);
-    void handleDeviceRemote(QTcpSocket* client,const quint32 xid,const uchar* address);
-    void handleDeviceLocal(QTcpSocket* client,const quint32 xid,const uchar* address);
-    void handleDeviceLock(QTcpSocket* client,const quint32 xid,const uchar* address);
-    void handleDeviceUnlock(QTcpSocket* client,const quint32 xid,const uchar* address);
-    void handleDeviceEnableSrq(QTcpSocket* client,const quint32 xid,const uchar* address);
-    void handleDeviceDocmd(QTcpSocket* client,const quint32 xid,const uchar* address);
-    void handleDestroyLink(QTcpSocket* client,const quint32 xid,const uchar* address);
-    void handleCreateIntrChan(QTcpSocket* client,const quint32 xid,const uchar* address);
-    void handleDestroyIntrChan(QTcpSocket* client,const quint32 xid,const uchar* address);
-    void createErrorResponse(quint32 xid, quint32 error);
+    void processClientData      (QTcpSocket *client);
+    void handleVxi11RpcCall     (QTcpSocket* client,const uchar* address);
+    void handleCreateLink       (QTcpSocket* client,const quint32 xid);
+    void handleDeviceWrite      (QTcpSocket* client,const quint32 xid,const uchar* address);
+    void handleDeviceRead       (QTcpSocket* client,const quint32 xid,const uchar* address);
+    void handleDeviceReadStb    (QTcpSocket* client,const quint32 xid,const uchar* address);
+    void handleDeviceTrigger    (QTcpSocket* client,const quint32 xid,const uchar* address);
+    void handleDeviceClear      (QTcpSocket* client,const quint32 xid,const uchar* address);
+    void handleDeviceRemote     (QTcpSocket* client,const quint32 xid,const uchar* address);
+    void handleDeviceLocal      (QTcpSocket* client,const quint32 xid,const uchar* address);
+    void handleDeviceLock       (QTcpSocket* client,const quint32 xid,const uchar* address);
+    void handleDeviceUnlock     (QTcpSocket* client,const quint32 xid,const uchar* address);
+    void handleDeviceEnableSrq  (QTcpSocket* client,const quint32 xid,const uchar* address);
+    void handleDeviceDocmd      (QTcpSocket* client,const quint32 xid,const uchar* address);
+    void handleDestroyLink      (QTcpSocket* client,const quint32 xid,const uchar* address);
+    void handleCreateIntrChan   (QTcpSocket* client,const quint32 xid,const uchar* address);
+    void handleDestroyIntrChan  (QTcpSocket* client,const quint32 xid,const uchar* address);
+    void createErrorResponse    (quint32 xid, quint32 error);
 
 private:
     struct DeviceLink {
