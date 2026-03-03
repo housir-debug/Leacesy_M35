@@ -6,40 +6,40 @@
 Q_LOGGING_CATEGORY(uart_channel, "UART_CHANNEL:")
 
 SerialWorker::SerialWorker(QObject *parent): QObject(parent){
-    portChannelMap["/dev/ttyS3"]     = 0x01; // debug Uart
-    portChannelMap["/dev/ttyS4"]     = 0x02;
-    portChannelMap["/dev/ttyS5"]     = 0x03;
-    portChannelMap["/dev/ttyS7"]     = 0x04;
-    portChannelMap["/dev/ttyS8"]     = 0x05;
-    portChannelMap["/dev/ttyS9"]     = 0x06;
-    portChannelMap["/dev/ttyWCH0"]   = 0x07;
-    portChannelMap["/dev/ttyWCH1"]   = 0x08;
-    portChannelMap["/dev/ttyWCH2"]   = 0x09;
-    portChannelMap["/dev/ttyWCH3"]   = 0x0a;
-    portChannelMap["/dev/ttyWCH4"]   = 0x0b;
-    portChannelMap["/dev/ttyWCH5"]   = 0x0c;
-    portChannelMap["/dev/ttyWCH6"]   = 0x0d;
-    portChannelMap["/dev/ttyWCH7"]   = 0x0e;
-    portChannelMap["/dev/ttyWCH8"]   = 0x0f;
-    portChannelMap["/dev/ttyWCH9"]   = 0x10;
-    portChannelMap["/dev/ttyWCH10"]  = 0x11;
-    portChannelMap["/dev/ttyWCH11"]  = 0x12;
-    portChannelMap["/dev/ttyWCH12"]  = 0x13;
-    portChannelMap["/dev/ttyWCH13"]  = 0x14;
-    portChannelMap["/dev/ttyWCH14"]  = 0x15;
-    portChannelMap["/dev/ttyWCH15"]  = 0x16;
-    portChannelMap["/dev/ttyWCH16"]  = 0x17;
-    portChannelMap["/dev/ttyWCH17"]  = 0x18;
-    portChannelMap["/dev/ttyWCH18"]  = 0x19;
-    portChannelMap["/dev/ttyWCH19"]  = 0x1a;
-    portChannelMap["/dev/ttyWCH20"]  = 0x1b;
-    portChannelMap["/dev/ttyWCH21"]  = 0x1c;
-    portChannelMap["/dev/ttyWCH22"]  = 0x1d;
-    portChannelMap["/dev/ttyWCH23"]  = 0x1e;
-    portChannelMap["/dev/ttyWCH24"]  = 0x1f;
-    portChannelMap["/dev/ttyWCH25"]  = 0x20;
-    portChannelMap["/dev/ttyWCH26"]  = 0x21;
-    portChannelMap["/dev/ttyWCH27"]  = 0x22;
+    // portChannelMap["/dev/ttyS3"]     = 0x01; // debug-Uart
+    portChannelMap["/dev/ttyS4"]     = 0x01;
+    portChannelMap["/dev/ttyS5"]     = 0x02;
+    portChannelMap["/dev/ttyS7"]     = 0x03;
+    portChannelMap["/dev/ttyS8"]     = 0x04;
+    portChannelMap["/dev/ttyS9"]     = 0x05;
+    portChannelMap["/dev/ttyWCH0"]   = 0x06;
+    portChannelMap["/dev/ttyWCH1"]   = 0x07;
+    portChannelMap["/dev/ttyWCH2"]   = 0x08;
+    portChannelMap["/dev/ttyWCH3"]   = 0x09;
+    portChannelMap["/dev/ttyWCH4"]   = 0x0a;
+    portChannelMap["/dev/ttyWCH5"]   = 0x0b;
+    portChannelMap["/dev/ttyWCH6"]   = 0x0c;
+    portChannelMap["/dev/ttyWCH7"]   = 0x0d;
+    portChannelMap["/dev/ttyWCH8"]   = 0x0e;
+    portChannelMap["/dev/ttyWCH9"]   = 0x0f;
+    portChannelMap["/dev/ttyWCH10"]  = 0x10;
+    portChannelMap["/dev/ttyWCH11"]  = 0x11;
+    portChannelMap["/dev/ttyWCH12"]  = 0x12;
+    portChannelMap["/dev/ttyWCH13"]  = 0x13;
+    portChannelMap["/dev/ttyWCH14"]  = 0x14;
+    portChannelMap["/dev/ttyWCH15"]  = 0x15;
+    portChannelMap["/dev/ttyWCH16"]  = 0x16;
+    portChannelMap["/dev/ttyWCH17"]  = 0x17;
+    portChannelMap["/dev/ttyWCH18"]  = 0x18;
+    portChannelMap["/dev/ttyWCH19"]  = 0x19;
+    portChannelMap["/dev/ttyWCH20"]  = 0x1a;
+    portChannelMap["/dev/ttyWCH21"]  = 0x1b;
+    portChannelMap["/dev/ttyWCH22"]  = 0x1c;
+    portChannelMap["/dev/ttyWCH23"]  = 0x1d;
+    portChannelMap["/dev/ttyWCH24"]  = 0x1e;
+    portChannelMap["/dev/ttyWCH25"]  = 0x1f;
+    portChannelMap["/dev/ttyWCH26"]  = 0x20;
+    portChannelMap["/dev/ttyWCH27"]  = 0x21;   // 33
 }
 SerialWorker::~SerialWorker()
 {
@@ -154,9 +154,9 @@ bool SerialWorker::initSerialPort(const QString &portName,
                 m_writebuffer.clear();
                 m_writebuffer.append(QByteArray::fromHex("aa 55 08 02 02 01 00 00 00 00 0d ee"));
                 writeSerialData(m_writebuffer,true);
-                m_writebuffer.clear();*/
+                m_writebuffer.clear();
 
-                //m_refreshtimer->start();
+                m_refreshtimer->start();*/
                 startLoopbackTest();   // Self-assessment
                 // QTimer::singleShot(0,this,[this](){writeFrame();});
             }
@@ -193,17 +193,14 @@ void SerialWorker::writeFrame(quint8 cmd, quint8 func, const QByteArray& param) 
 
 void SerialWorker::writeSerialData(const QByteArray& data,bool isforce)
 {
-    int result = m_serialPort->write(data);
     qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Send: " << data.toHex(' ');
 
-    if (result != data.size()) {
+    if (m_serialPort->write(data) != data.size()) {
         qCCritical(uart_channel)<<"Channel_"<<m_channel<<" QSerialPort Written Buffer Overflow!!!";
     }
 
     if(isforce){
         m_serialPort->flush();   // The same event is sent multiple times, and multiple messages will be sent together.
-        qCDebug(uart_channel)<<"Channel_"<<m_channel<<"QSerialPort Force Flush ";
-        QThread::msleep(6);
     }
 }
 

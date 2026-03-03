@@ -385,7 +385,7 @@ bool ScpiManager::sendQueryCmd(scpi_t* context, quint8 cmd, quint8 func) {
         default:return false;
     }
 
-    if (!self->m_syncCondition.wait(&self->m_syncMutex, 600)) {
+    if (!self->m_syncCondition.wait(&self->m_syncMutex, 600)) { // 600ms
         qCWarning(scpi) << "Query timeout - cmd:" << cmd << "func:" << func;
         return false;
     }
@@ -606,6 +606,8 @@ void ScpiManager::processCHIntvalueResponse(int value) {
     m_syncCondition.wakeAll();
 }
 
+
+// SCPI Command API
 
 QByteArray ScpiManager::processCommand(const QByteArray &command) {
     if (command.isEmpty()){ return QByteArray();}

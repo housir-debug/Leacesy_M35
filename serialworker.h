@@ -10,12 +10,20 @@
 
 Q_DECLARE_LOGGING_CATEGORY(uart_channel)
 
+#define CHANNEL_1_TO_33 \
+    CHANNEL(1) CHANNEL(2) CHANNEL(3) CHANNEL(4) CHANNEL(5) CHANNEL(6) CHANNEL(7) CHANNEL(8) \
+    CHANNEL(9) CHANNEL(10) CHANNEL(11) CHANNEL(12) CHANNEL(13) CHANNEL(14) CHANNEL(15) CHANNEL(16) \
+    CHANNEL(17) CHANNEL(18) CHANNEL(19) CHANNEL(20) CHANNEL(21) CHANNEL(22) CHANNEL(23) CHANNEL(24) \
+    CHANNEL(25) CHANNEL(26) CHANNEL(27) CHANNEL(28) CHANNEL(29) CHANNEL(30) CHANNEL(31) CHANNEL(32) \
+    CHANNEL(33)
+
 class SerialWorker : public QObject
 {
     Q_OBJECT
 
 signals:
-    void serialDataReceived(const QByteArray &data,bool isforce);
+    // to qml display update
+    // void serialDataReceived(const QByteArray &data,bool isforce); // Transit
     void statusChanged(int ch,QByteArray status);
     void voltageChanged(int ch,float measure);
     void currentChanged(int ch,float measure);

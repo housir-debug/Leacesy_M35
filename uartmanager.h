@@ -1,6 +1,7 @@
 #pragma once
 #include <QMutex>
 #include <QLoggingCategory>
+#include "serialworker.h"
 //#include <QQmlApplicationEngine>
 
 Q_DECLARE_LOGGING_CATEGORY(uart_bridge)
@@ -8,85 +9,44 @@ Q_DECLARE_LOGGING_CATEGORY(uart_bridge)
 class SerialBridge : public QObject
 {
     Q_OBJECT
-    Q_PROPERTY(int ch1_status_v MEMBER mCH1_status_v NOTIFY CH1_StatusChanged)
-    //Q_PROPERTY(QString ch1_status MEMBER mCH1_status NOTIFY CH1_StatusChanged)
-    Q_PROPERTY(float ch1_Voltage MEMBER mCH1_Voltage NOTIFY CH1_VoltageChanged)
-    Q_PROPERTY(float ch1_Current MEMBER mCH1_Current NOTIFY CH1_CurrentChanged)
-    Q_PROPERTY(bool ch1_Current_Unit MEMBER mCH1_Current_Unit NOTIFY CH1_Current_Unit_Changed)
 
-    Q_PROPERTY(int ch2_status_v MEMBER mCH2_status_v NOTIFY CH2_StatusChanged)
-    //Q_PROPERTY(QString ch2_status MEMBER mCH2_status NOTIFY CH2_StatusChanged)
-    Q_PROPERTY(float ch2_Voltage MEMBER mCH2_Voltage NOTIFY CH2_VoltageChanged)
-    Q_PROPERTY(float ch2_Current MEMBER mCH2_Current NOTIFY CH2_CurrentChanged)
-    Q_PROPERTY(bool ch2_Current_Unit MEMBER mCH2_Current_Unit NOTIFY CH2_Current_Unit_Changed)
+    #define CHANNEL(n) \
+        Q_PROPERTY(int ch##n##_status_v MEMBER mCH##n##_status_v NOTIFY CH##n##_StatusChanged) \
+        Q_PROPERTY(float ch##n##_Voltage MEMBER mCH##n##_Voltage NOTIFY CH##n##_VoltageChanged) \
+        Q_PROPERTY(float ch##n##_Current MEMBER mCH##n##_Current NOTIFY CH##n##_CurrentChanged) \
+        Q_PROPERTY(bool ch##n##_Current_Unit MEMBER mCH##n##_Current_Unit NOTIFY CH##n##_Current_Unit_Changed)
+
+    CHANNEL_1_TO_33
+    #undef CHANNEL
 
 signals:
     // to C++ model control
-    void to_UartChannel1 (quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel2 (quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel3 (quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel4 (quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel5 (quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel6 (quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel7 (quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel8 (quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel9 (quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel10(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel11(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel12(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel13(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel14(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel15(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel16(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel17(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel18(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel19(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel20(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel21(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel22(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel23(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel24(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel25(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel26(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel27(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel28(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel29(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel30(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel31(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel32(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel33(quint8 cmd, quint8 func, const QByteArray& param);
+    #define CHANNEL(n) void to_UartChannel##n(quint8 cmd, quint8 func, const QByteArray& param);
 
-    // to qml engine property
-    void CH1_StatusChanged();
-    void CH1_VoltageChanged();
-    void CH1_CurrentChanged();
-    void CH1_Current_Unit_Changed();
+    CHANNEL_1_TO_33
+    #undef CHANNEL
 
-    void CH2_StatusChanged();
-    void CH2_VoltageChanged();
-    void CH2_CurrentChanged();
-    void CH2_Current_Unit_Changed();
+    // to qml property update
+    #define CHANNEL(n) \
+        void CH##n##_StatusChanged(); \
+        void CH##n##_VoltageChanged(); \
+        void CH##n##_CurrentChanged(); \
+        void CH##n##_Current_Unit_Changed();
+
+    CHANNEL_1_TO_33
+    #undef CHANNEL
 
 private:
     // to qml engine property variate
-    int mCH1_status_v{0};
-    QString mCH1_status{""};
-    float mCH1_Voltage{0.0f};
-    float mCH1_Current{0.0f};
-    bool mCH1_Current_Unit{false};
+    #define CHANNEL(n) \
+        int mCH##n##_status_v{0}; \
+        QString mCH##n##_status{""}; \
+        float mCH##n##_Voltage{0.0f}; \
+        float mCH##n##_Current{0.0f}; \
+        bool mCH##n##_Current_Unit{false};
 
-    int mCH2_status_v{0};
-    QString mCH2_status{""};
-    float mCH2_Voltage{0.0f};
-    float mCH2_Current{0.0f};
-    bool mCH2_Current_Unit{false};
-
-    // Own member variables
-    QMutex mutex_Voltage;
-    QMutex mutex_CurrentAndUnit;
-    QMutex mutex_status;
-    QByteArray m_Unit_buffer;
-    QByteArray m_Status_buffer;
+    CHANNEL_1_TO_33
+    #undef CHANNEL
 
 public:
     explicit SerialBridge(QObject *parent = nullptr);
@@ -101,5 +61,7 @@ public:
     Q_INVOKABLE void setChannel_Output(int channel,bool switchs);
     Q_INVOKABLE void setChannel_Setstatus(int channel,int model,float value);
     Q_INVOKABLE QString setChannel_CurrentUnit();
-    void toAll_Channel(quint8 cmd,quint8 func,QByteArray param);
+
+    // Auxiliary function
+    void toAll_Channel(quint8 cmd,quint8 func,const QByteArray& param);
 };

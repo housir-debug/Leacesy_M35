@@ -8,16 +8,20 @@ SerialBridge::SerialBridge(QObject *parent) : QObject(parent) {}
 // =========================== Qml调用处理 ===========================
 
 void SerialBridge::setChannel_Output(int channel,bool switchs){
-    qDebug(uart_bridge) << "onChannel_2_Toggled当前状态为："<<switchs;
+    qCDebug(uart_bridge) << "setChannel_Output - channel:" << channel << "switch:" << switchs;
     quint8 func = switchs ? 0x01 : 0x00;
 
-    switch (channel) {
-    case 1: // ch_1
-        return emit to_UartChannel1(0x01,func,"");
-    case 2: // ch_2
-        return emit to_UartChannel2(0x01,func,"");
-    default:// all
-        return toAll_Channel(0x01,func,"");
+    if (channel == 0) {
+        return toAll_Channel(0x01, func, "");
+    }
+
+    switch(channel) {
+        #define CHANNEL(n) case n: return emit to_UartChannel##n(0x01, func, "");
+        CHANNEL_1_TO_33
+        #undef CHANNEL
+        default:
+            qCWarning(uart_bridge) << "Invalid channel:" << channel;
+            return;
     }
 }
 
@@ -26,172 +30,134 @@ void SerialBridge::setChannel_Setstatus(int channel,int model,float value){
     memcpy(&intValue, &value, sizeof(float));
     intValue = qToBigEndian(intValue);
 
-    m_Status_buffer.clear();
-    m_Status_buffer.append(reinterpret_cast<const char*>(&intValue),sizeof(quint32));
+    QByteArray Status_buffer;
+    Status_buffer.append(reinterpret_cast<const char*>(&intValue),sizeof(quint32));
 
-    switch (channel){
-        case 1: // ch_1
-            switch (model){
-            case 1:// cv
-                return emit to_UartChannel1(0x02,0x00,m_Status_buffer);
-            case 2:// cc
-                return emit to_UartChannel1(0x02,0x01,m_Status_buffer);
-            case 3:// ovp
-                return emit to_UartChannel1(0x02,0x03,m_Status_buffer);
-            default:
-                return;
-            }
-        case 2: // ch_2
-            switch (model){
-            case 1:// cv
-                return emit to_UartChannel2(0x02,0x00,m_Status_buffer);
-            case 2:// cc
-                return emit to_UartChannel2(0x02,0x01,m_Status_buffer);
-            case 3:// ovp
-                return emit to_UartChannel2(0x02,0x03,m_Status_buffer);
-            default:
-                return;
-            }
-        default: // all
-            switch (model){
-            case 1:// cv
-                return toAll_Channel(0x02,0x00,m_Status_buffer);
-            case 2:// cc
-                return toAll_Channel(0x02,0x01,m_Status_buffer);
-            case 3:// ovp
-                return toAll_Channel(0x02,0x03,m_Status_buffer);
-            default:
-                return;
-            }
+    quint8 func = 0x00;
+    switch (model) {
+        case 1: func = 0x00; break;  // CV
+        case 2: func = 0x01; break;  // CC
+        case 3: func = 0x03; break;  // OVP
+        default:
+            qCWarning(uart_bridge) << "Invalid model:" << model;
+            return;
+    }
+
+    if (channel == 0) {
+        return toAll_Channel(0x02, func, Status_buffer);
+    }
+
+    switch(channel) {
+        #define CHANNEL(n) case n: return emit to_UartChannel##n(0x02, func, Status_buffer);
+        CHANNEL_1_TO_33
+        #undef CHANNEL
+        default:
+            qCWarning(uart_bridge) << "Invalid channel:" << channel;
+            return;
     }
 }
 
 QString SerialBridge::setChannel_CurrentUnit(){
-    QString unit = "";
-
-    m_Unit_buffer.clear();
     static int step = 0;
-    switch (step) {
-        case 0:
-            unit = "mA";
-            m_Unit_buffer.append(0x01);    // default A ->mA
-            break;
-        case 1:
-            unit = "Auto";
-            m_Unit_buffer.append(0x10);    // mA ->auto
-            break;
-        case 2:
-            unit = "A";
-            m_Unit_buffer.append(1,0x00);  // auto ->A
-            break;
-    }
-    toAll_Channel(0x04,0x0E,m_Unit_buffer);
-    step = (step + 1) % 3;
+    QString unit;
+    quint8 unitCode;
 
+    switch (step) {
+        case 0: unit = "mA"; unitCode = 0x01; break;
+        case 1: unit = "Auto"; unitCode = 0x10; break;
+        case 2: unit = "A"; unitCode = 0x00; break;
+        default: unit = "A"; unitCode = 0x00; break;
+    }
+
+    QByteArray Unit_buffer;
+    Unit_buffer.append(char(unitCode));
+    toAll_Channel(0x04, 0x0E, Unit_buffer);
+
+    step = (step + 1) % 3;
+    qCDebug(uart_bridge) << "Current unit changed to:" << unit;
     return unit;
 }
 
 // - Auxiliary function ----------
 
-void SerialBridge::toAll_Channel(quint8 cmd,quint8 func,QByteArray param){
-    emit to_UartChannel1(cmd,func,param);
-    emit to_UartChannel2(cmd,func,param);
+void SerialBridge::toAll_Channel(quint8 cmd,quint8 func,const QByteArray& param){
+    #define CHANNEL(n) emit to_UartChannel##n(cmd, func, param);
+    CHANNEL_1_TO_33
+    #undef CHANNEL
 }
 
+// Modify the corresponding channel information individually
 // ============================  槽函数  =============================
 
 void SerialBridge::update_Voltage(int ch,float voltage){
-    QMutexLocker locker(&mutex_Voltage);
-
-    switch (ch){
-    case 1:
-        mCH1_Voltage = voltage;
-        emit CH1_VoltageChanged();
-        return;
-    case 2:
-        mCH2_Voltage = voltage;
-        emit CH2_VoltageChanged();
-        return;
+    switch(ch) {
+        #define CHANNEL(n) \
+            case n: \
+                mCH##n##_Voltage = voltage; \
+                emit CH##n##_VoltageChanged(); \
+                qCDebug(uart_bridge) << "Channel" << n << "voltage updated to:" << voltage; \
+                return;
+        CHANNEL_1_TO_33
+        #undef CHANNEL
+        default: return;
     }
 }
 
 void SerialBridge::update_CurrentAndUnit(int ch,float current){
-    QMutexLocker locker(&mutex_CurrentAndUnit);
-
     bool newUnit = (qAbs(current) < 1e-4); // true: mA   false: A
-    if (newUnit) {current *= 1000.0f;}
 
-    switch (ch){
-        case 1:
-            mCH1_Current = current;
-            emit CH1_CurrentChanged();
-            if (mCH1_Current_Unit != newUnit){ // true: mA   false: A
-                mCH1_Current_Unit = !mCH1_Current_Unit;
-                emit CH1_Current_Unit_Changed();
+    switch(ch) {
+        #define CHANNEL(n) \
+            case n: { \
+                mCH##n##_Current =  newUnit ? current * 1000.0f : current; \
+                emit CH##n##_CurrentChanged(); \
+                qCDebug(uart_bridge) << "Channel" << n << "current updated to:" << mCH##n##_Current; \
+                \
+                if (mCH##n##_Current_Unit != newUnit) { \
+                    mCH##n##_Current_Unit = newUnit; \
+                    emit CH##n##_Current_Unit_Changed(); \
+                } \
+                return; \
             }
-            return;
-        case 2:
-            mCH2_Current = current;
-            emit CH2_CurrentChanged();
-            if (mCH2_Current_Unit != newUnit){
-                mCH2_Current_Unit = !mCH2_Current_Unit;
-                emit CH2_Current_Unit_Changed();
-            }
-            return;
+        CHANNEL_1_TO_33
+        #undef CHANNEL
+        default: return;
     }
 }
 
 void SerialBridge::update_status(int ch,QByteArray status){
-    QMutexLocker locker(&mutex_status);
-    if (status.size() < 2) {return;}
+    if (status.size() < 2) {
+        qCWarning(uart_bridge) << "update_status - status size too small:" << status.size();
+        return;
+    }
 
     quint16 value = (static_cast<quint8>(status[0]) << 8) | static_cast<quint8>(status[1]);
     QString binaryStr = QString("%1").arg(value, 16, 2, QLatin1Char('0'));
 
-    switch (ch){
-        case 1:
-            if (mCH1_status != binaryStr) {
-                mCH1_status = binaryStr;
-                qCDebug(uart_bridge) << "事件状态改变为: " << binaryStr;
-
-                mCH1_status_v = 0;
-                if (mCH1_status[14] == "1"){   // cv
-                    mCH1_status_v = 1;
-                    qCDebug(uart_bridge) << "状态: " << mCH1_status_v;
-                }
-                if (mCH1_status[13] == "1"){   // cc
-                    mCH1_status_v = 2;
-                    qCDebug(uart_bridge) << "状态: " << mCH1_status_v;
-                }
-                if (mCH1_status[11] == "1"){   // ov
-                    mCH1_status_v = 3;
-                    qCDebug(uart_bridge) << "状态: " << mCH1_status_v;
-                }
-
-                emit CH1_StatusChanged();
+    switch(ch) {
+        #define CHANNEL(n) \
+            case n: { \
+                if (mCH##n##_status == binaryStr) {return;} \
+                \
+                mCH##n##_status = binaryStr; \
+                qCDebug(uart_bridge) << "Channel" << n << "status changed to:" << binaryStr; \
+                \
+                if (binaryStr.length() > 14 && binaryStr[14] == '1') { \
+                    mCH##n##_status_v = 1;  /* CV */ \
+                    qCDebug(uart_bridge) << "Channel" << n << "mode: CV"; \
+                } else if (binaryStr.length() > 13 && binaryStr[13] == '1') { \
+                    mCH##n##_status_v = 2;  /* CC */ \
+                    qCDebug(uart_bridge) << "Channel" << n << "mode: CC"; \
+                } else if (binaryStr.length() > 11 && binaryStr[11] == '1') { \
+                    mCH##n##_status_v = 3;  /* OV */ \
+                    qCDebug(uart_bridge) << "Channel" << n << "mode: OV"; \
+                } \
+                \
+                emit CH##n##_StatusChanged(); \
+                return; \
             }
-            return;
-        case 2:
-            if (mCH2_status != binaryStr) {
-                mCH2_status = binaryStr;
-                qCDebug(uart_bridge) << "事件状态改变为: " << binaryStr;
-
-                mCH2_status_v = 0;
-                if (mCH2_status[14] == "1"){   // cv
-                    mCH2_status_v = 1;
-                    qCDebug(uart_bridge) << "状态: " << mCH2_status_v;
-                }
-                if (mCH2_status[13] == "1"){   // cc
-                    mCH2_status_v = 2;
-                    qCDebug(uart_bridge) << "状态: " << mCH2_status_v;
-                }
-                if (mCH2_status[11] == "1"){   // ov
-                    mCH2_status_v = 3;
-                    qCDebug(uart_bridge) << "状态: " << mCH2_status_v;
-                }
-
-                emit CH1_StatusChanged();
-            }
-            return;
+        CHANNEL_1_TO_33
+        #undef CHANNEL
+        default: return;
     }
 }

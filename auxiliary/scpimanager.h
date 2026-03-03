@@ -13,6 +13,7 @@ extern "C" {
 #include <QMutex>
 #include <QWaitCondition>
 #include <QLoggingCategory>
+#include "serialworker.h"
 
 Q_DECLARE_LOGGING_CATEGORY(scpi)
 
@@ -21,39 +22,10 @@ class ScpiManager : public QObject {
 
 signals:
     // to C++ model control
-    void to_UartChannel1 (quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel2 (quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel3 (quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel4 (quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel5 (quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel6 (quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel7 (quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel8 (quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel9 (quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel10(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel11(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel12(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel13(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel14(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel15(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel16(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel17(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel18(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel19(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel20(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel21(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel22(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel23(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel24(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel25(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel26(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel27(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel28(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel29(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel30(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel31(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel32(quint8 cmd, quint8 func, const QByteArray& param);
-    void to_UartChannel33(quint8 cmd, quint8 func, const QByteArray& param);
+    #define CHANNEL(n) void to_UartChannel##n(quint8 cmd, quint8 func, const QByteArray& param);
+
+    CHANNEL_1_TO_33
+    #undef CHANNEL
 
 public:
     explicit ScpiManager(QObject *parent = nullptr);
@@ -221,14 +193,16 @@ private:
     static char m_inputBuffer[256];
     static scpi_error_t m_errorQueue[10];
 
-    scpi_t m_scpiContext;
-    QMutex m_syncMutex;
-    QWaitCondition m_syncCondition;
-    bool m_UartResponse_Return{false};
+    quint8 m_measurefunchoice{0};
     QByteArray m_responseBuffer;
+    scpi_t m_scpiContext;
+
+    bool m_UartResponse_Return{false};
+    QWaitCondition m_syncCondition;
+    QMutex m_syncMutex;
 
     bool m_CHStateReturn{false};
     float m_CHvalueReturn{0.0f};
     int m_CHintvalueReturn{0};
-    quint8 m_measurefunchoice{0};
+
 };
