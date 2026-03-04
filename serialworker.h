@@ -30,17 +30,14 @@ class SerialWorker : public QObject
     Q_OBJECT
 
 signals:
+    // Transit
+    void serialDataReceived(const QByteArray& data,bool isforce);
+
     // to qml display update
-    // void serialDataReceived(const QByteArray &data,bool isforce); // Transit
-    void statusChanged(int ch,QByteArray status);
+    void statusChanged(int ch,const QByteArray& status);
     void voltageChanged(int ch,float measure);
     void currentChanged(int ch,float measure);
     void currentUnitChanged(int ch,bool status);
-    void smallcurrentChanged(int ch,float measure);
-    void temperatureChanged(int ch,float measure);
-    void sinktemperatureChanged(int ch,float measure);
-    void DVMACDCVoltageChanged(int ch,float measure);
-    void DVMVoltageChanged(int ch,float measure);
 
     // to SCPI Command Query
     void channelreturnstatus(bool state);
@@ -57,7 +54,7 @@ public:
                         QSerialPort::Parity parity = QSerialPort::NoParity,
                         QSerialPort::StopBits stopBits = QSerialPort::OneStop);
 
-    void writeFrame(quint8 cmd, quint8 func, const QByteArray& param);
+    void writeFrame(quint8 cmd, quint8 func, const QByteArray& param,bool isScpi);
     void writeSerialData(const QByteArray& data,bool isforce);
 
 private:
@@ -78,14 +75,6 @@ private:
     void startLoopbackTest();
 
 private:
-    float lastVoltage{0.0f};
-    float lastCurrent{0.0f};
-    float lastSmallCurrent{0.0f};
-    float lasttemper{0.0f};
-    float lastheatsinktemper{0.0f};
-    float lastDVMACDCVoltage{0.0f};
-    float lastDVMVoltage{0.0f};
-
     static constexpr quint8 HEADER_HIGH = 0xAA;
     static constexpr quint8 HEADER_LOW = 0x55;
     static constexpr quint8 END_MARKER = 0xEE;
@@ -94,12 +83,13 @@ private:
     QTimer *m_refreshtimer{nullptr};
     QThread *m_serialThread{nullptr};
     quint8 m_channel{0};
+    bool m_isSCPIrequest{false};
 
     QByteArray m_writebuffer;
     QByteArray m_readbuffer;
     QByteArray m_readparam;
 
     QElapsedTimer m_testTimer;
-    std::atomic<bool> m_isTesting{false};
+    bool m_isTesting{false};
 };
 

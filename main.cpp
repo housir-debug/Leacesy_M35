@@ -12,7 +12,7 @@
 #include "uartmanager.h"
 #include "canworker.h"
 
-using Signal_Bridge = void (SerialBridge::*)(quint8 cmd, quint8 func, const QByteArray& param);
+using Signal_Bridge = void (SerialBridge::*)(quint8 cmd, quint8 func, const QByteArray& param,bool isScpi);
 std::vector<Signal_Bridge> qml_signal = {
     static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel1),
     static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel2),
@@ -49,7 +49,7 @@ std::vector<Signal_Bridge> qml_signal = {
     static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel33),
 };
 
-using SignalType = void (ScpiManager::*)(quint8 cmd, quint8 func, const QByteArray& param);
+using SignalType = void (ScpiManager::*)(quint8 cmd, quint8 func, const QByteArray& param,bool isScpi);
 std::vector<SignalType> scpi_signal = {
     static_cast<SignalType>(&ScpiManager::to_UartChannel1),
     static_cast<SignalType>(&ScpiManager::to_UartChannel2),

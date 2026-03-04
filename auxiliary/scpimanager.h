@@ -22,7 +22,7 @@ class ScpiManager : public QObject {
 
 signals:
     // to C++ model control
-    #define CHANNEL(n) void to_UartChannel##n(quint8 cmd, quint8 func, const QByteArray& param);
+    #define CHANNEL(n) void to_UartChannel##n(quint8 cmd, quint8 func, const QByteArray& param,bool isScpi);
 
     CHANNEL_1_TO_33
     #undef CHANNEL
@@ -43,9 +43,9 @@ private:
     static scpi_result_t SCPI_OutputState(scpi_t* context);
     static scpi_result_t SCPI_OutputBand(scpi_t* context)            {return sendChoiceCmd(context,0x01,0x08);};
     static scpi_result_t SCPI_OutputCompMode(scpi_t* context)        {return sendChoiceCmd(context,0x01,0x09);};
-    static scpi_result_t SCPI_SettingImpedance(scpi_t* context)      {return sendFloatCmd(context,0x02,0x02);};
     static scpi_result_t SCPI_SettingVolt(scpi_t* context)           {return sendFloatCmd(context,0x02,0x00);};
     static scpi_result_t SCPI_SettingCurr(scpi_t* context)           {return sendFloatCmd(context,0x02,0x01);};
+    static scpi_result_t SCPI_SettingImpedance(scpi_t* context)      {return sendFloatCmd(context,0x02,0x02);};
     static scpi_result_t SCPI_SettingProt(scpi_t* context)           {return sendFloatCmd(context,0x02,0x03);};
     static scpi_result_t SCPI_SettingTher(scpi_t* context)           {return sendFloatCmd(context,0x02,0x04);};
     static scpi_result_t SCPI_SettingLoad(scpi_t* context)           {return sendFloatCmd(context,0x02,0x05);};
@@ -135,10 +135,10 @@ private:
     static scpi_result_t SCPI_MeasureAdofCurrQ(scpi_t* context)      {return sendQueryFloatCmd(context,0x04,0xb1);};
     static scpi_result_t SCPI_MeasureAdofScurQ(scpi_t* context)      {return sendQueryFloatCmd(context,0x04,0xb2);};
     static scpi_result_t SCPI_MeasureAdofDvmQ(scpi_t* context)       {return sendQueryFloatCmd(context,0x04,0xb6);};
-    static scpi_result_t SCPI_MeasureNplcQ(scpi_t* context)          {return sendQueryFloatCmd(context,0x04,0x8c);};
+    static scpi_result_t SCPI_MeasureNplcQ(scpi_t* context)          {return sendCmd(context,0x04,0x8c,"");};
     static scpi_result_t SCPI_MeasureTimeQ(scpi_t* context)          {return sendQueryFloatCmd(context,0x04,0x9f);};
     static scpi_result_t SCPI_MeasureRangQ(scpi_t* context)          {return sendQueryIntCmd(context,0x04,0x8e);};
-    static scpi_result_t SCPI_MeasureAverQ(scpi_t* context)          {return sendQueryIntCmd(context,0x04,0x8f);};
+    static scpi_result_t SCPI_MeasureAverQ(scpi_t* context)          {return sendCmd(context,0x04,0x8f,"");};
     static scpi_result_t SCPI_MeasureFuncQ(scpi_t* context);
     static scpi_result_t SCPI_MeasureCurrHighQ(scpi_t* context)      {return sendQueryFloatCmd(context,0x04,0x91);};
     static scpi_result_t SCPI_MeasureCurrLowQ(scpi_t* context)       {return sendQueryFloatCmd(context,0x04,0x92);};
@@ -153,7 +153,7 @@ private:
     static scpi_result_t SCPI_MeasureVoltMaxQ(scpi_t* context)       {return sendQueryFloatCmd(context,0x04,0x9b);};
     static scpi_result_t SCPI_MeasureVoltMinQ(scpi_t* context)       {return sendQueryFloatCmd(context,0x04,0x9c);};
     static scpi_result_t SCPI_MeasureOffsQ(scpi_t* context)          {return sendQueryFloatCmd(context,0x04,0xa3);};
-    static scpi_result_t SCPI_MeasurePoinQ(scpi_t* context)          {return sendQueryIntCmd(context,0x04,0x9d);};
+    static scpi_result_t SCPI_MeasurePoinQ(scpi_t* context)          {Q_UNUSED(context);return SCPI_RES_OK;};
     static scpi_result_t SCPI_MeasureTintQ(scpi_t* context)          {return sendQueryFloatCmd(context,0x04,0x9e);};
     static scpi_result_t SCPI_MeasureArrCurrQ(scpi_t* context)       {return sendQueryFloatCmd(context,0x04,0xa0);};
     static scpi_result_t SCPI_MeasureArrVoltQ(scpi_t* context)       {return sendQueryFloatCmd(context,0x04,0xa1);};

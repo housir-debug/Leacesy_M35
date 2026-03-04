@@ -7,7 +7,7 @@ Q_LOGGING_CATEGORY(uart_channel, "UART_CHANNEL:")
 
 std::vector<UartConfig> configs = {
     //{"/dev/ttyS3",    QSerialPort::Baud38400, 0x01}, // debug-Uart
-    {"/dev/ttyS4",    QSerialPort::Baud38400, 0x01},
+    /*{"/dev/ttyS4",    QSerialPort::Baud38400, 0x01},
     {"/dev/ttyS5",    QSerialPort::Baud38400, 0x02},
     {"/dev/ttyS7",    QSerialPort::Baud38400, 0x03},
     {"/dev/ttyS8",    QSerialPort::Baud38400, 0x04},
@@ -39,15 +39,15 @@ std::vector<UartConfig> configs = {
     {"/dev/ttyWCH24", QSerialPort::Baud38400, 0x1e},
     {"/dev/ttyWCH25", QSerialPort::Baud38400, 0x1f},
     {"/dev/ttyWCH26", QSerialPort::Baud38400, 0x20},
-    {"/dev/ttyWCH27", QSerialPort::Baud38400, 0x21},   // 33
-    //{"/dev/ttyS4",    QSerialPort::Baud38400, 0x01}, // test
+    {"/dev/ttyWCH27", QSerialPort::Baud38400, 0x21},   // 33*/
+    {"/dev/ttyS4",    QSerialPort::Baud38400, 0x01},   // test
 };
 
 SerialWorker::SerialWorker(QObject *parent): QObject(parent){}
 SerialWorker::~SerialWorker()
 {
     qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Serial~Destruct Finished.";
-    m_isTesting.store(false);
+    m_isTesting = false;
     m_refreshtimer->stop();
 
     if (m_serialPort) {
@@ -120,9 +120,9 @@ bool SerialWorker::initSerialPort(const QString &portName,
         connect(m_refreshtimer,&QTimer::timeout,this,[this]{
             static int step = 0;
             switch (step) {
-                case 0:  writeFrame(0x04,0x80,""); break;
-                case 1:  writeFrame(0x04,0x81,""); break;
-                case 2:  writeFrame(0x05,0x80,""); break;
+                case 0:  writeFrame(0x04,0x80,"",false); break;
+                case 1:  writeFrame(0x04,0x81,"",false); break;
+                case 2:  writeFrame(0x05,0x80,"",false); break;
             }
             step = (step + 1) % 3;
         }, Qt::DirectConnection);
@@ -177,7 +177,7 @@ bool SerialWorker::initSerialPort(const QString &portName,
 
 // ========================== 信息处理部分 ===================================
 
-void SerialWorker::writeFrame(quint8 cmd, quint8 func, const QByteArray& param) {
+void SerialWorker::writeFrame(quint8 cmd, quint8 func, const QByteArray& param,bool isScpi) {
     quint8 length = 4 + param.size();  //  Command+Function+Channel+CheckSum  + Parameter
     quint8 checksum = length + cmd + func + m_channel; // The check code is taken from the lowest 8 bits.
     for (char byte : param) {checksum += static_cast<quint8>(byte);}
@@ -196,6 +196,7 @@ void SerialWorker::writeFrame(quint8 cmd, quint8 func, const QByteArray& param) 
     m_writebuffer.append(END_MARKER);
 
     writeSerialData(m_writebuffer,false);
+    m_isSCPIrequest = isScpi;
 }
 
 void SerialWorker::writeSerialData(const QByteArray& data,bool isforce)
@@ -220,7 +221,7 @@ void SerialWorker::handleReadyRead()
     qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Received: "<< m_readbuffer.toHex(' '); // <<(m_channel==1?"电芯发":"控制发")
 
     // Test progressing
-    if (m_isTesting.load()) {
+    if (m_isTesting) {
         if (m_readbuffer.size() >= 1024) {  // 1 KB
             qint64 elapsed = m_testTimer.elapsed(); // ms
             double speedKBps =  (1024 * 1000.0) / (elapsed * 1024);
@@ -232,7 +233,7 @@ void SerialWorker::handleReadyRead()
                 "Speed: %2 KB/s (%3 bps)"
             ).arg(elapsed).arg(speedKBps, 0, 'f', 2).arg(speedBps * 8, 0, 'f', 0);
 
-            m_isTesting.store(false);
+            m_isTesting=false;
             m_readbuffer.clear();
         }
         return;
@@ -302,242 +303,463 @@ void SerialWorker::handleOutputcmd(quint8 func){
     }
 
     switch (func){
-        case 0x80:{   // query output status
+        case 0x80:{
             bool status = raw==0 ? false:true;
             emit channelreturnstatus(status);
-            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Query: "<<status;
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Query:"<<status;
             return;
         }
         case 0x00:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Been OFF";return;
         case 0x01:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Been ON"; return;
-        case 0x08:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Bandwidth Been "<<(raw==0 ? "LOW":"HIGH");return;
-        case 0x88:{   // query output bandwidth
+        case 0x08:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Bandwidth Been:"<<(raw==0 ? "LOW":"HIGH");return;
+        case 0x88:{
             bool status = raw==0 ? false:true;
             emit channelreturnstatus(status);
-            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Query: "<<(status ? "HIGH":"LOW");
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Query:"<<(status ? "HIGH":"LOW");
             return;
         }
-        case 0x09:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output COMPMODE(1=Llocal->4=Hremote) Been "<<raw;return;
-        case 0x89:{   // query output compmode
-            emit channelreturnvalue(raw);
-            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output COMPMODE(1=Llocal->4=Hremote) Been "<<raw;
+        case 0x09:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output COMPMODE(1=Llocal->4=Hremote) Been:"<<raw;return;
+        case 0x89:{
+            emit channelreturnintvalue(raw);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output COMPMODE(1=Llocal->4=Hremote) Been:"<<raw;
             return;
         }
+
+        default:qCCritical(uart_channel)<<"unknown Output func!!!";return;
     }
 }
 
 void SerialWorker::handleSettingcmd(quint8 func){
-    quint32 raw = qFromBigEndian<quint32>(reinterpret_cast<const uchar*>(m_readparam.constData()));
-    float shf;   memcpy(&shf, &raw, sizeof(float));
+    float shf{0.0f};
+    if (m_readparam.size()==4){
+        quint32 raw = qFromBigEndian<quint32>(reinterpret_cast<const uchar*>(m_readparam.constData()));
+        memcpy(&shf, &raw, sizeof(float));
+    }
 
     switch (func){
-        case 0x80:break;
-        case 0x00:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Setting AMPL:"<<shf;break;
-        case 0x81:break;
-        case 0x01:break;
-        case 0x82:break;
-        case 0x02:break;
-        case 0x83:break;
-        case 0x03:break;
-        case 0x84:break;
-        case 0x04:break;
-        case 0x85:break;
-        case 0x05:break;
-        case 0x86:break;
-        case 0x06:break;
-        case 0x87:break;
-        case 0x07:break;
-        case 0x88:break;
-        case 0x08:break;
+        case 0x80:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Setting Volt:"<<shf;
+            return;
+        case 0x00:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Setting Volt:"<<shf;return;
+        case 0x81:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Setting Curr:"<<shf;
+            return;
+        case 0x01:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Setting Curr:"<<shf;return;
+        case 0x82:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Setting Tmpe:"<<shf;
+            return;
+        case 0x02:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Setting Tmpe:"<<shf;return;
+        case 0x83:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Setting Prot:"<<shf;
+            return;
+        case 0x03:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Setting Prot:"<<shf;return;
+        case 0x84:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Setting Ther:"<<shf;
+            return;
+        case 0x04:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Setting Ther:"<<shf;return;
+        case 0x85:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Setting Load:"<<shf;
+            return;
+        case 0x05:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Setting Load:"<<shf;return;
+        case 0x86:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Setting RepeatVolt:"<<shf;
+            return;
+        case 0x06:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Setting RepeatVolt:"<<shf;return;
+        case 0x87:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Setting RepeatCurr:"<<shf;
+            return;
+        case 0x07:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Setting RepeatCurr:"<<shf;return;
+        case 0x88:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Setting RepeatTmpe:"<<shf;
+            return;
+        case 0x08:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Setting RepeatTmpe:"<<shf;return;
+
+        default:qCCritical(uart_channel)<<"unknown Setting func!!!";return;
     }
 }
 
 void SerialWorker::handleControlcmd(quint8 func){
+    quint8 raw = -1;
+    if (!m_readparam.isEmpty()){
+        raw = static_cast<quint8>(m_readparam[0]);
+    }
+
     switch (func){
-        case 0x80:break;
-        case 0x00:break;
-        case 0x81:break;
-        case 0x01:break;
-        case 0x82:break;
-        case 0x02:break;
-        case 0x83:break;
-        case 0x03:break;
-        case 0x84:break;
-        case 0x04:break;
-        case 0x85:break;
-        case 0x05:break;
-        case 0x06:break;
-        case 0x07:break;
-        case 0x88:break;
-        case 0x08:break;
-        case 0x89:break;
-        case 0x09:break;
+        case 0x80:
+            emit channelreturnintvalue(raw);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Control load:"<<raw;
+            return;
+        case 0x00:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Control load:"<<(raw==0 ? "Disable":"Enable");return;
+        case 0x81:
+            emit channelreturnintvalue(raw);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Control OVP:"<<raw;
+            return;
+        case 0x01:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Control OVP:"<<(raw==0 ? "Off":"On");return;
+        case 0x82:
+            emit channelreturnintvalue(raw);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Control OCP:"<<raw;
+            return;
+        case 0x02:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Control OCP:"<<(raw==0 ? "Off":"On");return;
+        case 0x83:
+            emit channelreturnintvalue(raw);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Control OTP:"<<raw;
+            return;
+        case 0x03:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Control OTP:"<<(raw==0 ? "Off":"On");return;
+        case 0x84:
+            emit channelreturnintvalue(raw);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Control impedance:"<<raw;
+            return;
+        case 0x04:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Control impedance:"<<(raw==0 ? "Disable":"Enable");return;
+        case 0x85:
+            emit channelreturnintvalue(raw);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Control POS:"<<raw;
+            return;
+        case 0x05:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Control POS:"<<raw;return;
+        case 0x06:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Control SAV:"<<raw;return;
+        case 0x07:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Control RCL:"<<raw;return;
+        case 0x88:
+            emit channelreturnintvalue(raw);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Control stat:"<<raw;
+            return;
+        case 0x08:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Control stat:"<<raw;return;
+        case 0x89:
+            emit channelreturnintvalue(raw);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Control loadOCP:"<<raw;
+            return;
+        case 0x09:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Control loadOCP:"<<raw;return;
+
+        default:qCCritical(uart_channel)<<"unknown Control func!!!";return;
     }
 }
 
 void SerialWorker::handleMeasurementcmd(quint8 func){
-    quint32 raw = qFromBigEndian<quint32>(reinterpret_cast<const uchar*>(m_readparam.constData()));
-    float shf;   memcpy(&shf, &raw, sizeof(float));
-    float EPSILON = qAbs(shf) < 1e-4? 0.00000001f : 0.00001f;
+    float shf{0.0f};
+    quint16 sht{0};
+    quint8 shts{0};
+
+    if (m_readparam.size() == 4){
+        quint32 raw = qFromBigEndian<quint32>(reinterpret_cast<const uchar*>(m_readparam.constData()));
+        memcpy(&shf, &raw, sizeof(float));
+    }else if (m_readparam.size() == 2){
+        memcpy(&sht, m_readparam.constData(), 2);
+    }else if (m_readparam.size() == 1){
+        shts = static_cast<quint8>(m_readparam[0]);
+    }
 
     switch (func){
-        case 0x80: // voltage /V
-                qCDebug(uart_channel)<<"Voltage Present:"<<shf<<"Last:"<<lastVoltage;
-                if (qAbs(shf - lastVoltage) >= EPSILON) {
-                    emit voltageChanged(m_channel,shf);
-                    // emit channelreturnvalue(shf);
-                    lastVoltage = shf;
-                }
-                break;
-        case 0x81: // current /A
-                qCDebug(uart_channel)<<"Current Present:"<<shf<<"Last:"<<lastCurrent;
-                if (qAbs(shf - lastCurrent) >= EPSILON) {
-                    emit currentChanged(m_channel,shf);
-                    // emit channelreturnvalue(shf);
-                    lastCurrent = shf;
-                }
-                break;
-        case 0x82: // small current /mA
-                qCDebug(uart_channel)<<"Small Current Present:"<<shf<<"Last:"<<lastSmallCurrent;
-                if (qAbs(shf - lastSmallCurrent) >= EPSILON) {
-                    emit smallcurrentChanged(m_channel,shf);
-                    // emit channelreturnvalue(shf);
-                    lastSmallCurrent = shf;
-                }
-                break;
-        case 0x83: // board temperature /degC
-                qCDebug(uart_channel)<<"Board Temperature Present:"<<shf<<"Last:"<<lasttemper;
-                if (qAbs(shf - lasttemper) >= EPSILON) {
-                    emit temperatureChanged(m_channel,shf);
-                    // emit channelreturnvalue(shf);
-                    lasttemper = shf;
-                }
-                break;
-        case 0x84: // heatsink temperature /degC
-                qCDebug(uart_channel)<<"Heatsink Temperature Present:"<<shf<<"Last:"<<lastheatsinktemper;
-                if (qAbs(shf - lastheatsinktemper) >= EPSILON) {
-                    emit sinktemperatureChanged(m_channel,shf);
-                    // emit channelreturnvalue(shf);
-                    lastheatsinktemper = shf;
-                }
-                break;
-        case 0x85: // DVM ACDC voltage /V
-                qCDebug(uart_channel)<<"DVM ACDC Voltage Present:"<<shf<<"Last:"<<lastDVMACDCVoltage;
-                if (qAbs(shf - lastDVMACDCVoltage) >= EPSILON) {
-                    emit DVMACDCVoltageChanged(m_channel,shf);
-                    // emit channelreturnvalue(shf);
-                    lastDVMACDCVoltage = shf;
-                }
-                break;
-        case 0x86: // DVM voltage /V
-                qCDebug(uart_channel) << "DVM Voltage Present:"<<shf<<"Last:"<<lastDVMVoltage;
-                if (qAbs(shf - lastDVMVoltage) >= EPSILON) {
-                    emit DVMVoltageChanged(m_channel,shf);
-                    // emit channelreturnvalue(shf);
-                    lastDVMVoltage = shf;
-                }
-                break;
-        case 0x87:break;
-        case 0x9D:break;
-        case 0x89:break;
-        case 0x8A:break;
-        case 0x8B:break;
-        case 0x8D:break;
-        case 0xb0:break;
-        case 0xb1:break;
-        case 0xb2:break;
-        case 0xb6:break;
-        case 0x8C:break;
-        case 0x0C:break;
-        case 0x9F:break;
-        case 0x1F:break;
-        case 0x8E:break;
-        case 0x0E:break;
-        case 0x8F:break;
-        case 0x0F:break;
-        case 0x90:break;
-        case 0x10:break;
-        case 0x91:break;
-        case 0x92:break;
-        case 0x93:break;
-        case 0x94:break;
-        case 0x95:break;
-        case 0x96:break;
-        case 0x97:break;
-        case 0x98:break;
-        case 0x99:break;
-        case 0x9A:break;
-        case 0x9B:break;
-        case 0x9C:break;
-        case 0xa3:break;
-        case 0x23:break;
-        // case 0x9d:break;
-        case 0x1d:break;
-        case 0x9e:break;
-        case 0x1e:break;
-        case 0xa0:break;
-        case 0xa1:break;
-        case 0xa2:break;
-
+        case 0x80:
+            emit voltageChanged(m_channel,shf);
+            if (m_isSCPIrequest) {emit channelreturnvalue(shf);}
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement Volt:"<<shf;
+            return;
+        case 0x81:
+            emit currentChanged(m_channel,shf);
+            if (m_isSCPIrequest) {emit channelreturnvalue(shf);}
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement Curr:"<<shf;
+            return;
+        case 0x82:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement Scur:"<<shf;
+            return;
+        case 0x83:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement Btmp:"<<shf;
+            return;
+        case 0x84:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement Htmp:"<<shf;
+            return;
+        case 0x85:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement Acdc:"<<shf;
+            return;
+        case 0x86:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement Dvm:"<<shf;
+            return;
+        case 0x87:
+            emit channelreturnintvalue(sht);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement Fan:"<<sht;
+            return;
+        case 0x9D:
+            emit channelreturnintvalue(sht);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement Duty:"<<sht;
+            return;
+        case 0x89:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement Dvmac:"<<shf;
+            return;
+        case 0x8A:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement Temp1:"<<shf;
+            return;
+        case 0x8B:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement Temp2:"<<shf;
+            return;
+        case 0x8D:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement Temp3:"<<shf;
+            return;
+        case 0xb0:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement AdofVolt:"<<shf;
+            return;
+        case 0xb1:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement AdofCurr:"<<shf;
+            return;
+        case 0xb2:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement AdofScur:"<<shf;
+            return;
+        case 0xb6:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement AdofDvm3:"<<shf;
+            return;
+        case 0x8C:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement NPLC";return;
+        case 0x0C:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Measurement NPLC:"<<shf;return;
+        case 0x9F:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement Time:"<<shf;
+            return;
+        case 0x1F:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Measurement Time:"<<shf;return;
+        case 0x8E:
+            emit channelreturnintvalue(shts);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement Rang:"<<shts;
+            return;
+        case 0x0E:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Measurement Rang:"<<shts;return;
+        case 0x8F:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement average";return;
+        case 0x0F:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Measurement average:"<<shts;return;
+        case 0x90:
+            emit channelreturnintvalue(shts);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement Func:"<<shts;
+            return;
+        case 0x10:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Measurement Func:"<<shts;return;
+        case 0x91:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement CurrHigh:"<<shf;
+            return;
+        case 0x92:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement CurrLow:"<<shf;
+            return;
+        case 0x93:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement CurrMax:"<<shf;
+            return;
+        case 0x94:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement CurrMin:"<<shf;
+            return;
+        case 0x95:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement DvmHigh:"<<shf;
+            return;
+        case 0x96:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement DvmLow:"<<shf;
+            return;
+        case 0x97:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement DvmMax:"<<shf;
+            return;
+        case 0x98:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement DvmMin:"<<shf;
+            return;
+        case 0x99:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement VoltHigh:"<<shf;
+            return;
+        case 0x9A:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement VoltHigh:"<<shf;
+            return;
+        case 0x9B:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement VoltHigh:"<<shf;
+            return;
+        case 0x9C:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement VoltHigh:"<<shf;
+            return;
+        case 0xa3:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement Offs:"<<shf;
+            return;
+        case 0x23:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Measurement Offs:"<<shf;return;
+        //case 0x9d:break;
+        case 0x1d:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Measurement Poin:"<<sht;return;
+        case 0x9e:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement Tint:"<<shf;
+            return;
+        case 0x1e:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Measurement Tint:"<<shf;return;
+        case 0xa0:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement ArrCurr:"<<shf;
+            return;
+        case 0xa1:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement ArrVolt:"<<shf;
+            return;
+        case 0xa2:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Measurement ArrDvm:"<<shf;
+            return;
     }
 }
 
 void SerialWorker::handleRegistercmd(quint8 func){
+    float shf{0.0f};
+    quint16 sht{0};
+    quint8 shts{0};
+
+    if (m_readparam.size() == 4){
+        quint32 raw = qFromBigEndian<quint32>(reinterpret_cast<const uchar*>(m_readparam.constData()));
+        memcpy(&shf, &raw, sizeof(float));
+    }else if (m_readparam.size() == 2){
+        memcpy(&sht, m_readparam.constData(), 2);
+    }else if (m_readparam.size() == 1){
+        shts = static_cast<quint8>(m_readparam[0]);
+    }
+
     switch (func){
-        case 0x80:emit statusChanged(m_channel,m_readparam);break;
-        case 0x81:break;
-        case 0x82:break;
-        case 0x83:break;
-        case 0x03:break;
-        case 0x84:break;
-        case 0x85:break;
+        case 0x80:
+            emit statusChanged(m_channel,m_readparam);
+            if (m_isSCPIrequest){emit channelreturnintvalue(sht);}
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Register Status:"<<sht;
+            return;
+        case 0x81:
+            emit channelreturnintvalue(sht);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Register Enable:"<<sht;
+            return;
+        case 0x82:
+            emit channelreturnintvalue(sht);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Register Condition:"<<sht;
+            return;
+        case 0x83:
+            emit channelreturnintvalue(shts);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Register Error:"<<shts;
+            return;
+        case 0x03:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Register QUECLE";return;
+        case 0x84:
+            emit channelreturnintvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Register Software:"<<shf;
+            return;
+        case 0x85:
+            emit channelreturnintvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Register Hardware:"<<shf;
+            return;
     }
 }
 
 void SerialWorker::handleCalibratecmd(quint8 func){
+    quint8 raw = -1;
+    if (!m_readparam.isEmpty()){
+        raw = static_cast<quint8>(m_readparam[0]);
+    }
+
     switch (func){
-        case 0x00:break;
-        case 0x01:break;
-        case 0x02:break;
-        case 0x03:break;
-        case 0x84:break;
-        case 0x04:break;
-        case 0x05:break;
-        case 0x06:break;
-        case 0x07:break;
-        case 0x08:break;
-        case 0x10:break;
-        case 0x11:break;
+        case 0x00:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Calibrate Exit";return;
+        case 0x01:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Calibrate Init";return;
+        case 0x02:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Calibrate Rest";return;
+        case 0x03:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Calibrate Save";return;
+        case 0x84:
+            emit channelreturnintvalue(raw);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Calibrate All:"<<raw;
+            return;
+        case 0x04:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Calibrate All:"<<raw;return;
+        case 0x05:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Calibrate Adc";return;
+        case 0x06:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Calibrate Dac";return;
+        case 0x07:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Calibrate Enab";return;
+        case 0x08:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Calibrate Imp";return;
+        case 0x10:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Calibrate Dcp";return;
+        case 0x11:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Calibrate Dcn";return;
     }
 }
 
 void SerialWorker::handleCalibrationcmd(quint8 func){
-    Q_UNUSED(func);
+    float shf{0.0f};
+    if (m_readparam.size()==4){
+        quint32 raw = qFromBigEndian<quint32>(reinterpret_cast<const uchar*>(m_readparam.constData()));
+        memcpy(&shf, &raw, sizeof(float));
+    }
+
+    emit channelreturnvalue(shf);
+    qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Calibration step:"<<func<<" Cail:"<<shf;
 }
 
 void SerialWorker::handleTriggercmd(quint8 func){
+    float shf{0.0f};
+    quint16 sht{0};
+    quint8 shts{0};
+
+    if (m_readparam.size() == 4){
+        quint32 raw = qFromBigEndian<quint32>(reinterpret_cast<const uchar*>(m_readparam.constData()));
+        memcpy(&shf, &raw, sizeof(float));
+    }else if (m_readparam.size() == 2){
+        memcpy(&sht, m_readparam.constData(), 2);
+    }else if (m_readparam.size() == 1){
+        shts = static_cast<quint8>(m_readparam[0]);
+    }
+
     switch (func){
-        case 0x00:break;
-        case 0x01:break;
-        case 0x02:break;
-        case 0x03:break;
-        case 0x04:break;
-        case 0x05:break;
-        case 0x85:break;
-        case 0x06:break;
-        case 0x86:break;
-        case 0x07:break;
-        case 0x87:break;
-        case 0x08:break;
-        case 0x88:break;
-        case 0x09:break;
-        case 0x89:break;
-        case 0x8A:break;
-        case 0x0A:break;
-        case 0x8B:break;
-        case 0x0B:break;
-        case 0x8C:break;
-        case 0x0C:break;
+        case 0x00:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Trigger Abort";return;
+        case 0x01:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Trigger Sequene:"<<shts;return;
+        case 0x02:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Trigger Coquene:"<<shts;return;
+        case 0x03:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Trigger Seq1";return;
+        case 0x04:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Trigger Seq2";return;
+        case 0x05:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Trigger Seq2So"<<shts;return;
+        case 0x85:
+            emit channelreturnintvalue(shts);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Trigger Seq2So:"<<shts;
+            return;
+        case 0x06:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Trigger Seq2Co"<<sht;return;
+        case 0x86:
+            emit channelreturnintvalue(sht);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Trigger Seq2Co:"<<sht;
+            return;
+        case 0x07:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Trigger Seq2Hy"<<shf;return;
+        case 0x87:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Trigger Seq2Hy:"<<shf;
+            return;
+        case 0x08:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Trigger Seq2Le"<<shf;return;
+        case 0x88:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Trigger Seq2Le:"<<shf;
+            return;
+        case 0x09:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Trigger Seq2Sl"<<shts;return;
+        case 0x89:
+            emit channelreturnintvalue(shts);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Trigger Seq2Sl:"<<shts;
+            return;
+        case 0x8A:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Trigger Ampl:"<<shf;return;
+        case 0x0A:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Trigger Ampl:"<<shf;
+            return;
+        case 0x8B:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Trigger Curr:"<<shf;return;
+        case 0x0B:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Trigger Curr:"<<shf;
+            return;
+        case 0x8C:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Trigger Res:"<<shf;return;
+        case 0x0C:
+            emit channelreturnvalue(shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Trigger Res:"<<shf;
+            return;
     }
 }
 
@@ -590,8 +812,8 @@ void SerialWorker::handleErrorcmd(quint8 func){
 
 void SerialWorker::startLoopbackTest()
 {
-    if (m_isTesting.load()) {return;}
-    m_isTesting.store(true);
+    if (m_isTesting) {return;}
+    m_isTesting=true;
 
     QByteArray testData;
     testData.resize(1024); // 1KB

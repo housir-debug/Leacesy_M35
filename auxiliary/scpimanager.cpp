@@ -275,8 +275,8 @@ scpi_result_t ScpiManager::sendCmd(scpi_t* context, quint8 cmd, quint8 func, con
 
     auto* self = static_cast<ScpiManager*>(context->user_context);
     switch (channel){
-        case 1:emit self->to_UartChannel1(cmd,func,data);break;
-        case 2:emit self->to_UartChannel2(cmd,func,data);break;
+        case 1:emit self->to_UartChannel1(cmd,func,data,true);break;
+        case 2:emit self->to_UartChannel2(cmd,func,data,true);break;
         default:return SCPI_RES_ERR;;
     }
 
@@ -380,8 +380,8 @@ bool ScpiManager::sendQueryCmd(scpi_t* context, quint8 cmd, quint8 func) {
     self->m_UartResponse_Return = false;
 
     switch (channel){
-        case 1:emit self->to_UartChannel1(cmd,func,"");break;
-        case 2:emit self->to_UartChannel2(cmd,func,"");break;
+        case 1:emit self->to_UartChannel1(cmd,func,"",true);break;
+        case 2:emit self->to_UartChannel2(cmd,func,"",true);break;
         default:return false;
     }
 

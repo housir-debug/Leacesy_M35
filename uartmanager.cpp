@@ -16,7 +16,7 @@ void SerialBridge::setChannel_Output(int channel,bool switchs){
     }
 
     switch(channel) {
-        #define CHANNEL(n) case n: return emit to_UartChannel##n(0x01, func, "");
+        #define CHANNEL(n) case n: return emit to_UartChannel##n(0x01, func, "",false);
         CHANNEL_1_TO_33
         #undef CHANNEL
         default:
@@ -48,7 +48,7 @@ void SerialBridge::setChannel_Setstatus(int channel,int model,float value){
     }
 
     switch(channel) {
-        #define CHANNEL(n) case n: return emit to_UartChannel##n(0x02, func, Status_buffer);
+        #define CHANNEL(n) case n: return emit to_UartChannel##n(0x02, func, Status_buffer,false);
         CHANNEL_1_TO_33
         #undef CHANNEL
         default:
@@ -81,7 +81,7 @@ QString SerialBridge::setChannel_CurrentUnit(){
 // - Auxiliary function ----------
 
 void SerialBridge::toAll_Channel(quint8 cmd,quint8 func,const QByteArray& param){
-    #define CHANNEL(n) emit to_UartChannel##n(cmd, func, param);
+    #define CHANNEL(n) emit to_UartChannel##n(cmd, func, param,false);
     CHANNEL_1_TO_33
     #undef CHANNEL
 }
