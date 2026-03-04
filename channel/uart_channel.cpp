@@ -1,4 +1,4 @@
-#include "serialworker.h"
+#include "uart_channel.h"
 #include <QtCore>
 
 // ========================== 初始化部分 ===================================

@@ -3,7 +3,7 @@
 #include <QDateTime>
 #include <QTimer>
 #include <QElapsedTimer>
-#include "auxiliary/scpimanager.h"
+#include "auxiliary/scpi_handle.h"
 //#include <QLoggingCategory>
 //#include <QThread>
 //#include <QMutex>

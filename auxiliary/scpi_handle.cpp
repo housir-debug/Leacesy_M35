@@ -1,4 +1,4 @@
-#include "scpimanager.h"
+#include "scpi_handle.h"
 #include "auxiliary/config_manager.h"
 #include <QNetworkInterface>
 #include <QtCore>

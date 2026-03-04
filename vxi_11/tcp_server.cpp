@@ -1,5 +1,5 @@
-#include "tcpserver.h"
-#include "tirpcloader.h"
+#include "tcp_server.h"
+#include "tirpc_loader.h"
 #include <QtCore>
 #include <QTcpSocket>
 #include <unistd.h>

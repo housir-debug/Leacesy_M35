@@ -5,11 +5,11 @@
 #include <QQmlApplicationEngine>
 #include "auxiliary/simple_logger.h"
 #include "auxiliary/config_manager.h"
-#include "auxiliary/scpimanager.h"
-#include "vxi_11/tcpserver.h"
-#include "vxi_11/web_server.h"
-#include "serialworker.h"
-#include "uartmanager.h"
+#include "auxiliary/scpi_handle.h"
+#include "channel/uart_channel.h"
+#include "vxi_11/tcp_server.h"
+#include "qml/web_server.h"
+#include "qml/qml_agency.h"
 #include "canworker.h"
 
 using Signal_Bridge = void (SerialBridge::*)(quint8 cmd, quint8 func, const QByteArray& param,bool isScpi);

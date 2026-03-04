@@ -13,7 +13,7 @@ extern "C" {
 #include <QMutex>
 #include <QWaitCondition>
 #include <QLoggingCategory>
-#include "serialworker.h"
+#include "channel/uart_channel.h"
 
 Q_DECLARE_LOGGING_CATEGORY(scpi)
 

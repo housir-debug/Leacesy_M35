@@ -1,4 +1,4 @@
-#include "uartmanager.h"
+#include "qml_agency.h"
 #include <QtCore>
 
 Q_LOGGING_CATEGORY(uart_bridge, "UART_BRIDGE:")

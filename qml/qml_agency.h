@@ -1,7 +1,7 @@
 #pragma once
 #include <QMutex>
 #include <QLoggingCategory>
-#include "serialworker.h"
+#include "channel/uart_channel.h"
 //#include <QQmlApplicationEngine>
 
 Q_DECLARE_LOGGING_CATEGORY(uart_bridge)
