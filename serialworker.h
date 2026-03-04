@@ -17,6 +17,14 @@ Q_DECLARE_LOGGING_CATEGORY(uart_channel)
     CHANNEL(25) CHANNEL(26) CHANNEL(27) CHANNEL(28) CHANNEL(29) CHANNEL(30) CHANNEL(31) CHANNEL(32) \
     CHANNEL(33)
 
+struct UartConfig {
+    QString port;
+    QSerialPort::BaudRate baudRate;
+    quint8 channel;
+};
+
+extern std::vector<UartConfig> configs;
+
 class SerialWorker : public QObject
 {
     Q_OBJECT
@@ -55,17 +63,17 @@ public:
 private:
     void handleReadyRead();
     void handleuartrequest       (quint8 length);
-    void handleOutputcmd         (quint8 func, quint8 ch);
-    void handleSettingcmd        (quint8 func, quint8 ch);
-    void handleControlcmd        (quint8 func, quint8 ch);
-    void handleMeasurementcmd    (quint8 func, quint8 ch);
-    void handleRegistercmd       (quint8 func, quint8 ch);
-    void handleCalibratecmd      (quint8 func, quint8 ch);
-    void handleCalibrationcmd    (quint8 func, quint8 ch);
-    void handleTriggercmd        (quint8 func, quint8 ch);
-    void handleISPcmd            (quint8 func, quint8 ch);
-    void handleSNcmd             (quint8 func, quint8 ch);
-    void handleIDcmd             (quint8 func, quint8 ch);
+    void handleOutputcmd         (quint8 func);
+    void handleSettingcmd        (quint8 func);
+    void handleControlcmd        (quint8 func);
+    void handleMeasurementcmd    (quint8 func);
+    void handleRegistercmd       (quint8 func);
+    void handleCalibratecmd      (quint8 func);
+    void handleCalibrationcmd    (quint8 func);
+    void handleTriggercmd        (quint8 func);
+    void handleISPcmd            (quint8 func);
+    void handleSNcmd             (quint8 func);
+    void handleIDcmd             (quint8 func);
     void handleErrorcmd          (quint8 func);
     void startLoopbackTest();
 
@@ -82,12 +90,10 @@ private:
     static constexpr quint8 HEADER_LOW = 0x55;
     static constexpr quint8 END_MARKER = 0xEE;
 
-    QMap<QString, quint8> portChannelMap;
-    quint8 m_channel{0};
-
     QSerialPort *m_serialPort{nullptr};
     QTimer *m_refreshtimer{nullptr};
     QThread *m_serialThread{nullptr};
+    quint8 m_channel{0};
 
     QByteArray m_writebuffer;
     QByteArray m_readbuffer;

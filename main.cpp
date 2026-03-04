@@ -86,48 +86,6 @@ std::vector<SignalType> scpi_signal = {
     static_cast<SignalType>(&ScpiManager::to_UartChannel33),
 };
 
-struct UartConfig {
-    QString port;
-    QSerialPort::BaudRate baudRate;
-};
-
-std::vector<UartConfig> configs = {
-    /*{"/dev/ttyS4",    QSerialPort::Baud38400},
-    {"/dev/ttyS5",    QSerialPort::Baud38400},
-    {"/dev/ttyS7",    QSerialPort::Baud38400},
-    {"/dev/ttyS8",    QSerialPort::Baud38400},
-    {"/dev/ttyS9",    QSerialPort::Baud38400},
-    {"/dev/ttyWCH0",  QSerialPort::Baud38400},
-    {"/dev/ttyWCH1",  QSerialPort::Baud38400},
-    {"/dev/ttyWCH2",  QSerialPort::Baud38400},
-    {"/dev/ttyWCH3",  QSerialPort::Baud38400},
-    {"/dev/ttyWCH4",  QSerialPort::Baud38400},
-    {"/dev/ttyWCH5",  QSerialPort::Baud38400},
-    {"/dev/ttyWCH6",  QSerialPort::Baud38400},
-    {"/dev/ttyWCH7",  QSerialPort::Baud38400},
-    {"/dev/ttyWCH8",  QSerialPort::Baud38400},
-    {"/dev/ttyWCH9",  QSerialPort::Baud38400},
-    {"/dev/ttyWCH10", QSerialPort::Baud38400},
-    {"/dev/ttyWCH11", QSerialPort::Baud38400},
-    {"/dev/ttyWCH12", QSerialPort::Baud38400},
-    {"/dev/ttyWCH13", QSerialPort::Baud38400},
-    {"/dev/ttyWCH14", QSerialPort::Baud38400},
-    {"/dev/ttyWCH15", QSerialPort::Baud38400},
-    {"/dev/ttyWCH16", QSerialPort::Baud38400},
-    {"/dev/ttyWCH17", QSerialPort::Baud38400},
-    {"/dev/ttyWCH18", QSerialPort::Baud38400},
-    {"/dev/ttyWCH19", QSerialPort::Baud38400},
-    {"/dev/ttyWCH20", QSerialPort::Baud38400},
-    {"/dev/ttyWCH21", QSerialPort::Baud38400},
-    {"/dev/ttyWCH22", QSerialPort::Baud38400},
-    {"/dev/ttyWCH23", QSerialPort::Baud38400},
-    {"/dev/ttyWCH24", QSerialPort::Baud38400},
-    {"/dev/ttyWCH25", QSerialPort::Baud38400},
-    {"/dev/ttyWCH26", QSerialPort::Baud38400},
-    {"/dev/ttyWCH27", QSerialPort::Baud38400},*/
-    {"/dev/ttyS4",    QSerialPort::Baud38400}, // test
-};
-
 int main(int argc, char *argv[])
 {
     //qputenv("QT_IM_MODULE", QByteArray("qtvirtualkeyboard"));
@@ -161,6 +119,7 @@ int main(int argc, char *argv[])
         engine.load(url);
     }
 
+    QHash<SerialWorker*,quint8> UartChannel_Map;
     std::vector<std::unique_ptr<SerialWorker>> Uart_Channels;
     if (ConfigManager::s_enableUartMess){
         for (const auto& config : configs) {
@@ -174,9 +133,10 @@ int main(int argc, char *argv[])
                 QObject::connect(channel.get(),&SerialWorker::statusChanged,Uart_bridge.get(),&SerialBridge::update_status,Qt::DirectConnection);
                 // QmlUI -> Uart
                 // The order correspondence is not one-to-one binding.
-                QObject::connect(Uart_bridge.get(),qml_signal[Uart_Channels.size()],channel.get(),&SerialWorker::writeFrame,Qt::QueuedConnection);
+                QObject::connect(Uart_bridge.get(),qml_signal[config.channel-1],channel.get(),&SerialWorker::writeFrame,Qt::QueuedConnection);
             }
 
+            UartChannel_Map[channel.get()] = config.channel-1;
             Uart_Channels.push_back(std::move(channel));
         }
 
@@ -201,7 +161,10 @@ int main(int argc, char *argv[])
             QObject::connect(Uart_Channels[i].get(),&SerialWorker::channelreturnvalue,vxi_scpi.get(),&ScpiManager::processCHvalueResponse,Qt::DirectConnection);
 
             // Scpi -> uart
-            QObject::connect(vxi_scpi.get(),scpi_signal[i],Uart_Channels[i].get(),&SerialWorker::writeFrame,Qt::QueuedConnection);
+            auto it = UartChannel_Map.find(Uart_Channels[i].get());
+            if (it != UartChannel_Map.end()) {
+                 QObject::connect(vxi_scpi.get(),scpi_signal[it.value()],Uart_Channels[i].get(),&SerialWorker::writeFrame,Qt::QueuedConnection);
+            }
         }
     }
 

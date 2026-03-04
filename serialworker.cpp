@@ -5,42 +5,45 @@
 
 Q_LOGGING_CATEGORY(uart_channel, "UART_CHANNEL:")
 
-SerialWorker::SerialWorker(QObject *parent): QObject(parent){
-    // portChannelMap["/dev/ttyS3"]     = 0x01; // debug-Uart
-    portChannelMap["/dev/ttyS4"]     = 0x01;
-    portChannelMap["/dev/ttyS5"]     = 0x02;
-    portChannelMap["/dev/ttyS7"]     = 0x03;
-    portChannelMap["/dev/ttyS8"]     = 0x04;
-    portChannelMap["/dev/ttyS9"]     = 0x05;
-    portChannelMap["/dev/ttyWCH0"]   = 0x06;
-    portChannelMap["/dev/ttyWCH1"]   = 0x07;
-    portChannelMap["/dev/ttyWCH2"]   = 0x08;
-    portChannelMap["/dev/ttyWCH3"]   = 0x09;
-    portChannelMap["/dev/ttyWCH4"]   = 0x0a;
-    portChannelMap["/dev/ttyWCH5"]   = 0x0b;
-    portChannelMap["/dev/ttyWCH6"]   = 0x0c;
-    portChannelMap["/dev/ttyWCH7"]   = 0x0d;
-    portChannelMap["/dev/ttyWCH8"]   = 0x0e;
-    portChannelMap["/dev/ttyWCH9"]   = 0x0f;
-    portChannelMap["/dev/ttyWCH10"]  = 0x10;
-    portChannelMap["/dev/ttyWCH11"]  = 0x11;
-    portChannelMap["/dev/ttyWCH12"]  = 0x12;
-    portChannelMap["/dev/ttyWCH13"]  = 0x13;
-    portChannelMap["/dev/ttyWCH14"]  = 0x14;
-    portChannelMap["/dev/ttyWCH15"]  = 0x15;
-    portChannelMap["/dev/ttyWCH16"]  = 0x16;
-    portChannelMap["/dev/ttyWCH17"]  = 0x17;
-    portChannelMap["/dev/ttyWCH18"]  = 0x18;
-    portChannelMap["/dev/ttyWCH19"]  = 0x19;
-    portChannelMap["/dev/ttyWCH20"]  = 0x1a;
-    portChannelMap["/dev/ttyWCH21"]  = 0x1b;
-    portChannelMap["/dev/ttyWCH22"]  = 0x1c;
-    portChannelMap["/dev/ttyWCH23"]  = 0x1d;
-    portChannelMap["/dev/ttyWCH24"]  = 0x1e;
-    portChannelMap["/dev/ttyWCH25"]  = 0x1f;
-    portChannelMap["/dev/ttyWCH26"]  = 0x20;
-    portChannelMap["/dev/ttyWCH27"]  = 0x21;   // 33
-}
+std::vector<UartConfig> configs = {
+    //{"/dev/ttyS3",    QSerialPort::Baud38400, 0x01}, // debug-Uart
+    {"/dev/ttyS4",    QSerialPort::Baud38400, 0x01},
+    {"/dev/ttyS5",    QSerialPort::Baud38400, 0x02},
+    {"/dev/ttyS7",    QSerialPort::Baud38400, 0x03},
+    {"/dev/ttyS8",    QSerialPort::Baud38400, 0x04},
+    {"/dev/ttyS9",    QSerialPort::Baud38400, 0x05},
+    {"/dev/ttyWCH0",  QSerialPort::Baud38400, 0x06},
+    {"/dev/ttyWCH1",  QSerialPort::Baud38400, 0x07},
+    {"/dev/ttyWCH2",  QSerialPort::Baud38400, 0x08},
+    {"/dev/ttyWCH3",  QSerialPort::Baud38400, 0x09},
+    {"/dev/ttyWCH4",  QSerialPort::Baud38400, 0x0a},
+    {"/dev/ttyWCH5",  QSerialPort::Baud38400, 0x0b},
+    {"/dev/ttyWCH6",  QSerialPort::Baud38400, 0x0c},
+    {"/dev/ttyWCH7",  QSerialPort::Baud38400, 0x0d},
+    {"/dev/ttyWCH8",  QSerialPort::Baud38400, 0x0e},
+    {"/dev/ttyWCH9",  QSerialPort::Baud38400, 0x0f},
+    {"/dev/ttyWCH10", QSerialPort::Baud38400, 0x10},
+    {"/dev/ttyWCH11", QSerialPort::Baud38400, 0x11},
+    {"/dev/ttyWCH12", QSerialPort::Baud38400, 0x12},
+    {"/dev/ttyWCH13", QSerialPort::Baud38400, 0x13},
+    {"/dev/ttyWCH14", QSerialPort::Baud38400, 0x14},
+    {"/dev/ttyWCH15", QSerialPort::Baud38400, 0x15},
+    {"/dev/ttyWCH16", QSerialPort::Baud38400, 0x16},
+    {"/dev/ttyWCH17", QSerialPort::Baud38400, 0x17},
+    {"/dev/ttyWCH18", QSerialPort::Baud38400, 0x18},
+    {"/dev/ttyWCH19", QSerialPort::Baud38400, 0x19},
+    {"/dev/ttyWCH20", QSerialPort::Baud38400, 0x1a},
+    {"/dev/ttyWCH21", QSerialPort::Baud38400, 0x1b},
+    {"/dev/ttyWCH22", QSerialPort::Baud38400, 0x1c},
+    {"/dev/ttyWCH23", QSerialPort::Baud38400, 0x1d},
+    {"/dev/ttyWCH24", QSerialPort::Baud38400, 0x1e},
+    {"/dev/ttyWCH25", QSerialPort::Baud38400, 0x1f},
+    {"/dev/ttyWCH26", QSerialPort::Baud38400, 0x20},
+    {"/dev/ttyWCH27", QSerialPort::Baud38400, 0x21},   // 33
+    //{"/dev/ttyS4",    QSerialPort::Baud38400, 0x01}, // test
+};
+
+SerialWorker::SerialWorker(QObject *parent): QObject(parent){}
 SerialWorker::~SerialWorker()
 {
     qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Serial~Destruct Finished.";
@@ -71,10 +74,14 @@ bool SerialWorker::initSerialPort(const QString &portName,
                                  QSerialPort::StopBits stopBits)
 {
     if (!m_serialThread){
-        auto it = portChannelMap.find(portName);
-        if (it != portChannelMap.end()) {
-            m_channel = it.value();
-        } else {
+        for (const auto& config : configs) {
+            if (config.port == portName) {
+                m_channel = config.channel;
+                break;
+            }
+        }
+
+        if (m_channel == 0) {
             qCWarning(uart_channel) << "Undefined Channel Serial Port: " << portName;
             return false;
         }
@@ -267,18 +274,18 @@ void SerialWorker::handleuartrequest(quint8 length){
     }
 
     switch (cmd) {
-        case 0x01:handleOutputcmd          (func, ch);return;
-        case 0x02:handleSettingcmd         (func, ch);return;
-        case 0x03:handleControlcmd         (func, ch);return;
-        case 0x04:handleMeasurementcmd     (func, ch);return;
-        case 0x05:handleRegistercmd        (func, ch);return;
-        case 0x06:handleCalibratecmd       (func, ch);return;
-        case 0x07:handleCalibrationcmd     (func, ch);return;
-        case 0x08:handleTriggercmd         (func, ch);return;
-        case 0x09:handleISPcmd             (func, ch);return;
-        case 0x10:handleSNcmd              (func, ch);return;
-        case 0x11:handleIDcmd              (func, ch);return;
-        case 0xFF:handleErrorcmd           (func);    return;
+        case 0x01:handleOutputcmd          (func);return;
+        case 0x02:handleSettingcmd         (func);return;
+        case 0x03:handleControlcmd         (func);return;
+        case 0x04:handleMeasurementcmd     (func);return;
+        case 0x05:handleRegistercmd        (func);return;
+        case 0x06:handleCalibratecmd       (func);return;
+        case 0x07:handleCalibrationcmd     (func);return;
+        case 0x08:handleTriggercmd         (func);return;
+        case 0x09:handleISPcmd             (func);return;
+        case 0x10:handleSNcmd              (func);return;
+        case 0x11:handleIDcmd              (func);return;
+        case 0xFF:handleErrorcmd           (func);return;
 
         default:
             qCWarning(uart_channel)<<"Channel_"<<m_channel<<" Occuring Unknown Command!!!";
@@ -288,9 +295,7 @@ void SerialWorker::handleuartrequest(quint8 length){
 
 // ========================== 协议处理部分 ===================================
 
-void SerialWorker::handleOutputcmd(quint8 func, quint8 ch){
-    Q_UNUSED(ch);
-
+void SerialWorker::handleOutputcmd(quint8 func){
     quint8 raw = -1;
     if (!m_readparam.isEmpty()){
         raw = static_cast<quint8>(m_readparam[0]);
@@ -315,17 +320,19 @@ void SerialWorker::handleOutputcmd(quint8 func, quint8 ch){
         case 0x09:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output COMPMODE(1=Llocal->4=Hremote) Been "<<raw;return;
         case 0x89:{   // query output compmode
             emit channelreturnvalue(raw);
-            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output COMPMODE(1=Llocal->4=Hremote) Been "<<raw;return;
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output COMPMODE(1=Llocal->4=Hremote) Been "<<raw;
+            return;
         }
     }
 }
 
-void SerialWorker::handleSettingcmd(quint8 func, quint8 ch){
-    Q_UNUSED(ch);
+void SerialWorker::handleSettingcmd(quint8 func){
+    quint32 raw = qFromBigEndian<quint32>(reinterpret_cast<const uchar*>(m_readparam.constData()));
+    float shf;   memcpy(&shf, &raw, sizeof(float));
 
     switch (func){
         case 0x80:break;
-        case 0x00:break;
+        case 0x00:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Setting AMPL:"<<shf;break;
         case 0x81:break;
         case 0x01:break;
         case 0x82:break;
@@ -345,9 +352,7 @@ void SerialWorker::handleSettingcmd(quint8 func, quint8 ch){
     }
 }
 
-void SerialWorker::handleControlcmd(quint8 func, quint8 ch){
-    Q_UNUSED(ch);
-
+void SerialWorker::handleControlcmd(quint8 func){
     switch (func){
         case 0x80:break;
         case 0x00:break;
@@ -370,9 +375,7 @@ void SerialWorker::handleControlcmd(quint8 func, quint8 ch){
     }
 }
 
-void SerialWorker::handleMeasurementcmd(quint8 func, quint8 ch){
-    Q_UNUSED(ch);
-
+void SerialWorker::handleMeasurementcmd(quint8 func){
     quint32 raw = qFromBigEndian<quint32>(reinterpret_cast<const uchar*>(m_readparam.constData()));
     float shf;   memcpy(&shf, &raw, sizeof(float));
     float EPSILON = qAbs(shf) < 1e-4? 0.00000001f : 0.00001f;
@@ -479,9 +482,7 @@ void SerialWorker::handleMeasurementcmd(quint8 func, quint8 ch){
     }
 }
 
-void SerialWorker::handleRegistercmd(quint8 func, quint8 ch){
-    Q_UNUSED(ch);
-
+void SerialWorker::handleRegistercmd(quint8 func){
     switch (func){
         case 0x80:emit statusChanged(m_channel,m_readparam);break;
         case 0x81:break;
@@ -493,9 +494,7 @@ void SerialWorker::handleRegistercmd(quint8 func, quint8 ch){
     }
 }
 
-void SerialWorker::handleCalibratecmd(quint8 func, quint8 ch){
-    Q_UNUSED(ch);
-
+void SerialWorker::handleCalibratecmd(quint8 func){
     switch (func){
         case 0x00:break;
         case 0x01:break;
@@ -512,13 +511,11 @@ void SerialWorker::handleCalibratecmd(quint8 func, quint8 ch){
     }
 }
 
-void SerialWorker::handleCalibrationcmd(quint8 func, quint8 ch){
-    Q_UNUSED(func);Q_UNUSED(ch);
+void SerialWorker::handleCalibrationcmd(quint8 func){
+    Q_UNUSED(func);
 }
 
-void SerialWorker::handleTriggercmd(quint8 func, quint8 ch){
-    Q_UNUSED(ch);
-
+void SerialWorker::handleTriggercmd(quint8 func){
     switch (func){
         case 0x00:break;
         case 0x01:break;
@@ -544,9 +541,7 @@ void SerialWorker::handleTriggercmd(quint8 func, quint8 ch){
     }
 }
 
-void SerialWorker::handleISPcmd(quint8 func, quint8 ch){
-    Q_UNUSED(ch);
-
+void SerialWorker::handleISPcmd(quint8 func){
     switch (func){
         case 0x80:break;
         case 0x00:break;
@@ -555,9 +550,7 @@ void SerialWorker::handleISPcmd(quint8 func, quint8 ch){
     }
 }
 
-void SerialWorker::handleSNcmd(quint8 func, quint8 ch){
-    Q_UNUSED(ch);
-
+void SerialWorker::handleSNcmd(quint8 func){
     switch (func){
         case 0x80:break;
         case 0x00:break;
@@ -572,9 +565,7 @@ void SerialWorker::handleSNcmd(quint8 func, quint8 ch){
     }
 }
 
-void SerialWorker::handleIDcmd(quint8 func, quint8 ch){
-    Q_UNUSED(ch);
-
+void SerialWorker::handleIDcmd(quint8 func){
     switch (func){
         case 0x81:break;
         case 0x82:break;
