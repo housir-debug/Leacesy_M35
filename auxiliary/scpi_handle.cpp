@@ -1,6 +1,4 @@
 #include "scpi_handle.h"
-#include "auxiliary/config_manager.h"
-#include <QNetworkInterface>
 #include <QtCore>
 
 Q_LOGGING_CATEGORY(scpi, "SCPI:")
@@ -385,6 +383,7 @@ bool ScpiManager::sendQueryCmd(scpi_t* context, quint8 cmd, quint8 func) {
         default:return false;
     }
 
+    // wait == unload m_syncMutex and wait
     if (!self->m_syncCondition.wait(&self->m_syncMutex, 600)) { // 600ms
         qCWarning(scpi) << "Query timeout - cmd:" << cmd << "func:" << func;
         return false;
@@ -610,14 +609,15 @@ void ScpiManager::processCHIntvalueResponse(int value) {
 // SCPI Command API
 
 QByteArray ScpiManager::processCommand(const QByteArray &command) {
-    if (command.isEmpty()){ return QByteArray();}
+    QMutexLocker locker(&m_callMutex);
+
     m_responseBuffer.clear();
+    if (command.isEmpty()){return nullptr;}
 
     // Support streaming input
     SCPI_Input(&m_scpiContext, command.constData(), command.size());
     return m_responseBuffer; // if not query，return emtry
 }
-
 
 // ======================== 初化化模块 =================================
 

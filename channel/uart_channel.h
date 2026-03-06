@@ -1,29 +1,12 @@
 #pragma once
-#include <QMutex>
 #include <QTimer>
 #include <QElapsedTimer>
 #include <QLoggingCategory>
-#include <QSerialPort>
-//#include <QSerialPortInfo>
-//#include <QMap>
-//#include <QThread>
+#include "auxiliary/config_manager.h"
+#include "auxiliary/scpi_handle.h"
+#include "auxiliary/qml_agency.h"
 
 Q_DECLARE_LOGGING_CATEGORY(uart_channel)
-
-#define CHANNEL_1_TO_33 \
-    CHANNEL(1) CHANNEL(2) CHANNEL(3) CHANNEL(4) CHANNEL(5) CHANNEL(6) CHANNEL(7) CHANNEL(8) \
-    CHANNEL(9) CHANNEL(10) CHANNEL(11) CHANNEL(12) CHANNEL(13) CHANNEL(14) CHANNEL(15) CHANNEL(16) \
-    CHANNEL(17) CHANNEL(18) CHANNEL(19) CHANNEL(20) CHANNEL(21) CHANNEL(22) CHANNEL(23) CHANNEL(24) \
-    CHANNEL(25) CHANNEL(26) CHANNEL(27) CHANNEL(28) CHANNEL(29) CHANNEL(30) CHANNEL(31) CHANNEL(32) \
-    CHANNEL(33)
-
-struct UartConfig {
-    QString port;
-    QSerialPort::BaudRate baudRate;
-    quint8 channel;
-};
-
-extern std::vector<UartConfig> configs;
 
 class SerialWorker : public QObject
 {
@@ -34,7 +17,7 @@ signals:
     void serialDataReceived(const QByteArray& data,bool isforce);
 
     // to qml display update
-    void statusChanged(int ch,const QByteArray& status);
+    /*void statusChanged(int ch,const QByteArray& status);
     void voltageChanged(int ch,float measure);
     void currentChanged(int ch,float measure);
     void currentUnitChanged(int ch,bool status);
@@ -42,10 +25,10 @@ signals:
     // to SCPI Command Query
     void channelreturnstatus(bool state);
     void channelreturnvalue(float value);
-    void channelreturnintvalue(int value);
+    void channelreturnintvalue(int value);*/
 
 public:
-    explicit SerialWorker(QObject *parent = nullptr);
+    explicit SerialWorker(ScpiManager* scpi,SerialBridge* qml,QObject *parent = nullptr);
     ~SerialWorker();
 
     bool initSerialPort(const QString &portName,
@@ -84,6 +67,8 @@ private:
     QThread *m_serialThread{nullptr};
     quint8 m_channel{0};
     bool m_isSCPIrequest{false};
+    ScpiManager* m_scpiManager{nullptr};
+    SerialBridge* m_qmlbridge{nullptr};
 
     QByteArray m_writebuffer;
     QByteArray m_readbuffer;

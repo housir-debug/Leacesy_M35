@@ -4,9 +4,6 @@
 #include <QTcpSocket>
 #include <unistd.h>
 #include <arpa/inet.h>
-//#include <QRandomGenerator>
-//#include <QtEndian>
-//#include <sys/socket.h>
 
 Q_LOGGING_CATEGORY(tcp, "TCP:")
 
@@ -41,24 +38,6 @@ TcpServerManager::~TcpServerManager()
     }
 }
 
-void TcpServerManager::send_toAllClients(const QByteArray &data,bool isforce)
-{
-    for (QTcpSocket *client : qAsConst(m_clients)) {
-        if (client->state() == QAbstractSocket::ConnectedState) {
-            int result = client->write(data);
-            if (result != data.size()) {
-                qCWarning(tcp)<<"TCPserver Written Buffer Overflow!!!" << client->objectName();
-            }
-
-            if(isforce){
-                client->flush();   // The same event is sent multiple times, and multiple messages will be sent together.
-                qCDebug(tcp)<<"TCPserver Force Flush ";
-                QThread::msleep(6);
-            }
-        }
-    }
-}
-
 // ===================== 启动部分 =================================
 
 bool TcpServerManager::startServer()
@@ -76,7 +55,6 @@ bool TcpServerManager::startServer()
     if (thread() != m_serverThread) {
         this->moveToThread(m_serverThread);
         m_tcpServer->moveToThread(m_serverThread);
-        m_scpiManager->moveToThread(m_serverThread);
         m_cleanupTimer->moveToThread(m_serverThread);
     }
 
@@ -148,6 +126,7 @@ void TcpServerManager::onNewConnection()
 
 void TcpServerManager::processClientData(QTcpSocket *client)
 {
+    QMutexLocker locker(&m_sycmutex);
     m_readbuffer.append(client->readAll());
     if (m_readbuffer.isEmpty()){return;}
 

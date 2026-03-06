@@ -3,9 +3,6 @@
 #include <QMutex>
 #include <QDateTime>
 #include <QDir>
-//#include <QFile>
-//#include <QTextStream>
-//#include <QFileInfo>
 
 
 Q_LOGGING_CATEGORY(log, "log:")

@@ -5,9 +5,6 @@
 #include <QSocketNotifier>
 #include <QLoggingCategory>
 #include <linux/can/raw.h>
-//#include <QThread>
-//#include <QDateTime>
-//#include <QAtomicInteger>
 
 Q_DECLARE_LOGGING_CATEGORY(can);
 

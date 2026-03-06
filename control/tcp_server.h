@@ -4,12 +4,6 @@
 #include <QTimer>
 #include <QElapsedTimer>
 #include "auxiliary/scpi_handle.h"
-//#include <QLoggingCategory>
-//#include <QThread>
-//#include <QMutex>
-//#include <atomic>
-//#include <memory>
-//#include <QMap>
 
 Q_DECLARE_LOGGING_CATEGORY(tcp)
 
@@ -19,14 +13,11 @@ class TcpServerManager : public QObject
 
 signals:
     void is_Remotemodel(bool model);
-    void Uart_VXISendRequest(const QByteArray &data);
-    void Can_VXISendRequest(const QByteArray &data);
 
 public:
     explicit TcpServerManager(ScpiManager* scpi,QObject *parent = nullptr);
     ~TcpServerManager();
 
-    void send_toAllClients(const QByteArray &data,bool isforce);
     bool startServer();
 
 private:
@@ -66,10 +57,10 @@ private:
 
     quint32 m_nextLinkId{1};
     QMap<quint32, DeviceLink> m_deviceLinks;
-    //QElapsedTimer m_testtimer;
 
     QList<QTcpSocket*> m_clients;
     int m_vxiport{5025};
+    QMutex m_sycmutex;
     QByteArray m_readbuffer;
     QByteArray m_responsebuffer;
 

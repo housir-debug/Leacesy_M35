@@ -8,12 +8,10 @@ extern "C" {
 }
 #endif
 
-#include <QObject>
-#include <QByteArray>
 #include <QMutex>
 #include <QWaitCondition>
 #include <QLoggingCategory>
-#include "channel/uart_channel.h"
+#include "auxiliary/config_manager.h"
 
 Q_DECLARE_LOGGING_CATEGORY(scpi)
 
@@ -31,9 +29,10 @@ public:
     explicit ScpiManager(QObject *parent = nullptr);
     ~ScpiManager() override = default;
 
-    QByteArray processCommand(const QByteArray &command);
+    // Control -> this
+    QByteArray processCommand(const QByteArray& command);
 
-    // --- 查询写入 -command Auxiliary function ---
+    // Channel -> this
     void processCHStateResponse(bool state);
     void processCHvalueResponse(float value);
     void processCHIntvalueResponse(int value);
@@ -200,6 +199,7 @@ private:
     bool m_UartResponse_Return{false};
     QWaitCondition m_syncCondition;
     QMutex m_syncMutex;
+    QMutex m_callMutex;
 
     bool m_CHStateReturn{false};
     float m_CHvalueReturn{0.0f};

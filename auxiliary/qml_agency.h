@@ -1,8 +1,7 @@
 #pragma once
 #include <QMutex>
 #include <QLoggingCategory>
-#include "channel/uart_channel.h"
-//#include <QQmlApplicationEngine>
+#include "auxiliary/config_manager.h"
 
 Q_DECLARE_LOGGING_CATEGORY(uart_bridge)
 

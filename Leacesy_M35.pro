@@ -10,29 +10,31 @@ INCLUDEPATH += $$PWD/thirdparty/scpi/inc
 LIBS += -L$$PWD/thirdparty/scpi/lib -lscpi -lm
 
 HEADERS += \
+    auxiliary/qml_agency.h \
     auxiliary/scpi_handle.h \
     auxiliary/simple_logger.h \
     auxiliary/config_manager.h \
     channel/uart_channel.h \
-    vxi_11/tcp_server.h \
-    vxi_11/tirpc_loader.h \
-    qml/qml_agency.h \
-    qml/web_server.h \
-    canworker.h \
-    vxi_11/uart_server.h
+    channel/canworker.h \
+    control/tcp_server.h \
+    control/tirpc_loader.h \
+    control/web_server.h \
+    control/uart_server.h
+
 
 SOURCES += \
+    auxiliary/qml_agency.cpp \
     auxiliary/scpi_handle.cpp \
     auxiliary/simple_logger.cpp \
     auxiliary/config_manager.cpp \
     channel/uart_channel.cpp \
-    vxi_11/tcp_server.cpp \
-    vxi_11/tirpc_loader.cpp \
-    qml/qml_agency.cpp \
-    qml/web_server.cpp \
-    canworker.cpp \
-    main.cpp \
-    vxi_11/uart_server.cpp
+    channel/canworker.cpp \
+    control/tcp_server.cpp \
+    control/tirpc_loader.cpp \
+    control/web_server.cpp \
+    control/uart_server.cpp \
+    main.cpp
+
 
 RESOURCES += qml.qrc
 
