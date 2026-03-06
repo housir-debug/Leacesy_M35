@@ -37,6 +37,7 @@ public:
     static bool s_enableCanMess;
 
     static bool s_enableLANServer;
+    static bool s_enableWEBServer;
     static bool s_enableUARTServer;
     static bool s_enableDisplay;
 

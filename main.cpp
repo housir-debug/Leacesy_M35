@@ -161,10 +161,13 @@ int main(int argc, char *argv[])
     }
 
     std::unique_ptr<WebServer> webServer;
-    std::unique_ptr<TcpServerManager> vxiServer;
-    if (ConfigManager::s_enableLANServer){
+    if (ConfigManager::s_enableWEBServer){
         webServer = std::make_unique<WebServer>();
         if (!webServer->start()) {return 1;}
+    }
+
+    std::unique_ptr<TcpServerManager> vxiServer;
+    if (ConfigManager::s_enableLANServer){
         vxiServer = std::make_unique<TcpServerManager>(Scpi_process.get());
         if (!vxiServer->startServer()) {return 1;}
     }

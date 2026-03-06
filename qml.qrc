@@ -1,6 +1,9 @@
 <RCC>
     <qresource prefix="/">
+        <!-- Console  -->
         <file>qml/main.qml</file>
+
+        <!-- Component  -->
         <file>qml/Component/DigitalCard.qml</file>
         <file>qml/Component/WaveformDisplay.qml</file>
         <file>qml/Component/qmldir</file>
@@ -9,8 +12,25 @@
         <file>qml/Component/PopupButton.qml</file>
         <file>qml/Component/SidebarButton.qml</file>
         <file>qml/Component/KeyinputBox.qml</file>
+
+        <!-- Page  -->
         <file>qml/SettingPage.qml</file>
         <file>qml/HomePage.qml</file>
         <file>qml/SystemPage.qml</file>
+    </qresource>
+
+    <qresource prefix="/web">
+        <!-- HTML files -->
+        <file>web/index.html</file>
+        <file>web/scpi.html</file>
+        <file>web/channels.html</file>
+
+        <!-- CSS files -->
+        <file>web/css/style.css</file>
+
+        <!-- JavaScript files -->
+        <file>web/js/app.js</file>
+        <file>web/js/scpi.js</file>
+        <file>web/js/channels.js</file>
     </qresource>
 </RCC>

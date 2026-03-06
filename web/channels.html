@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Channel Monitor</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Channel Monitor</h1>
+            <nav>
+                <a href="/">Dashboard</a>
+                <a href="/scpi.html">SCPI Console</a>
+                <a href="/channels.html" class="active">Channels</a>
+            </nav>
+        </header>
+
+        <div class="status-bar">
+            <span class="online">● Online</span>
+            <span id="connection-status">WebSocket: Connecting...</span>
+        </div>
+
+        <main>
+            <div class="controls">
+                <button id="refresh-button" class="secondary">Refresh</button>
+                <label>
+                    <input type="checkbox" id="auto-refresh" checked> Auto refresh
+                </label>
+            </div>
+
+            <div id="channels-container" class="channels-detailed"></div>
+        </main>
+    </div>
+
+    <script src="/js/channels.js"></script>
+</body>
+</html>

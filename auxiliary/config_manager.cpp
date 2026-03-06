@@ -59,6 +59,7 @@ bool ConfigManager::s_enableCanMess = true;
 
 // control switch
 bool ConfigManager::s_enableLANServer = true;
+bool ConfigManager::s_enableWEBServer = false;
 bool ConfigManager::s_enableUARTServer = true;
 bool ConfigManager::s_enableDisplay = true;
 
@@ -88,6 +89,7 @@ bool ConfigManager::init(const QString &configDir)
 
     // control switch
     s_enableLANServer = s_settings->value("Control/EnableLANServer").toBool();
+    s_enableWEBServer = s_settings->value("Control/EnableWEBServer").toBool();
     s_enableUARTServer = s_settings->value("Control/EnableUARTServer").toBool();
     s_enableDisplay = s_settings->value("Control/EnableDisplay").toBool();
 
