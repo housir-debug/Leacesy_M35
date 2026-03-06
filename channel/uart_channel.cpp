@@ -5,7 +5,22 @@
 
 Q_LOGGING_CATEGORY(uart_channel, "UART_CHANNEL:")
 
-SerialWorker::SerialWorker(ScpiManager* scpi,SerialBridge* qml,QObject *parent): QObject(parent), m_scpiManager(scpi), m_qmlbridge(qml){}
+SerialWorker::SerialWorker(ScpiManager* scpi,SerialBridge* qml,QObject *parent):
+    QObject(parent), m_scpiManager(scpi), m_qmlbridge(qml){
+    m_commands = {
+        {0,  QByteArray::fromHex("aa 55 04 01 00 01 06 ee")},
+        {1,  QByteArray::fromHex("aa 55 05 04 0e 01 00 18 ee")},
+        {2,  QByteArray::fromHex("aa 55 08 04 0c 01 3f 80 00 00 d8 ee")},
+        {3,  QByteArray::fromHex("aa 55 08 04 1e 01 37 82 dc bf 7f ee")},
+        {4,  QByteArray::fromHex("aa 55 05 04 0f 01 01 1a ee")},
+        {5,  QByteArray::fromHex("aa 55 08 02 00 01 00 00 00 00 0b ee")},
+        {6,  QByteArray::fromHex("aa 55 08 02 01 01 3f 80 00 00 cb ee")},
+        {7,  QByteArray::fromHex("aa 55 08 04 1f 01 ff ff ff ff 28 ee")},
+        {8,  QByteArray::fromHex("aa 55 08 02 03 01 41 00 00 00 4f ee")},
+        {9,  QByteArray::fromHex("aa 55 06 04 1d 01 00 01 29 ee")},
+        {10, QByteArray::fromHex("aa 55 08 02 02 01 00 00 00 00 0d ee")}
+    };
+}
 SerialWorker::~SerialWorker()
 {
     qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Serial~Destruct Finished.";
@@ -91,43 +106,8 @@ bool SerialWorker::initSerialPort(const QString &portName,
 
         QMetaObject::invokeMethod(this, [this]() {
             if (m_serialPort->open(QIODevice::ReadWrite)) {
-                /*m_writebuffer.append(QByteArray::fromHex("aa 55 04 01 00 01 06 ee"));
-                writeSerialData(m_writebuffer,true);
-                m_writebuffer.clear();
-                m_writebuffer.append(QByteArray::fromHex("aa 55 05 04 0e 01 00 18 ee"));
-                writeSerialData(m_writebuffer,true);
-                m_writebuffer.clear();
-                m_writebuffer.append(QByteArray::fromHex("aa 55 08 04 0c 01 3f 80 00 00 d8 ee"));
-                writeSerialData(m_writebuffer,true);
-                m_writebuffer.clear();
-                m_writebuffer.append(QByteArray::fromHex("aa 55 08 04 1e 01 37 82 dc bf 7f ee"));
-                writeSerialData(m_writebuffer,true);
-                m_writebuffer.clear();
-                m_writebuffer.append(QByteArray::fromHex("aa 55 05 04 0f 01 01 1a ee"));
-                writeSerialData(m_writebuffer,true);
-                m_writebuffer.clear();
-                m_writebuffer.append(QByteArray::fromHex("aa 55 08 02 00 01 00 00 00 00 0b ee"));
-                writeSerialData(m_writebuffer,true);
-                m_writebuffer.clear();
-                m_writebuffer.append(QByteArray::fromHex("aa 55 08 02 01 01 3f 80 00 00 cb ee"));
-                writeSerialData(m_writebuffer,true);
-                m_writebuffer.clear();
-                m_writebuffer.append(QByteArray::fromHex("aa 55 08 04 1f 01 ff ff ff ff 28 ee"));
-                writeSerialData(m_writebuffer,true);
-                m_writebuffer.clear();
-                m_writebuffer.append(QByteArray::fromHex("aa 55 08 02 03 01 41 00 00 00 4f ee"));
-                writeSerialData(m_writebuffer,true);
-                m_writebuffer.clear();
-                m_writebuffer.append(QByteArray::fromHex("aa 55 06 04 1d 01 00 01 29 ee"));
-                writeSerialData(m_writebuffer,true);
-                m_writebuffer.clear();
-                m_writebuffer.append(QByteArray::fromHex("aa 55 08 02 02 01 00 00 00 00 0d ee"));
-                writeSerialData(m_writebuffer,true);
-                m_writebuffer.clear();
-
-                m_refreshtimer->start();*/
-                startLoopbackTest();   // Self-assessment
-                // QTimer::singleShot(0,this,[this](){writeFrame();});
+                sendNextCommand(m_commands.begin(), m_commands.end());
+                // startLoopbackTest();   // Self-assessment
             }
         }, Qt::QueuedConnection);
 
@@ -135,6 +115,22 @@ bool SerialWorker::initSerialPort(const QString &portName,
     }
 
     return false;
+}
+
+void SerialWorker::sendNextCommand(QMap<int, QByteArray>::iterator it,
+                     QMap<int, QByteArray>::iterator end)
+{
+    if (it == end) {
+        qCDebug(uart_channel) << "All init commands sent, starting refresh timer";
+        //m_refreshtimer->start();
+        return;
+    }
+
+    writeSerialData(it.value(), false);
+    // 100ms
+    QTimer::singleShot(100, this, [this, it, end]() {
+        sendNextCommand(std::next(it), end);
+    });
 }
 
 // ========================== 信息处理部分 ===================================

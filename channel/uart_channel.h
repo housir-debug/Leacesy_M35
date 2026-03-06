@@ -41,6 +41,7 @@ public:
     void writeSerialData(const QByteArray& data,bool isforce);
 
 private:
+    void sendNextCommand(QMap<int, QByteArray>::iterator it,QMap<int, QByteArray>::iterator end);
     void handleReadyRead();
     void handleuartrequest       (quint8 length);
     void handleOutputcmd         (quint8 func);
@@ -61,6 +62,7 @@ private:
     static constexpr quint8 HEADER_HIGH = 0xAA;
     static constexpr quint8 HEADER_LOW = 0x55;
     static constexpr quint8 END_MARKER = 0xEE;
+    QMap<int, QByteArray> m_commands;
 
     QSerialPort *m_serialPort{nullptr};
     QTimer *m_refreshtimer{nullptr};
