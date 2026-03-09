@@ -4,6 +4,7 @@
 #include <QTimer>
 #include <QElapsedTimer>
 #include "auxiliary/scpi_handle.h"
+#include "auxiliary/qml_agency.h"
 
 Q_DECLARE_LOGGING_CATEGORY(tcp)
 
@@ -11,11 +12,8 @@ class TcpServerManager : public QObject
 {
     Q_OBJECT
 
-signals:
-    void is_Remotemodel(bool model);
-
 public:
-    explicit TcpServerManager(ScpiManager* scpi,QObject *parent = nullptr);
+    explicit TcpServerManager(ScpiManager* scpi,SerialBridge* qml,QObject *parent = nullptr);
     ~TcpServerManager();
 
     bool startServer();
@@ -57,6 +55,7 @@ private:
 
     quint32 m_nextLinkId{1};
     QMap<quint32, DeviceLink> m_deviceLinks;
+    quint8 m_status{0};
 
     QList<QTcpSocket*> m_clients;
     int m_vxiport{5025};
@@ -65,6 +64,7 @@ private:
     QByteArray m_responsebuffer;
 
     ScpiManager* m_scpiManager{nullptr};
+    SerialBridge* m_qmlbridge{nullptr};
     QTcpServer *m_tcpServer{nullptr};
     QTimer *m_cleanupTimer{nullptr};
     QThread *m_serverThread{nullptr};

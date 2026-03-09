@@ -9,6 +9,8 @@ class SerialBridge : public QObject
 {
     Q_OBJECT
 
+    Q_PROPERTY(bool is_remote MEMBER mis_Remote NOTIFY is_Remote_Change)
+
     #define CHANNEL(n) \
         Q_PROPERTY(int ch##n##_status_v MEMBER mCH##n##_status_v NOTIFY CH##n##_StatusChanged) \
         Q_PROPERTY(float ch##n##_Voltage MEMBER mCH##n##_Voltage NOTIFY CH##n##_VoltageChanged) \
@@ -26,6 +28,8 @@ signals:
     #undef CHANNEL
 
     // to qml property update
+    void is_Remote_Change();
+
     #define CHANNEL(n) \
         void CH##n##_StatusChanged(); \
         void CH##n##_VoltageChanged(); \
@@ -37,6 +41,9 @@ signals:
 
 private:
     // to qml engine property variate
+    QMutex m_RemoteMutex;
+    bool mis_Remote{false};
+
     #define CHANNEL(n) \
         int mCH##n##_status_v{0}; \
         QString mCH##n##_status{""}; \
@@ -55,12 +62,13 @@ public:
     void update_Voltage(int ch,float voltage);
     void update_CurrentAndUnit(int ch,float current);
     void update_status(int ch,QByteArray status);
+    void update_remotemodel(bool is_remote);
+
 
     // qml procress
     Q_INVOKABLE void setChannel_Output(int channel,bool switchs);
     Q_INVOKABLE void setChannel_Setstatus(int channel,int model,float value);
     Q_INVOKABLE QString setChannel_CurrentUnit();
-
-    // Auxiliary function
+    Q_INVOKABLE void switch_remotemodel(bool is_remote);
     void toAll_Channel(quint8 cmd,quint8 func,const QByteArray& param);
 };

@@ -7,7 +7,8 @@
 
 Q_LOGGING_CATEGORY(tcp, "TCP:")
 
-TcpServerManager::TcpServerManager(ScpiManager* scpi,QObject *parent): QObject(parent), m_scpiManager(scpi) {}
+TcpServerManager::TcpServerManager(ScpiManager* scpi,SerialBridge* qml,QObject *parent):
+    QObject(parent), m_scpiManager(scpi) , m_qmlbridge(qml){}
 TcpServerManager::~TcpServerManager()
 {
     qCDebug(tcp)<<"TcpServerManager Destroyed!!!";
@@ -311,6 +312,13 @@ void TcpServerManager::handleDeviceReadStb(QTcpSocket* client, const quint32 xid
         return;
     }
 
+    bool ok;
+    DeviceLink& link = m_deviceLinks[lid];
+    link.VxiScpi_response = m_scpiManager->processCommand("*STB?\n");
+    quint8 statusByte = link.VxiScpi_response.trimmed().toInt(&ok);
+    qCDebug(tcp)<<"DEVICE_READSTB: status Response: "<<statusByte<<" OK:"<<ok;
+    quint32 status = ok ? quint32(statusByte):quint32(0);
+
     QDataStream stream(&m_responsebuffer, QIODevice::WriteOnly);
     stream.setByteOrder(QDataStream::BigEndian);
     m_responsebuffer.reserve(36);
@@ -323,8 +331,9 @@ void TcpServerManager::handleDeviceReadStb(QTcpSocket* client, const quint32 xid
     stream << quint32(0);              // AUTH_LENGTH
     stream << quint32(0);              // SUCCESS
     stream << quint32(0);              // error: NO_ERROR
-    stream << quint32(0);              // 状态字节 (0 = 设备就绪)
+    stream << status;                  // status bytes (0 = Equipment is ready.)
 
+    link.VxiScpi_response.clear();
     qCDebug(tcp)<<"DEVICE_READSTB: "<<lid<<" Response: "<<m_responsebuffer.toHex(' ');
     client->write(m_responsebuffer);
 }
@@ -339,7 +348,7 @@ void TcpServerManager::handleDeviceTrigger(QTcpSocket* client, const quint32 xid
     }
 
     qCDebug(tcp)<<"DEVICE_TRIGGER: "<<lid<<" Received Trigger Signal";
-    createErrorResponse(xid, Vxi11::NO_ERROR);
+    createErrorResponse(xid, Vxi11::OPERATION_NOT_SUPPORTED );
     client->write(m_responsebuffer);
 }
 
@@ -351,6 +360,10 @@ void TcpServerManager::handleDeviceClear(QTcpSocket* client, const quint32 xid,c
         client->write(m_responsebuffer);
         return;
     }
+
+    m_readbuffer.clear();
+    m_responsebuffer.clear();
+    m_scpiManager->processCommand("*RST\n");
 
     qCDebug(tcp)<<"DEVICE_CLEAR: "<<lid<<" Perform Deletion Operation";
     createErrorResponse(xid, Vxi11::NO_ERROR);
@@ -367,7 +380,7 @@ void TcpServerManager::handleDeviceRemote(QTcpSocket* client, const quint32 xid,
     }
 
     qCDebug(tcp)<<"DEVICE_REMOTE: "<<lid<<" Set Remote Mode";
-    emit is_Remotemodel(true);
+    m_qmlbridge->update_remotemodel(true);
     createErrorResponse(xid, Vxi11::NO_ERROR);
     client->write(m_responsebuffer);
 }
@@ -382,7 +395,7 @@ void TcpServerManager::handleDeviceLocal(QTcpSocket* client, const quint32 xid,c
     }
 
     qCDebug(tcp)<<"DEVICE_LOCAL: "<<lid<<" Set Local Mode";
-    emit is_Remotemodel(false);
+    m_qmlbridge->update_remotemodel(false);
     createErrorResponse(xid, Vxi11::NO_ERROR);
     client->write(m_responsebuffer);
 }
@@ -442,7 +455,7 @@ void TcpServerManager::handleDeviceEnableSrq(QTcpSocket* client, const quint32 x
 
     quint32 enable = qFromBigEndian<quint32>(address + 40);
     qCDebug(tcp)<<"DEVICE_ENABLE_SRQ: "<<lid<<(enable ? "Enable" : "Disable") << "Server Request";
-    createErrorResponse(xid, Vxi11::NO_ERROR);
+    createErrorResponse(xid, Vxi11::OPERATION_NOT_SUPPORTED);
     client->write(m_responsebuffer);
 }
 
@@ -456,7 +469,7 @@ void TcpServerManager::handleDeviceDocmd(QTcpSocket* client,const quint32 xid,co
     }
 
     qCDebug(tcp)<<"DEVICE_DOCMD: "<<lid<<" Handling Specific Commands Equipment";
-    createErrorResponse(xid, Vxi11::NO_ERROR);
+    createErrorResponse(xid, Vxi11::OPERATION_NOT_SUPPORTED);
     client->write(m_responsebuffer);
 }
 
@@ -487,7 +500,7 @@ void TcpServerManager::handleCreateIntrChan(QTcpSocket* client, const quint32 xi
     }
 
     qCDebug(tcp)<<"CREATE_INTR_CHAN: "<<lid<<" Request Establish Relay Channel";
-    createErrorResponse(xid, Vxi11::CHANNEL_NOT_ESTABLISHED);
+    createErrorResponse(xid, Vxi11::OPERATION_NOT_SUPPORTED);
     client->write(m_responsebuffer);
 }
 
@@ -501,7 +514,7 @@ void TcpServerManager::handleDestroyIntrChan(QTcpSocket* client, const quint32 x
     }
 
     qCDebug(tcp)<<"DESTROY_INTR_CHAN: "<<lid<<" Request Destroy Relay Channel";
-    createErrorResponse(xid, Vxi11::CHANNEL_NOT_ESTABLISHED);
+    createErrorResponse(xid, Vxi11::OPERATION_NOT_SUPPORTED);
     client->write(m_responsebuffer);
 }
 

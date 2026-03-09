@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
 
     std::unique_ptr<TcpServerManager> vxiServer;
     if (ConfigManager::s_enableLANServer){
-        vxiServer = std::make_unique<TcpServerManager>(Scpi_process.get());
+        vxiServer = std::make_unique<TcpServerManager>(Scpi_process.get(),Uart_bridge.get());
         if (!vxiServer->startServer()) {return 1;}
     }
 

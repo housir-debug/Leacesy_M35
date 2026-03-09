@@ -78,6 +78,13 @@ QString SerialBridge::setChannel_CurrentUnit(){
     return unit;
 }
 
+void SerialBridge::switch_remotemodel(bool is_remote){
+    QMutexLocker locker(&m_RemoteMutex);
+
+    mis_Remote = is_remote;
+    emit is_Remote_Change();
+}
+
 // - Auxiliary function ----------
 
 void SerialBridge::toAll_Channel(quint8 cmd,quint8 func,const QByteArray& param){
@@ -160,4 +167,11 @@ void SerialBridge::update_status(int ch,QByteArray status){
         #undef CHANNEL
         default: return;
     }
+}
+
+void SerialBridge::update_remotemodel(bool is_remote){
+    QMutexLocker locker(&m_RemoteMutex);
+
+    mis_Remote = is_remote;
+    emit is_Remote_Change();
 }
