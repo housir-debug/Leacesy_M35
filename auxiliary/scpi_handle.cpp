@@ -663,7 +663,7 @@ size_t ScpiManager::staticWrite(scpi_t* context, const char* data, size_t len) {
     auto* self = static_cast<ScpiManager*>(context->user_context);
     if (self && len > 0) {
         self->m_responseBuffer.append(data, len);
-        qCDebug(scpi) << "SCPI Query Response:" << data;
+        qCDebug(scpi) << "SCPI Query Response:" << data << "length:" <<len;
     }
     return len;
     // Automatically add \r\n

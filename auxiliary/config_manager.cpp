@@ -50,7 +50,7 @@ QString ConfigManager::s_model = "Leacesy Instrument";
 QString ConfigManager::s_serialNumber = "SN123456789";
 QString ConfigManager::s_firmwareVersion = "1.0.0";
 
-QString ConfigManager::s_loglevel = "debug";
+QString ConfigManager::s_loglevel = "release";
 bool ConfigManager::s_enablelogfile = false;
 
 // channel switch

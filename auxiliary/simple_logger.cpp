@@ -5,8 +5,8 @@
 #include <QDir>
 
 
-Q_LOGGING_CATEGORY(log, "log:")
-Q_LOGGING_CATEGORY(app, "app:")
+Q_LOGGING_CATEGORY(log, "LOG:")
+Q_LOGGING_CATEGORY(app, "APP:")
 
 namespace {
     struct LoggerData {
@@ -93,17 +93,18 @@ void loggermanage(const QString &loglevel,const QString &parentPath) {
     else if (loglevel == "warning") {rules = "*.debug=false\n*.info=false\n*.warning=true";}
     else if (loglevel == "release") {rules = "*.debug=false\n*.info=false\n*.warning=false";}
     else if (loglevel == "self-define"){
-        rules = "app.debug=false"
-                "log.debug=false"
-                "can.debug=false"
-                "web.debug=false"
-                "tcp.debug=false"
-                "scpi.debug=false"
-                "libtripc.debug=false"
-                "uart_channel.debug=false"
-                "uart_bridge.debug=false"
-                "*.info=false"
-                "*.warning=false";
+        rules = "APP:.debug=false\n"
+                "LOG:.debug=false\n"
+                "CAN:.debug=false\n"
+                "WEB:.debug=false\n"
+                "TCP:.debug=true\n"
+                "SCPI:.debug=true\n"
+                "LIBTRIPC:.debug=false\n"
+                "UART_CHANNEL:.debug=true\n"
+                "UART_BRIDGE:.debug=false\n"
+                "UART_SERVER:.debug=false\n"
+                "*.info=true\n"
+                "*.warning=true";
     }else {rules = "";}
     QLoggingCategory::setFilterRules(rules);
 

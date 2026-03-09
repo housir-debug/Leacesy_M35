@@ -1,7 +1,7 @@
 #include "uart_server.h"
 #include <QtCore>
 
-Q_LOGGING_CATEGORY(uart_server, "Uart_server:")
+Q_LOGGING_CATEGORY(uart_server, "UART_SERVER:")
 
 UartServerManager::UartServerManager(ScpiManager* scpi,QObject *parent): QObject(parent), m_scpiManager(scpi) {}
 UartServerManager::~UartServerManager()
