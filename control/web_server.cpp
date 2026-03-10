@@ -150,10 +150,10 @@ void WebServer::handleApiRequest(QTcpSocket *client, const QString &path)
         response["commands"] = commands;
     }
     else if (path == "/api/device/info") {
+        response["Brand"] = ConfigManager::s_manufacturer;
         response["model"] = ConfigManager::s_model;
         response["serialNumber"] = ConfigManager::s_serialNumber;
         response["firmwareVersion"] = ConfigManager::s_firmwareVersion;
-        response["uptime"] = QDateTime::currentDateTime().toString("HH:mm:ss");
     }
     else {
         response["error"] = "API endpoint not found";

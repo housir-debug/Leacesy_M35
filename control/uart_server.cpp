@@ -73,6 +73,7 @@ bool UartServerManager::startServer(const QString &portName,
 
 void UartServerManager::handleReadyRead()
 {
+    m_readbuffer.clear();
     m_readbuffer.append(m_uartServer->readAll());
     if (m_readbuffer.isEmpty()){return;}
 
@@ -83,5 +84,4 @@ void UartServerManager::handleReadyRead()
     m_responsebuffer = m_scpiManager->processCommand(m_readbuffer);
     qCDebug(uart_server)<<"Uart SCPI Response: "<<m_responsebuffer;
     if (!m_responsebuffer.isEmpty()){m_uartServer->write(m_responsebuffer);}
-    m_readbuffer.clear();
 }

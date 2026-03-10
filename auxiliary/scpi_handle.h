@@ -34,8 +34,8 @@ public:
 
     // Channel -> this
     void processCHStateResponse(bool state);
-    void processCHvalueResponse(float value);
-    void processCHIntvalueResponse(int value);
+    void processCHFloatResponse(float value);
+    void processCHIntResponse(int value);
 
 private:
     // --- 执行 -command function ---
@@ -51,8 +51,8 @@ private:
     static scpi_result_t SCPI_ControlClamp(scpi_t* context)          {return sendBoolCmd(context,0x03,0x01);};
     static scpi_result_t SCPI_ControlCurr(scpi_t* context)           {return sendChoiceCmd(context,0x03,0x02);};
     static scpi_result_t SCPI_ControlSyst(scpi_t* context)           {return sendChoiceCmd(context,0x03,0x05);};
-    static scpi_result_t SCPI_ControlSAV(scpi_t* context)            {return sendChoiceCmd(context,0x03,0x06);};
-    static scpi_result_t SCPI_ControlRCL(scpi_t* context)            {return sendChoiceCmd(context,0x03,0x07);};
+    static scpi_result_t SCPI_ControlSAV(scpi_t* context);
+    static scpi_result_t SCPI_ControlRCL(scpi_t* context);
     static scpi_result_t SCPI_ControlInde(scpi_t* context)           {return sendBoolCmd(context,0x03,0x08);};
     static scpi_result_t SCPI_ControlLoad(scpi_t* context)           {return sendChoiceCmd(context,0x03,0x09);};
     static scpi_result_t SCPI_MeasureNplc(scpi_t* context)           {return sendFloatCmd(context,0x04,0x0c);};
@@ -78,7 +78,8 @@ private:
     static scpi_result_t SCPI_CalibrateStep(scpi_t* context);
     static scpi_result_t SCPI_TriggerAbort(scpi_t* context)          {return sendCmd(context,0x08,0x00,"");};
     static scpi_result_t SCPI_TriggerSequene(scpi_t* context)        {return sendIntCmd(context,0x08,0x01,1);};
-    static scpi_result_t SCPI_TriggerCoquene(scpi_t* context)        {return sendBoolCmd(context,0x08,0x02);};
+    static scpi_result_t SCPI_TriggerCont(scpi_t* context)           {return sendBoolCmd(context,0x08,0x02);};
+    static scpi_result_t SCPI_TriggerContname(scpi_t* context)       {return sendChoiceCmd(context,0x08,0x02);};
     static scpi_result_t SCPI_TriggerSeq1(scpi_t* context)           {return sendCmd(context,0x08,0x03,"");};
     static scpi_result_t SCPI_TriggerSeq2(scpi_t* context)           {return sendCmd(context,0x08,0x04,"");};
     static scpi_result_t SCPI_TriggerSeq2So(scpi_t* context)         {return sendChoiceCmd(context,0x08,0x05);};
@@ -89,17 +90,12 @@ private:
     static scpi_result_t SCPI_TriggerAmpl(scpi_t* context)           {return sendFloatCmd(context,0x08,0x0a);};
     static scpi_result_t SCPI_TriggerCurr(scpi_t* context)           {return sendFloatCmd(context,0x08,0x0b);};
     static scpi_result_t SCPI_TriggerRes(scpi_t* context)            {return sendFloatCmd(context,0x08,0x0c);};
-
-    // --- 辅助 -
-    static scpi_result_t sendCmd(scpi_t* context, quint8 cmd, quint8 func, const QByteArray &data);
-    static scpi_result_t sendIntCmd(scpi_t* context, quint8 cmd, quint8 func,quint8 bytes);
-    static scpi_result_t sendChoiceCmd(scpi_t* context, quint8 cmd, quint8 func);
-    static scpi_result_t sendFloatCmd(scpi_t* context, quint8 cmd, quint8 func);
+    // --- Auxiliary -
     static scpi_result_t sendBoolCmd(scpi_t* context, quint8 cmd, quint8 func);
-    static bool sendQueryCmd(scpi_t* context, quint8 cmd, quint8 func);
-    static scpi_result_t sendQueryIntCmd(scpi_t* context, quint8 cmd, quint8 func);
-    static scpi_result_t sendQueryBoolCmd(scpi_t* context, quint8 cmd, quint8 func);
-    static scpi_result_t sendQueryFloatCmd(scpi_t* context, quint8 cmd, quint8 func);
+    static scpi_result_t sendIntCmd(scpi_t* context, quint8 cmd, quint8 func,quint8 bytes);
+    static scpi_result_t sendFloatCmd(scpi_t* context, quint8 cmd, quint8 func);
+    static scpi_result_t sendChoiceCmd(scpi_t* context, quint8 cmd, quint8 func);
+    static scpi_result_t sendCmd(scpi_t* context, quint8 cmd, quint8 func, const QByteArray &data);
 
     // --- 查询 -command function ---
     static scpi_result_t SCPI_OutputStateQ(scpi_t* context)          {return sendQueryBoolCmd(context,0x01,0x80);};
@@ -171,38 +167,50 @@ private:
     static scpi_result_t SCPI_TriggerAmplQ(scpi_t* context)          {return sendQueryFloatCmd(context,0x08,0x8a);};
     static scpi_result_t SCPI_TriggerCurrQ(scpi_t* context)          {return sendQueryFloatCmd(context,0x08,0x8b);};
     static scpi_result_t SCPI_TriggerResQ(scpi_t* context)           {return sendQueryFloatCmd(context,0x08,0x8c);};
+    // --- Auxiliary -
+    static scpi_result_t sendQueryIntCmd(scpi_t* context, quint8 cmd, quint8 func);
+    static scpi_result_t sendQueryBoolCmd(scpi_t* context, quint8 cmd, quint8 func);
+    static scpi_result_t sendQueryFloatCmd(scpi_t* context, quint8 cmd, quint8 func);
 
-    // --- libscpi 静态回调接口 ---
-    static size_t staticWrite(scpi_t* context, const char* data, size_t len);
-    static int    staticError(scpi_t* context, int_fast16_t err);
+private:
+    // Operation section
+    static const scpi_choice_def_t m_CmdparaChoices[];
+
+    QMutex m_callMutex;
+    int32_t m_channel{0};
+
+    QMutex m_syncMutex;
+    QWaitCondition m_syncCondition;
+    bool m_UartResponse_Return{false};
+    quint8 m_measurefunchoice{0};
+
+    bool m_CHStateReturn{false};
+    float m_CHFloatReturn{0.0f};
+    int m_CHIntReturn{0};
+
+    // --- Auxiliary ---
+    static bool sendSingleCHCmd(scpi_t* context, quint8 cmd, quint8 func, const QByteArray &data);
+    static bool sendAllCHCmd(scpi_t* context, quint8 cmd, quint8 func, const QByteArray &data);
+    static bool sendQueryCmd(scpi_t* context, quint8 cmd, quint8 func);
+
+    // Initialization
+    static const scpi_command_t m_scpiCommands[];
+
+    QByteArray m_idnManufacturer;
+    QByteArray m_idnModel;
+    QByteArray m_idnSerialNumber;
+    QByteArray m_idnVersion;
+
+    scpi_t m_scpiContext;
+    scpi_interface_t m_interface;
+    char m_inputBuffer[256];
+    scpi_error_t m_errorQueue[10];
+
+    // --- libscpi Static callback ---
+    QByteArray m_responseBuffer;
+    static size_t        staticWrite(scpi_t* context, const char* data, size_t len);
+    static int           staticError(scpi_t* context, int_fast16_t err);
     static scpi_result_t staticReset(scpi_t* context);
     static scpi_result_t staticFlush(scpi_t* context);
     static scpi_result_t staticControl(scpi_t* context, scpi_ctrl_name_t ctrl, scpi_reg_val_t val);
-
-private:
-    static const scpi_command_t m_scpiCommands[];
-    static const scpi_choice_def_t m_CmdparaChoices[];
-
-    static QByteArray m_idnManufacturer;
-    static QByteArray m_idnModel;
-    static QByteArray m_idnSerialNumber;
-    static QByteArray m_idnVersion;
-
-    static scpi_interface_t m_interface;
-    static char m_inputBuffer[256];
-    static scpi_error_t m_errorQueue[10];
-
-    quint8 m_measurefunchoice{0};
-    QByteArray m_responseBuffer;
-    scpi_t m_scpiContext;
-
-    bool m_UartResponse_Return{false};
-    QWaitCondition m_syncCondition;
-    QMutex m_syncMutex;
-    QMutex m_callMutex;
-
-    bool m_CHStateReturn{false};
-    float m_CHvalueReturn{0.0f};
-    int m_CHintvalueReturn{0};
-
 };

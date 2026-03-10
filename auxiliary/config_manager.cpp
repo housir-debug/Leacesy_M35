@@ -46,7 +46,7 @@ QSettings* ConfigManager::s_settings = nullptr;
 
 // global variable
 QString ConfigManager::s_manufacturer = "Leacesy";
-QString ConfigManager::s_model = "Leacesy Instrument";
+QString ConfigManager::s_model = "66004";
 QString ConfigManager::s_serialNumber = "SN123456789";
 QString ConfigManager::s_firmwareVersion = "1.0.0";
 
@@ -75,10 +75,8 @@ bool ConfigManager::init(const QString &configDir)
     }
 
     // global variable
-    s_manufacturer = s_settings->value("Device/Manufacturer").toString();
     s_model = s_settings->value("Device/Model").toString();
     s_serialNumber = s_settings->value("Device/SerialNumber").toString();
-    s_firmwareVersion = s_settings->value("Device/FirmwareVersion").toString();
 
     s_loglevel = s_settings->value("Logger/logLevel").toString();
     s_enablelogfile = s_settings->value("Logger/EnablelogFile").toBool();

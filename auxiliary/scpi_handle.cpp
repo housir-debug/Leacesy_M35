@@ -3,7 +3,46 @@
 
 Q_LOGGING_CATEGORY(scpi, "SCPI:")
 
-// ======================== 指令表定义及处理 =========================
+const scpi_choice_def_t ScpiManager::m_CmdparaChoices[] = {
+    // --- output -
+    {"HIGH",     1},
+    {"LOW",      0},
+    {"Llocal",   1},
+    {"Lremote",  2},
+    {"Hlocal",   3},
+    {"Hremote",  4},
+    // --- control -
+    {"TRIP",     1},
+    {"LIMit",    0},
+    {"CC",       0},
+    {"RST",      0},
+    {"SAV0",     1},
+    {"SAV1",     2},
+    {"SAV2",     3},
+    {"SAV3",     4},
+    {"SAV4",     5},
+    // --- measure -
+    {"CURR",     0},
+    {"DVM",      1},
+    {"VOLT",     2},
+    // -------------
+    {"SCRR",     3},
+    {"BTMP",     4},
+    {"HTMP",     5},
+    {"TMP1",     6},
+    {"TMP2",     7},
+    {"TMP3",     8},
+    // --- trigger -
+    {"TRANsient",0},
+    {"OUTPut",   1},
+    {"BUS",      1},
+    {"INT",      2},
+    {"EXT",      3},
+    {"POSitive", 1},
+    {"NEGative", 2},
+    {"EITHer",   3},
+    SCPI_CHOICE_LIST_END
+};
 
 const scpi_command_t ScpiManager::m_scpiCommands[] = {
     { "*CLS",      SCPI_CoreCls,    0 },//清除所有状态数据结构（寄存器、错误队列）
@@ -49,8 +88,8 @@ const scpi_command_t ScpiManager::m_scpiCommands[] = {
     { "*RCL",                                         ScpiManager::SCPI_ControlRCL,           0 },
     { ":LOAD#:INDEpendence",                          ScpiManager::SCPI_ControlInde,          0 },
     { ":LOAD#:INDEpendence:STATe",                    ScpiManager::SCPI_ControlInde,          0 },
-    { ":LOAD#:CURRent:TYPE",                          ScpiManager::SCPI_SettingLoad,          0 },
-    { ":LOAD#:CURRent:LIMit:TYPE",                    ScpiManager::SCPI_SettingLoad,          0 },
+    { ":LOAD#:CURRent:TYPE",                          ScpiManager::SCPI_ControlLoad,          0 },
+    { ":LOAD#:CURRent:LIMit:TYPE",                    ScpiManager::SCPI_ControlLoad,          0 },
     // --- Measurement -
     { ":SENSe#:NPLCycles",                            ScpiManager::SCPI_MeasureNplc,          0 },
     { ":SENSe#:CURRent:RANGe:TIMe",                   ScpiManager::SCPI_MeasureTime,          0 },
@@ -61,7 +100,7 @@ const scpi_command_t ScpiManager::m_scpiCommands[] = {
     { ":SENSe#:CURRent:DC:RANGe:UPPer",               ScpiManager::SCPI_MeasureRang,          0 },
     { ":SENSe#:AVERage",                              ScpiManager::SCPI_MeasureAver,          0 },
     { ":SENSe#:FUNCtion",                             ScpiManager::SCPI_MeasureFunc,          0 },
-    { ":SENSe#:SWEep::OFFS:POINts",                   ScpiManager::SCPI_MeasureOffs,          0 },
+    { ":SENSe#:SWEep:OFFS:POINts",                    ScpiManager::SCPI_MeasureOffs,          0 },
     { ":SENSe#:SWEep:POINts",                         ScpiManager::SCPI_MeasurePoin,          0 },
     { ":SENSe#:SWEep:TINTerval",                      ScpiManager::SCPI_MeasureTint,          0 },
     // --- Register -
@@ -84,8 +123,8 @@ const scpi_command_t ScpiManager::m_scpiCommands[] = {
     { ":ABORt#",                                      ScpiManager::SCPI_TriggerAbort,         0 },
     { ":INITiate#:SEQuence",                          ScpiManager::SCPI_TriggerSequene,       0 },
     { ":INITiate#:IMMediate:SEQuence",                ScpiManager::SCPI_TriggerSequene,       0 },
-    { ":INITiate#:CONTinuous:SEQuence1",              ScpiManager::SCPI_TriggerCoquene,       0 },
-    { ":INITiate#:CONTinuous:NAME TRANsient",         ScpiManager::SCPI_TriggerCoquene,       0 },
+    { ":INITiate#:CONTinuous:SEQuence1",              ScpiManager::SCPI_TriggerCont,          0 },
+    { ":INITiate#:CONTinuous:NAME",                   ScpiManager::SCPI_TriggerContname,      0 },
     { ":TRIGger#",                                    ScpiManager::SCPI_TriggerSeq1,          0 },
     { ":TRIGger#:SEQ1",                               ScpiManager::SCPI_TriggerSeq1,          0 },
     { ":TRIGger#:IMMediate",                          ScpiManager::SCPI_TriggerSeq1,          0 },
@@ -136,8 +175,8 @@ const scpi_command_t ScpiManager::m_scpiCommands[] = {
     { ":SYSTem:POSetup?",                             ScpiManager::SCPI_ControlSystQ,         0 },
     { ":LOAD#:INDEpendence?",                         ScpiManager::SCPI_ControlIndeQ,         0 },
     { ":LOAD#:INDEpendence:STATe?",                   ScpiManager::SCPI_ControlIndeQ,         0 },
-    { ":LOAD#:CURRent:TYPE?",                         ScpiManager::SCPI_SettingLoadQ,         0 },
-    { ":LOAD#:CURRent:LIMit:TYPE?",                   ScpiManager::SCPI_SettingLoadQ,         0 },
+    { ":LOAD#:CURRent:TYPE?",                         ScpiManager::SCPI_ControlLoadQ,         0 },
+    { ":LOAD#:CURRent:LIMit:TYPE?",                   ScpiManager::SCPI_ControlLoadQ,         0 },
     // --- Measurement -
     { ":MEASure#:VOLTage?",                           ScpiManager::SCPI_MeasureVoltQ,         0 },
     { ":MEASure#:VOLTage:DC?",                        ScpiManager::SCPI_MeasureVoltQ,         0 },
@@ -224,16 +263,38 @@ const scpi_command_t ScpiManager::m_scpiCommands[] = {
     SCPI_CMD_LIST_END
 };
 
-
 // --- 执行 -command function ---
-
 scpi_result_t ScpiManager::SCPI_OutputState(scpi_t* context) {
     scpi_bool_t OpenOut;
     if(!SCPI_ParamBool(context, &OpenOut,true)){return SCPI_RES_ERR;}
     qCDebug(scpi)<<"SCPI_Output OpenOut: "<<OpenOut;
-    quint8 func = OpenOut ? 0x01 : 0x00;
 
+    quint8 func = OpenOut ? 0x01 : 0x00;
     return sendCmd(context,0x01,func,"");
+}
+
+scpi_result_t ScpiManager::SCPI_ControlSAV(scpi_t* context) {
+    int value;
+    if (!SCPI_ParamInt(context, &value, true)) {return SCPI_RES_ERR;}
+    qCDebug(scpi) << "Channel SAV Set Value to:" << value;
+
+    QByteArray data;
+    data.append(static_cast<quint8>(value));
+
+    sendAllCHCmd(context,0x03,0x06,data);
+    return SCPI_RES_OK;
+}
+
+scpi_result_t ScpiManager::SCPI_ControlRCL(scpi_t* context) {
+    int value;
+    if (!SCPI_ParamInt(context, &value, true)) {return SCPI_RES_ERR;}
+    qCDebug(scpi) << "Channel RCL Set Value to:" << value;
+
+    QByteArray data;
+    data.append(static_cast<quint8>(value));
+
+    sendAllCHCmd(context,0x03,0x07,data);
+    return SCPI_RES_OK;
 }
 
 scpi_result_t ScpiManager::SCPI_MeasureFunc(scpi_t* context) {
@@ -241,9 +302,9 @@ scpi_result_t ScpiManager::SCPI_MeasureFunc(scpi_t* context) {
     if (!SCPI_ParamChoice(context, m_CmdparaChoices, &choice, true)) {return SCPI_RES_ERR;}
     qCDebug(scpi) << "Channel choice:" << choice;
 
+    if (choice > 2){return SCPI_RES_OK;}
     auto* self = static_cast<ScpiManager*>(context->user_context);
     self->m_measurefunchoice = choice;
-    if (choice > 2){return SCPI_RES_OK;}
 
     QByteArray data(1, static_cast<quint8>(choice));
     return sendCmd(context,0x04,0x10,data);
@@ -257,7 +318,7 @@ scpi_result_t ScpiManager::SCPI_CalibrateStep(scpi_t* context) {
         if (SCPI_ParamDouble(context, &parameter, true)) {
             float f = static_cast<float>(parameter);
             QByteArray data(4, 0);
-            qToLittleEndian(f, reinterpret_cast<uint8_t*>(data.data()));
+            qToBigEndian(f, reinterpret_cast<uint8_t*>(data.data()));
             return sendCmd(context,0x07,step,data);
         }
     }
@@ -265,22 +326,15 @@ scpi_result_t ScpiManager::SCPI_CalibrateStep(scpi_t* context) {
     return SCPI_RES_ERR;
 }
 
+// --- Auxiliary -
+scpi_result_t ScpiManager::sendBoolCmd(scpi_t* context, quint8 cmd, quint8 func) {
+    scpi_bool_t OpenOut;
+    if(!SCPI_ParamBool(context, &OpenOut,true)){return SCPI_RES_ERR;}
+    qCDebug(scpi)<<"SCPI_Output OpenOut: "<<OpenOut;
+    quint8 swi = OpenOut ? 0x01 : 0x00;
+    QByteArray data(1, swi);
 
-// --- 辅助 -
-
-scpi_result_t ScpiManager::sendCmd(scpi_t* context, quint8 cmd, quint8 func, const QByteArray &data) {
-    int32_t channel;
-    if(!SCPI_CommandNumbers(context, &channel, 1, 0)){return SCPI_RES_ERR;} // Array 1, Default Channel 0
-    qCDebug(scpi)<<"SCPI_Processing Channel: "<<channel;
-
-    auto* self = static_cast<ScpiManager*>(context->user_context);
-    switch (channel){
-        case 1:emit self->to_UartChannel1(cmd,func,data,true);break;
-        case 2:emit self->to_UartChannel2(cmd,func,data,true);break;
-        default:return SCPI_RES_ERR;;
-    }
-
-    return SCPI_RES_OK;
+    return sendCmd(context,cmd,func,data);
 }
 
 scpi_result_t ScpiManager::sendIntCmd(scpi_t* context, quint8 cmd, quint8 func,quint8 bytes) {
@@ -293,57 +347,10 @@ scpi_result_t ScpiManager::sendIntCmd(scpi_t* context, quint8 cmd, quint8 func,q
         data.append(static_cast<quint8>(value));
     } else if (bytes == 2) {
         quint16 val = static_cast<quint16>(value);
-        data.append(static_cast<quint8>(val & 0xFF));
         data.append(static_cast<quint8>((val >> 8) & 0xFF));
+        data.append(static_cast<quint8>(val & 0xFF));
     }
 
-    return sendCmd(context,cmd,func,data);
-}
-
-const scpi_choice_def_t ScpiManager::m_CmdparaChoices[] = {
-    // --- output -
-    {"HIGH",     1},
-    {"LOW",      0},
-    {"Llocal",   1},
-    {"Lremote",  2},
-    {"Hlocal",   3},
-    {"Hremote",  4},
-    // --- control -
-    {"TRIP",     1},
-    {"CC",       0},
-    {"RESET",    0},
-    {"SAVED0",   1},
-    {"SAVED1",   2},
-    {"SAVED2",   3},
-    {"SAVED3",   4},
-    {"SAVED4",   5},
-    // --- measure -
-    {"CURR",     0},
-    {"DVM",      1},
-    {"VOLT",     2},
-    // -------------
-    {"SCRR",     3},
-    {"BTMP",     4},
-    {"HTMP",     5},
-    {"TMP1",     6},
-    {"TMP2",     7},
-    {"TMP3",     8},
-    // --- trigger -
-    {"BUS",      1},
-    {"INT",      2},
-    {"EXT",      3},
-    {"POSitive", 1},
-    {"NEGative", 2},
-    {"EITHer",   3},
-    SCPI_CHOICE_LIST_END
-};
-
-scpi_result_t ScpiManager::sendChoiceCmd(scpi_t* context,quint8 cmd, quint8 func) {
-    int32_t choice;
-    if (!SCPI_ParamChoice(context, m_CmdparaChoices, &choice, true)) {return SCPI_RES_ERR;}
-    qCDebug(scpi) << "Channel choice:" << choice;
-
-    QByteArray data(1, static_cast<quint8>(choice));
     return sendCmd(context,cmd,func,data);
 }
 
@@ -354,78 +361,35 @@ scpi_result_t ScpiManager::sendFloatCmd(scpi_t* context, quint8 cmd, quint8 func
 
     float f = static_cast<float>(value);
     QByteArray data(4, 0);
-    qToLittleEndian(f, reinterpret_cast<uint8_t*>(data.data()));
+    qToBigEndian(f, reinterpret_cast<uint8_t*>(data.data()));
 
     return sendCmd(context,cmd,func,data);
 }
 
-scpi_result_t ScpiManager::sendBoolCmd(scpi_t* context, quint8 cmd, quint8 func) {
-    scpi_bool_t OpenOut;
-    if(!SCPI_ParamBool(context, &OpenOut,true)){return SCPI_RES_ERR;}
-    qCDebug(scpi)<<"SCPI_Output OpenOut: "<<OpenOut;
-    quint8 swi = OpenOut ? 0x01 : 0x00;
+scpi_result_t ScpiManager::sendChoiceCmd(scpi_t* context,quint8 cmd, quint8 func) {
+    int32_t choice;
+    if (!SCPI_ParamChoice(context, m_CmdparaChoices, &choice, true)) {return SCPI_RES_ERR;}
+    qCDebug(scpi) << "Channel choice:" << choice;
+    QByteArray data(1, static_cast<quint8>(choice));
 
-    QByteArray data(1, swi);
     return sendCmd(context,cmd,func,data);
 }
 
-
-bool ScpiManager::sendQueryCmd(scpi_t* context, quint8 cmd, quint8 func) {
-    int32_t channel;
-    if(!SCPI_CommandNumbers(context, &channel, 1, 0)){return false;} // Array 1, Default Channel 0
-    qCDebug(scpi)<<"SCPI_Processing Channel: "<<channel;
-
+scpi_result_t ScpiManager::sendCmd(scpi_t* context, quint8 cmd, quint8 func, const QByteArray &data){
     auto* self = static_cast<ScpiManager*>(context->user_context);
-    QMutexLocker locker(&self->m_syncMutex);
-    self->m_UartResponse_Return = false;
+    if(!SCPI_CommandNumbers(context, &self->m_channel, 1, 0)){return SCPI_RES_ERR;} // Array 1, Default Channel 0
+    qCDebug(scpi)<<"SCPI_Processing Channel: "<<self->m_channel;
 
-    switch (channel){
-        case 1:emit self->to_UartChannel1(cmd,func,"",true);break;
-        case 2:emit self->to_UartChannel2(cmd,func,"",true);break;
-        default:return false;
-    }
-
-    // wait == unload m_syncMutex and wait
-    if (!self->m_syncCondition.wait(&self->m_syncMutex, 600)) { // 600ms
-        qCWarning(scpi) << "Query timeout - cmd:" << cmd << "func:" << func;
-        return false;
-    }
-
-    if (!self->m_UartResponse_Return) {return false;}
-    return true;
-}
-
-scpi_result_t ScpiManager::sendQueryIntCmd(scpi_t* context, quint8 cmd, quint8 func) {
-    if(!sendQueryCmd(context,cmd,func)){return SCPI_RES_ERR;};
-
-    auto* self = static_cast<ScpiManager*>(context->user_context);
-    SCPI_ResultInt(context, self->m_CHintvalueReturn);
-    return SCPI_RES_OK;
-}
-
-scpi_result_t ScpiManager::sendQueryBoolCmd(scpi_t* context, quint8 cmd, quint8 func) {
-    if(!sendQueryCmd(context,cmd,func)){return SCPI_RES_ERR;};
-
-    auto* self = static_cast<ScpiManager*>(context->user_context);
-    SCPI_ResultBool(context, self->m_CHStateReturn);
-    return SCPI_RES_OK;
-}
-
-scpi_result_t ScpiManager::sendQueryFloatCmd(scpi_t* context, quint8 cmd, quint8 func) {
-    if(!sendQueryCmd(context,cmd,func)){return SCPI_RES_ERR;};
-
-    auto* self = static_cast<ScpiManager*>(context->user_context);
-    SCPI_ResultFloat(context, self->m_CHvalueReturn);
+    sendSingleCHCmd(context,cmd,func,data);
     return SCPI_RES_OK;
 }
 
 
 // --- 查询 -command function ---
-
 scpi_result_t ScpiManager::SCPI_OutputBandQ(scpi_t* context) {
+    auto* self = static_cast<ScpiManager*>(context->user_context);
     if(!sendQueryCmd(context,0x01,0x88)){return SCPI_RES_ERR;};
 
-    auto* self = static_cast<ScpiManager*>(context->user_context);
     if (self->m_CHStateReturn){
         SCPI_ResultMnemonic(context, "HIGH");
     }else {
@@ -436,10 +400,10 @@ scpi_result_t ScpiManager::SCPI_OutputBandQ(scpi_t* context) {
 }
 
 scpi_result_t ScpiManager::SCPI_OutputCompModeQ(scpi_t* context) {
+    auto* self = static_cast<ScpiManager*>(context->user_context);
     if(!sendQueryCmd(context,0x01,0x89)){return SCPI_RES_ERR;};
 
-    auto* self = static_cast<ScpiManager*>(context->user_context);
-    switch (self->m_CHintvalueReturn) {
+    switch (self->m_CHIntReturn) {
         case 1:SCPI_ResultMnemonic(context, "Llocal");break;
         case 2:SCPI_ResultMnemonic(context, "Lremote");break;
         case 3:SCPI_ResultMnemonic(context, "Hlocal");break;
@@ -451,29 +415,29 @@ scpi_result_t ScpiManager::SCPI_OutputCompModeQ(scpi_t* context) {
 }
 
 scpi_result_t ScpiManager::SCPI_ControlCurrQ(scpi_t* context) {
+    auto* self = static_cast<ScpiManager*>(context->user_context);
     if(!sendQueryCmd(context,0x03,0x82)){return SCPI_RES_ERR;};
 
-    auto* self = static_cast<ScpiManager*>(context->user_context);
     if (self->m_CHStateReturn){
         SCPI_ResultMnemonic(context, "TRIP");
     }else {
-        SCPI_ResultMnemonic(context, "CC");
+        SCPI_ResultMnemonic(context, "LIM");
     }
 
     return SCPI_RES_OK;
 }
 
 scpi_result_t ScpiManager::SCPI_ControlSystQ(scpi_t* context) {
+    auto* self = static_cast<ScpiManager*>(context->user_context);
     if(!sendQueryCmd(context,0x03,0x85)){return SCPI_RES_ERR;};
 
-    auto* self = static_cast<ScpiManager*>(context->user_context);
-    switch (self->m_CHintvalueReturn) {
-        case 0:SCPI_ResultMnemonic(context, "Reset");break;
-        case 1:SCPI_ResultMnemonic(context, "Saved0");break;
-        case 2:SCPI_ResultMnemonic(context, "Saved1");break;
-        case 3:SCPI_ResultMnemonic(context, "Saved2");break;
-        case 4:SCPI_ResultMnemonic(context, "Saved3");break;
-        case 5:SCPI_ResultMnemonic(context, "Saved4");break;
+    switch (self->m_CHIntReturn) {
+        case 0:SCPI_ResultMnemonic(context, "RST");break;
+        case 1:SCPI_ResultMnemonic(context, "SAV0");break;
+        case 2:SCPI_ResultMnemonic(context, "SAV1");break;
+        case 3:SCPI_ResultMnemonic(context, "SAV2");break;
+        case 4:SCPI_ResultMnemonic(context, "SAV3");break;
+        case 5:SCPI_ResultMnemonic(context, "SAV4");break;
         default:return SCPI_RES_ERR;
     }
 
@@ -481,23 +445,23 @@ scpi_result_t ScpiManager::SCPI_ControlSystQ(scpi_t* context) {
 }
 
 scpi_result_t ScpiManager::SCPI_ControlLoadQ(scpi_t* context) {
+    auto* self = static_cast<ScpiManager*>(context->user_context);
     if(!sendQueryCmd(context,0x03,0x89)){return SCPI_RES_ERR;};
 
-    auto* self = static_cast<ScpiManager*>(context->user_context);
     if (self->m_CHStateReturn){
         SCPI_ResultMnemonic(context, "TRIP");
     }else {
-        SCPI_ResultMnemonic(context, "CC");
+        SCPI_ResultMnemonic(context, "LIM");
     }
 
     return SCPI_RES_OK;
 }
 
 scpi_result_t ScpiManager::SCPI_MeasureFuncQ(scpi_t* context) {
+    auto* self = static_cast<ScpiManager*>(context->user_context);
     if(!sendQueryCmd(context,0x04,0x90)){return SCPI_RES_ERR;};
 
-    auto* self = static_cast<ScpiManager*>(context->user_context);
-    switch (self->m_CHintvalueReturn) {
+    switch (self->m_CHIntReturn) {
         case 0:SCPI_ResultMnemonic(context, "CURR");break;
         case 1:SCPI_ResultMnemonic(context, "DVM");break;
         case 2:SCPI_ResultMnemonic(context, "VOLT");break;
@@ -508,26 +472,36 @@ scpi_result_t ScpiManager::SCPI_MeasureFuncQ(scpi_t* context) {
 }
 
 scpi_result_t ScpiManager::SCPI_MeasureReadQ(scpi_t* context) {
+    QThread::msleep(100);
+
     auto* self = static_cast<ScpiManager*>(context->user_context);
+    if(!SCPI_CommandNumbers(context, &self->m_channel, 1, 0)){return SCPI_RES_ERR;} // Array 1, Default Channel 0
+    qCDebug(scpi)<<"SCPI_Processing Channel: "<<self->m_channel;
+
+    bool result = false;
     switch (self->m_measurefunchoice){
-        case 0: return sendQueryFloatCmd(context,0x04,0x81);
-        case 1: return sendQueryFloatCmd(context,0x04,0x86);
-        case 2: return sendQueryFloatCmd(context,0x04,0x80);
-        case 3: return sendQueryFloatCmd(context,0x04,0x82);
-        case 4: return sendQueryFloatCmd(context,0x04,0x83);
-        case 5: return sendQueryFloatCmd(context,0x04,0x84);
-        case 6: return sendQueryFloatCmd(context,0x04,0x8a);
-        case 7: return sendQueryFloatCmd(context,0x04,0x8b);
-        case 8: return sendQueryFloatCmd(context,0x04,0x8d);
-        default:return SCPI_RES_OK;
+        case 0: result = sendQueryCmd(context,0x04,0x81);break;
+        case 1: result = sendQueryCmd(context,0x04,0x86);break;
+        case 2: result = sendQueryCmd(context,0x04,0x80);break;
+        case 3: result = sendQueryCmd(context,0x04,0x82);break;
+        case 4: result = sendQueryCmd(context,0x04,0x83);break;
+        case 5: result = sendQueryCmd(context,0x04,0x84);break;
+        case 6: result = sendQueryCmd(context,0x04,0x8a);break;
+        case 7: result = sendQueryCmd(context,0x04,0x8b);break;
+        case 8: result = sendQueryCmd(context,0x04,0x8d);break;
+        default:return SCPI_RES_ERR;
     }
+
+    if (!result) {return SCPI_RES_ERR;}
+    SCPI_ResultFloat(context, self->m_CHFloatReturn);
+    return SCPI_RES_OK;
 }
 
 scpi_result_t ScpiManager::SCPI_CalibrateAllQ(scpi_t* context) {
+    auto* self = static_cast<ScpiManager*>(context->user_context);
     if(!sendQueryCmd(context,0x06,0x84)){return SCPI_RES_ERR;};
 
-    auto* self = static_cast<ScpiManager*>(context->user_context);
-    switch (self->m_CHintvalueReturn) {
+    switch (self->m_CHIntReturn) {
         case 0:SCPI_ResultMnemonic(context, "OFF");break;
         case 1:SCPI_ResultMnemonic(context, "ALL");break;
         case 2:SCPI_ResultMnemonic(context, "ADC");break;
@@ -547,10 +521,10 @@ scpi_result_t ScpiManager::SCPI_CalibrateStepQ(scpi_t* context) {
 }
 
 scpi_result_t ScpiManager::SCPI_TriggerSeq2SoQ(scpi_t* context) {
+    auto* self = static_cast<ScpiManager*>(context->user_context);
     if(!sendQueryCmd(context,0x08,0x85)){return SCPI_RES_ERR;};
 
-    auto* self = static_cast<ScpiManager*>(context->user_context);
-    switch (self->m_CHintvalueReturn) {
+    switch (self->m_CHIntReturn) {
         case 1:SCPI_ResultMnemonic(context, "BUS");break;
         case 2:SCPI_ResultMnemonic(context, "INT");break;
         case 3:SCPI_ResultMnemonic(context, "EXT");break;
@@ -561,10 +535,10 @@ scpi_result_t ScpiManager::SCPI_TriggerSeq2SoQ(scpi_t* context) {
 }
 
 scpi_result_t ScpiManager::SCPI_TriggerSeq2SlQ(scpi_t* context) {
+    auto* self = static_cast<ScpiManager*>(context->user_context);
     if(!sendQueryCmd(context,0x08,0x89)){return SCPI_RES_ERR;};
 
-    auto* self = static_cast<ScpiManager*>(context->user_context);
-    switch (self->m_CHintvalueReturn) {
+    switch (self->m_CHIntReturn) {
         case 1:SCPI_ResultMnemonic(context, "POSitive");break;
         case 2:SCPI_ResultMnemonic(context, "NEGative");break;
         case 3:SCPI_ResultMnemonic(context, "EITHer");break;
@@ -574,9 +548,139 @@ scpi_result_t ScpiManager::SCPI_TriggerSeq2SlQ(scpi_t* context) {
     return SCPI_RES_OK;
 }
 
+// --- Auxiliary -
+scpi_result_t ScpiManager::sendQueryBoolCmd(scpi_t* context, quint8 cmd, quint8 func) {
+    auto* self = static_cast<ScpiManager*>(context->user_context);
+    if(!sendQueryCmd(context,cmd,func)){return SCPI_RES_ERR;};
+    SCPI_ResultBool(context, self->m_CHStateReturn);
+    return SCPI_RES_OK;
+}
 
-// --- Query写入 -command Auxiliary function ---
+scpi_result_t ScpiManager::sendQueryIntCmd(scpi_t* context, quint8 cmd, quint8 func) {
+    auto* self = static_cast<ScpiManager*>(context->user_context);
+    if(!sendQueryCmd(context,cmd,func)){return SCPI_RES_ERR;};
+    SCPI_ResultInt(context, self->m_CHIntReturn);
+    return SCPI_RES_OK;
+}
 
+scpi_result_t ScpiManager::sendQueryFloatCmd(scpi_t* context, quint8 cmd, quint8 func) {
+    auto* self = static_cast<ScpiManager*>(context->user_context);
+    if(!sendQueryCmd(context,cmd,func)){return SCPI_RES_ERR;};
+    SCPI_ResultFloat(context, self->m_CHFloatReturn);
+    return SCPI_RES_OK;
+}
+
+
+// Global assistance
+bool ScpiManager::sendSingleCHCmd(scpi_t* context, quint8 cmd, quint8 func, const QByteArray &data) {
+    auto* self = static_cast<ScpiManager*>(context->user_context);
+    switch (self->m_channel){
+        case 1: emit self->to_UartChannel1 (cmd,func,data,true);return true;
+        case 2: emit self->to_UartChannel2 (cmd,func,data,true);return true;
+        case 3: emit self->to_UartChannel3 (cmd,func,data,true);return true;
+        case 4: emit self->to_UartChannel4 (cmd,func,data,true);return true;
+        case 5: emit self->to_UartChannel5 (cmd,func,data,true);return true;
+        case 6: emit self->to_UartChannel6 (cmd,func,data,true);return true;
+        case 7: emit self->to_UartChannel7 (cmd,func,data,true);return true;
+        case 8: emit self->to_UartChannel8 (cmd,func,data,true);return true;
+        case 9: emit self->to_UartChannel9 (cmd,func,data,true);return true;
+        case 10:emit self->to_UartChannel10(cmd,func,data,true);return true;
+        case 11:emit self->to_UartChannel11(cmd,func,data,true);return true;
+        case 12:emit self->to_UartChannel12(cmd,func,data,true);return true;
+        case 13:emit self->to_UartChannel13(cmd,func,data,true);return true;
+        case 14:emit self->to_UartChannel14(cmd,func,data,true);return true;
+        case 15:emit self->to_UartChannel15(cmd,func,data,true);return true;
+        case 16:emit self->to_UartChannel16(cmd,func,data,true);return true;
+        case 17:emit self->to_UartChannel17(cmd,func,data,true);return true;
+        case 18:emit self->to_UartChannel18(cmd,func,data,true);return true;
+        case 19:emit self->to_UartChannel19(cmd,func,data,true);return true;
+        case 20:emit self->to_UartChannel20(cmd,func,data,true);return true;
+        case 21:emit self->to_UartChannel21(cmd,func,data,true);return true;
+        case 22:emit self->to_UartChannel22(cmd,func,data,true);return true;
+        case 23:emit self->to_UartChannel23(cmd,func,data,true);return true;
+        case 24:emit self->to_UartChannel24(cmd,func,data,true);return true;
+        case 25:emit self->to_UartChannel25(cmd,func,data,true);return true;
+        case 26:emit self->to_UartChannel26(cmd,func,data,true);return true;
+        case 27:emit self->to_UartChannel27(cmd,func,data,true);return true;
+        case 28:emit self->to_UartChannel28(cmd,func,data,true);return true;
+        case 29:emit self->to_UartChannel29(cmd,func,data,true);return true;
+        case 30:emit self->to_UartChannel30(cmd,func,data,true);return true;
+        case 31:emit self->to_UartChannel31(cmd,func,data,true);return true;
+        case 32:emit self->to_UartChannel32(cmd,func,data,true);return true;
+        default: return false;
+    }
+}
+
+bool ScpiManager::sendAllCHCmd(scpi_t* context, quint8 cmd, quint8 func, const QByteArray &data) {
+    auto* self = static_cast<ScpiManager*>(context->user_context);
+    emit self->to_UartChannel1 (cmd,func,data,true);
+    emit self->to_UartChannel2 (cmd,func,data,true);
+    emit self->to_UartChannel3 (cmd,func,data,true);
+    emit self->to_UartChannel4 (cmd,func,data,true);
+    emit self->to_UartChannel5 (cmd,func,data,true);
+    emit self->to_UartChannel6 (cmd,func,data,true);
+    emit self->to_UartChannel7 (cmd,func,data,true);
+    emit self->to_UartChannel8 (cmd,func,data,true);
+    emit self->to_UartChannel9 (cmd,func,data,true);
+    emit self->to_UartChannel10(cmd,func,data,true);
+    emit self->to_UartChannel11(cmd,func,data,true);
+    emit self->to_UartChannel12(cmd,func,data,true);
+    emit self->to_UartChannel13(cmd,func,data,true);
+    emit self->to_UartChannel14(cmd,func,data,true);
+    emit self->to_UartChannel15(cmd,func,data,true);
+    emit self->to_UartChannel16(cmd,func,data,true);
+    emit self->to_UartChannel17(cmd,func,data,true);
+    emit self->to_UartChannel18(cmd,func,data,true);
+    emit self->to_UartChannel19(cmd,func,data,true);
+    emit self->to_UartChannel20(cmd,func,data,true);
+    emit self->to_UartChannel21(cmd,func,data,true);
+    emit self->to_UartChannel22(cmd,func,data,true);
+    emit self->to_UartChannel23(cmd,func,data,true);
+    emit self->to_UartChannel24(cmd,func,data,true);
+    emit self->to_UartChannel25(cmd,func,data,true);
+    emit self->to_UartChannel26(cmd,func,data,true);
+    emit self->to_UartChannel27(cmd,func,data,true);
+    emit self->to_UartChannel28(cmd,func,data,true);
+    emit self->to_UartChannel29(cmd,func,data,true);
+    emit self->to_UartChannel30(cmd,func,data,true);
+    emit self->to_UartChannel31(cmd,func,data,true);
+    emit self->to_UartChannel32(cmd,func,data,true);
+    return true;
+}
+
+bool ScpiManager::sendQueryCmd(scpi_t* context, quint8 cmd, quint8 func) {
+    auto* self = static_cast<ScpiManager*>(context->user_context);
+    if(!SCPI_CommandNumbers(context, &self->m_channel, 1, 0)){return SCPI_RES_ERR;} // Array 1, Default Channel 0
+    qCDebug(scpi)<<"SCPI_Processing Channel: "<<self->m_channel;
+
+    QMutexLocker locker(&self->m_syncMutex);
+    self->m_UartResponse_Return = false;
+    sendSingleCHCmd(context,cmd,func,"");
+
+    // wait == unload m_syncMutex and wait
+    if (!self->m_syncCondition.wait(&self->m_syncMutex, 600)) { // 600ms
+        qCWarning(scpi) << "Query timeout - cmd:" << cmd << "func:" << func;
+        return false;
+    }
+
+    return self->m_UartResponse_Return;
+}
+
+// ======================== 对外接口部分 =================================
+
+// SCPI Command API
+QByteArray ScpiManager::processCommand(const QByteArray &command) {
+    QMutexLocker locker(&m_callMutex);
+
+    m_responseBuffer.clear();
+    if (command.isEmpty()){return nullptr;}
+
+    // Support streaming input
+    SCPI_Input(&m_scpiContext, command.constData(), command.size());
+    return m_responseBuffer; // if not query return emtry
+}
+
+// Channel -> this
 void ScpiManager::processCHStateResponse(bool state) {
     m_syncMutex.lock();
 
@@ -587,50 +691,27 @@ void ScpiManager::processCHStateResponse(bool state) {
     m_syncCondition.wakeAll();
 }
 
-void ScpiManager::processCHvalueResponse(float value) {
+void ScpiManager::processCHFloatResponse(float value) {
     m_syncMutex.lock();
 
-    m_CHvalueReturn = value;
+    m_CHFloatReturn = value;
     m_UartResponse_Return = true;
 
     m_syncMutex.unlock();
     m_syncCondition.wakeAll();
 }
 
-void ScpiManager::processCHIntvalueResponse(int value) {
+void ScpiManager::processCHIntResponse(int value) {
     m_syncMutex.lock();
 
-    m_CHintvalueReturn = value;
+    m_CHIntReturn = value;
     m_UartResponse_Return = true;
 
     m_syncMutex.unlock();
     m_syncCondition.wakeAll();
 }
 
-
-// SCPI Command API
-
-QByteArray ScpiManager::processCommand(const QByteArray &command) {
-    QMutexLocker locker(&m_callMutex);
-
-    m_responseBuffer.clear();
-    if (command.isEmpty()){return nullptr;}
-
-    // Support streaming input
-    SCPI_Input(&m_scpiContext, command.constData(), command.size());
-    return m_responseBuffer; // if not query，return emtry
-}
-
-// ======================== 初化化模块 =================================
-
-QByteArray ScpiManager::m_idnManufacturer;
-QByteArray ScpiManager::m_idnModel;
-QByteArray ScpiManager::m_idnSerialNumber;
-QByteArray ScpiManager::m_idnVersion;
-
-scpi_interface_t ScpiManager::m_interface;
-char ScpiManager::m_inputBuffer[256] = {0};       // 初始化为0
-scpi_error_t ScpiManager::m_errorQueue[10] = {};  // 初始化为空
+// ========================= 初始化部分 =================================
 
 ScpiManager::ScpiManager(QObject *parent) : QObject(parent) {
     // QString -> QByteArray
@@ -646,29 +727,31 @@ ScpiManager::ScpiManager(QObject *parent) : QObject(parent) {
     m_interface.control = staticControl;
 
     SCPI_Init(&m_scpiContext,
-              m_scpiCommands,                               // 命令表
-              &m_interface,                                 // 接口回调
-              nullptr,                                      // 单位定义
+              m_scpiCommands,
+              &m_interface,
+              nullptr,
               m_idnManufacturer.constData(),
               m_idnModel.constData(),
               m_idnSerialNumber.constData(),
               m_idnVersion.constData(),
-              m_inputBuffer,                                // 输入缓冲区
+              m_inputBuffer,
               sizeof(m_inputBuffer),
-              m_errorQueue,                                 // 错误队列
+              m_errorQueue,
               sizeof(m_errorQueue) / sizeof(scpi_error_t));
 
     m_scpiContext.user_context = this;
 }
 
+// --- libscpi Static callback ---
 size_t ScpiManager::staticWrite(scpi_t* context, const char* data, size_t len) {
     auto* self = static_cast<ScpiManager*>(context->user_context);
     if (self && len > 0) {
         self->m_responseBuffer.append(data, len);
-        qCDebug(scpi) << "SCPI Query Response:" << data << "length:" <<len;
+        qCDebug(scpi) << "SCPI Query Response:" << data << " length:" <<len;
     }
-    return len;
+
     // Automatically add \r\n
+    return len;
 }
 
 int ScpiManager::staticError(scpi_t* context, int_fast16_t err) {
@@ -678,10 +761,8 @@ int ScpiManager::staticError(scpi_t* context, int_fast16_t err) {
 }
 
 scpi_result_t ScpiManager::staticReset(scpi_t* context) {
-    auto* self = static_cast<ScpiManager*>(context->user_context);
-    Q_UNUSED(self);
+    Q_UNUSED(context);
     qCDebug(scpi) << "Executing hardware reset...";
-    // 这里执行具体的硬件复位动作
     return SCPI_RES_OK;
 }
 

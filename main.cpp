@@ -49,6 +49,9 @@ std::vector<Signal_Bridge> qml_signal = {
     static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel31),
     static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel32),
     static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel33),
+    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel34),
+    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel35),
+    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel36),
 };
 
 using SignalType = void (ScpiManager::*)(quint8 cmd, quint8 func, const QByteArray& param,bool isScpi);
@@ -86,6 +89,9 @@ std::vector<SignalType> scpi_signal = {
     static_cast<SignalType>(&ScpiManager::to_UartChannel31),
     static_cast<SignalType>(&ScpiManager::to_UartChannel32),
     static_cast<SignalType>(&ScpiManager::to_UartChannel33),
+    static_cast<SignalType>(&ScpiManager::to_UartChannel34),
+    static_cast<SignalType>(&ScpiManager::to_UartChannel35),
+    static_cast<SignalType>(&ScpiManager::to_UartChannel36),
 };
 
 int main(int argc, char *argv[])

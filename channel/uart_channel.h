@@ -16,17 +16,6 @@ signals:
     // Transit
     void serialDataReceived(const QByteArray& data,bool isforce);
 
-    // to qml display update
-    /*void statusChanged(int ch,const QByteArray& status);
-    void voltageChanged(int ch,float measure);
-    void currentChanged(int ch,float measure);
-    void currentUnitChanged(int ch,bool status);
-
-    // to SCPI Command Query
-    void channelreturnstatus(bool state);
-    void channelreturnvalue(float value);
-    void channelreturnintvalue(int value);*/
-
 public:
     explicit SerialWorker(ScpiManager* scpi,SerialBridge* qml,QObject *parent = nullptr);
     ~SerialWorker();
@@ -41,7 +30,6 @@ public:
     void writeSerialData(const QByteArray& data,bool isforce);
 
 private:
-    void sendNextCommand(QMap<int, QByteArray>::iterator it,QMap<int, QByteArray>::iterator end);
     void handleReadyRead();
     void handleuartrequest       (quint8 length);
     void handleOutputcmd         (quint8 func);
@@ -56,27 +44,31 @@ private:
     void handleSNcmd             (quint8 func);
     void handleIDcmd             (quint8 func);
     void handleErrorcmd          (quint8 func);
+
     void startLoopbackTest();
+    void sendNextCommand(QMap<int, QByteArray>::iterator it,QMap<int, QByteArray>::iterator end);
 
 private:
-    static constexpr quint8 HEADER_HIGH = 0xAA;
-    static constexpr quint8 HEADER_LOW = 0x55;
-    static constexpr quint8 END_MARKER = 0xEE;
-    QMap<int, QByteArray> m_commands;
 
     QSerialPort *m_serialPort{nullptr};
-    QTimer *m_refreshtimer{nullptr};
     QThread *m_serialThread{nullptr};
-    quint8 m_channel{0};
-    bool m_isSCPIrequest{false};
+    QTimer *m_refreshtimer{nullptr};
+
     ScpiManager* m_scpiManager{nullptr};
     SerialBridge* m_qmlbridge{nullptr};
+
+    quint8 m_channel{0};
+    QMap<int, QByteArray> m_commands;
+    QElapsedTimer m_testTimer;
+    bool m_isTesting{false};
 
     QByteArray m_writebuffer;
     QByteArray m_readbuffer;
     QByteArray m_readparam;
+    bool m_isSCPIrequest{false};
 
-    QElapsedTimer m_testTimer;
-    bool m_isTesting{false};
+    static constexpr quint8 HEADER_HIGH = 0xAA;
+    static constexpr quint8 HEADER_LOW = 0x55;
+    static constexpr quint8 END_MARKER = 0xEE;
 };
 
