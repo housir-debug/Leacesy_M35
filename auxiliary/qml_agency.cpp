@@ -93,6 +93,32 @@ void SerialBridge::toAll_Channel(quint8 cmd,quint8 func,const QByteArray& param)
     #undef CHANNEL
 }
 
+QJsonArray SerialBridge::getAllChannelsData() {
+    QJsonArray channels;
+    qCDebug(uart_bridge) << "update Web channels data.";
+
+    #define CHANNEL(n) \
+        do { \
+            QJsonObject channel; \
+            channel["channel"] = n; \
+            channel["voltage"] = mCH##n##_Voltage; \
+            channel["current"] = mCH##n##_Current; \
+            channel["cvSetpoint"] = mCH##n##_cv; \
+            channel["ccSetpoint"] = mCH##n##_cc; \
+            channel["ovSetpoint"] = mCH##n##_ov; \
+            channel["status_v"] = mCH##n##_status_v; \
+            channel["status"] = mCH##n##_status; \
+            channel["enabled"] = mCH##n##_isEanle; \
+            channel["current_unit"] = mCH##n##_Current_Unit; \
+            channels.append(channel); \
+        } while(0);
+
+    CHANNEL_1_TO_33
+    #undef CHANNEL
+
+    return channels;
+}
+
 // Modify the corresponding channel information individually
 // ============================  槽函数  =============================
 

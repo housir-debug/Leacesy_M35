@@ -3,29 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Instrument Control Panel</title>
+    <title>Leacesy领图</title>
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="icon" type="image/png" href="/logo.png">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>📡 Instrument Control Panel</h1>
+            <h1>📡 Instrument Control</h1>
             <nav>
-                <a href="/" class="active">Dashboard</a>
-                <a href="/scpi.html">SCPI Console</a>
-                <a href="/channels.html">Channels</a>
+                <a href="/" class="active">Console</a>
+                <a href="/channels.html">Dashboard</a>
             </nav>
         </header>
 
         <div class="status-bar">
-            <span class="online">● Online</span>
-            <span id="connection-status">WebSocket: Connecting...</span>
+            <span class="online">Online</span>
+            <span id="connection-status">Device: Connecting...</span>
         </div>
 
         <main>
             <section class="device-info">
                 <h2>Device Information</h2>
                 <div class="info-grid">
+                    <div class="info-item">
+                        <label>Brand</label>
+                        <span id="Brand">Loading...</span>
+                    </div>
                     <div class="info-item">
                         <label>Model</label>
                         <span id="model">Loading...</span>
@@ -35,25 +39,37 @@
                         <span id="serial">Loading...</span>
                     </div>
                     <div class="info-item">
-                        <label>Firmware</label>
+                        <label>Firmware Version</label>
                         <span id="firmware">Loading...</span>
-                    </div>
-                    <div class="info-item">
-                        <label>Uptime</label>
-                        <span id="uptime">Loading...</span>
                     </div>
                 </div>
             </section>
 
-            <section class="quick-channels">
-                <h2>Channel Overview</h2>
-                <div id="channels-container" class="channels-grid"></div>
+            <section class="scpi-control">
+                <h2>SCPI Command Control</h2>
+                <div class="scpi-layout">
+                    <aside class="command-sidebar">
+                        <h2>Commands</h2>
+                        <div id="command-list" class="command-list"></div>
+                    </aside>
+
+                    <section class="console-main">
+                        <div class="command-input-area">
+                            <div class="autocomplete">
+                                <input type="text" id="command-input" 
+                                    placeholder="Enter SCPI command...">
+                            </div>
+                            <button id="send-button" class="primary">Send</button>
+                            <button id="clear-button">Clear</button>
+                        </div>
+
+                        <div class="output-area" id="output">
+                            <div class="output-line info">Ready. Enter a command or select from sidebar.</div>
+                        </div>
+                    </section>
+                </div>
             </section>
         </main>
-
-        <footer>
-            <p>Last update: <span id="timestamp"></span></p>
-        </footer>
     </div>
 
     <script src="/js/app.js"></script>

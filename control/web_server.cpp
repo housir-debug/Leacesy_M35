@@ -1,5 +1,6 @@
 #include "web_server.h"
 #include "auxiliary/config_manager.h"
+#include <QtCore>
 #include <QTcpSocket>
 #include <QDateTime>
 #include <QJsonObject>
@@ -13,7 +14,8 @@
 
 Q_LOGGING_CATEGORY(web, "WEB:")
 
-WebServer::WebServer(QObject *parent) : QObject(parent){}
+WebServer::WebServer(ScpiManager* scpi,SerialBridge* qml,QObject *parent):
+    QObject(parent),m_scpiManager(scpi), m_qmlbridge(qml){}
 WebServer::~WebServer(){
     if (m_httpServer) {
         m_httpServer->close();
@@ -31,28 +33,44 @@ WebServer::~WebServer(){
     m_wsClients.clear();
 }
 
-bool WebServer::start(int httpPort, int wsPort){
-    m_httpServer = new QTcpServer(this);
-    if (!m_httpServer->listen(QHostAddress::Any, httpPort)) {
-        qCWarning(web) << "Failed to start HTTP server:" << m_httpServer->errorString();
-        delete m_httpServer;
-        m_httpServer = nullptr;
-        return false;
-    }
-    connect(m_httpServer, &QTcpServer::newConnection,this, &WebServer::onHttpNewConnection,Qt::DirectConnection);
-    qCDebug(web) << "HTTP server started on port" << httpPort;
+bool WebServer::start(){
+    if (!m_webThread){
+        m_httpServer = new QTcpServer(this);
+        m_wsServer = new QWebSocketServer("Leacesy_Instrument",QWebSocketServer::NonSecureMode, this);
 
-    m_wsServer = new QWebSocketServer("Leacesy_Instrument",QWebSocketServer::NonSecureMode, this);
-    if (!m_wsServer->listen(QHostAddress::Any, wsPort)) {
-        qCWarning(web) << "Failed to start WebSocket server:" << m_wsServer->errorString();
-        delete m_wsServer;
-        m_wsServer = nullptr;
-        return false;
+        m_webThread = new QThread(this);
+        m_webThread->setObjectName("TcpServer");
     }
-    connect(m_wsServer, &QWebSocketServer::newConnection,this, &WebServer::onWsNewConnection,Qt::DirectConnection);
-    qCDebug(web) << "WebSocket server started on port" << wsPort;
 
-    return true;
+    if (thread() != m_webThread) {
+        this->moveToThread(m_webThread);
+        m_httpServer->moveToThread(m_webThread);
+        m_wsServer->moveToThread(m_webThread);
+    }
+
+    if (!m_webThread->isRunning()) {
+        m_webThread->start();
+
+        connect(m_httpServer, &QTcpServer::newConnection,this, &WebServer::onHttpNewConnection,Qt::DirectConnection);
+        connect(m_wsServer, &QWebSocketServer::newConnection,this, &WebServer::onWsNewConnection,Qt::DirectConnection);
+
+        QMetaObject::invokeMethod(this, [this]() {
+            if (!m_httpServer->listen(QHostAddress::Any, httpPort)) {
+                qCWarning(web) << "Failed to start HTTP server:" << m_httpServer->errorString();
+                delete m_httpServer;
+                m_httpServer = nullptr;
+            }
+
+            if (!m_wsServer->listen(QHostAddress::Any, wsPort)) {
+                qCWarning(web) << "Failed to start WebSocket server:" << m_wsServer->errorString();
+                delete m_wsServer;
+                m_wsServer = nullptr;
+            }
+        }, Qt::QueuedConnection);
+
+        return true;
+    }
+    return false;
 }
 
 // ===================== HTTP处理 =====================
@@ -116,44 +134,34 @@ void WebServer::handleHttpRequest(QTcpSocket *client){
 void WebServer::handleApiRequest(QTcpSocket *client, const QString &path)
 {
     QJsonObject response;
-    if (path == "/api/channels") {
-        QJsonArray channels;
-
-        for (auto it = m_channelData.begin(); it != m_channelData.end(); ++it) {
-            QJsonObject channel;
-            channel["channel"] = it.key();
-            channel["voltage"] = it.value().voltage;
-            channel["current"] = it.value().current;
-            channel["status"] = it.value().status;
-            channels.append(channel);
-        }
-
-        response["channels"] = channels;
-        response["timestamp"] = QDateTime::currentMSecsSinceEpoch();
-    }
-    else if (path == "/api/scpi_commands") {
-        QJsonArray commands = {
-            "MEASure:VOLTage? (@1)",
-            "MEASure:CURRent? (@1)",
-            "MEASure:POWer? (@1)",
-            "CONFigure:VOLTage:DC 10,(@1)",
-            "OUTPut:STATe ON,(@1)",
-            "OUTPut:STATe OFF,(@1)",
-            "SYSTem:ERRor?",
-            "*IDN?",
-            "*RST",
-            "STATus:QUEStionable?",
-            "DISPlay:ENABle ON",
-            "DISPlay:ENABle OFF"
-        };
-
-        response["commands"] = commands;
-    }
-    else if (path == "/api/device/info") {
+    if (path == "/api/device/info") {
         response["Brand"] = ConfigManager::s_manufacturer;
         response["model"] = ConfigManager::s_model;
         response["serialNumber"] = ConfigManager::s_serialNumber;
         response["firmwareVersion"] = ConfigManager::s_firmwareVersion;
+    }
+    else if (path == "/api/scpi_commands") {
+        QJsonArray commands;
+        int i = 0;
+
+        while (true) {
+            const char* pattern = ScpiManager::m_scpiCommands[i].pattern;
+            if (pattern == nullptr || strlen(pattern) == 0) {
+                break;
+            }
+
+            QString cmd = QString::fromLatin1(pattern);
+            if (!cmd.isEmpty()) {
+                commands.append(cmd);
+            }
+
+            i++;
+        }
+
+        response["commands"] = commands;
+    }
+    else if(path == "/api/channels") {
+        response["channels"] = m_qmlbridge->getAllChannelsData();
     }
     else {
         response["error"] = "API endpoint not found";
@@ -167,27 +175,37 @@ void WebServer::handleApiRequest(QTcpSocket *client, const QString &path)
 void WebServer::serveResourceFile(QTcpSocket *client, const QString &path)
 {
     QString resourcePath;
-
     if (path == "/" || path == "/index.html") {
         resourcePath = ":/web/web/index.html";
-    } else if (path == "/scpi.html") {
-        resourcePath = ":/web/web/scpi.html";
     } else if (path == "/channels.html") {
         resourcePath = ":/web/web/channels.html";
-    } else if (path == "/css/style.css") {
-        resourcePath = ":/web/web/css/style.css";
     } else if (path == "/js/app.js") {
         resourcePath = ":/web/web/js/app.js";
-    } else if (path == "/js/scpi.js") {
-        resourcePath = ":/web/web/js/scpi.js";
     } else if (path == "/js/channels.js") {
         resourcePath = ":/web/web/js/channels.js";
+    } else if (path == "/css/style.css") {
+        resourcePath = ":/web/web/css/style.css";
+    } else if (path == "/logo.png") {
+        resourcePath = ":/web/web/icon/icon.png";
     } else {
         sendHttpResponse(client, "404 Not Found", "text/plain", 404);
         return;
     }
 
-    QByteArray content = loadResourceFile(resourcePath);
+    QByteArray content;
+    if (m_fileCache.contains(path)) {
+        content = m_fileCache[path];
+    }else{
+        QFile file(resourcePath);
+        if (!file.open(QIODevice::ReadOnly)) {
+            content = QByteArray();
+        }
+
+        content = file.readAll();
+        file.close();
+        m_fileCache[path] = content;
+    }
+
     if (content.isEmpty()) {
         sendHttpResponse(client, "500 Internal Server Error", "text/plain", 500);
         return;
@@ -195,27 +213,7 @@ void WebServer::serveResourceFile(QTcpSocket *client, const QString &path)
 
     QString suffix = QFileInfo(resourcePath).suffix();
     QString contentType = getMimeType(suffix);
-    qCDebug(web)<<"dangqianluj"<< resourcePath;
-    qCDebug(web)<<"houzhui"<< suffix;
     sendHttpResponse(client, content, contentType);
-}
-
-QByteArray WebServer::loadResourceFile(const QString &path)
-{
-    if (m_fileCache.contains(path)) {
-        return m_fileCache[path];
-    }
-
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly)) {
-        return QByteArray();
-    }
-
-    QByteArray content = file.readAll();
-    file.close();
-
-    m_fileCache[path] = content;
-    return content;
 }
 
 QString WebServer::getMimeType(const QString &suffix){
@@ -275,6 +273,9 @@ void WebServer::onWsNewConnection()
 
     qCDebug(web) << "WebSocket client connected:" << socket->peerAddress().toString();
 
+    connect(socket,QOverload<QAbstractSocket::SocketError>::of(&QWebSocket::error),this, [socket](QAbstractSocket::SocketError error){
+        qCWarning(web)<<socket->objectName()<<"HTTP  Socket Error: ["<<error<<"]"<<socket->errorString();
+    }, Qt::DirectConnection);
     connect(socket, &QWebSocket::disconnected,this, [this, socket](){
         qCDebug(web)<<socket->objectName()<<"HTTP  Disconnected, Remain Connect Clients: "<<m_httpBuffers.size();
         m_wsClients.remove(socket);
@@ -282,31 +283,19 @@ void WebServer::onWsNewConnection()
     }, Qt::DirectConnection);
     connect(socket, &QWebSocket::textMessageReceived,this, [this, socket](const QString &message){ onWsTextMessageReceived(socket,message);}, Qt::DirectConnection);
 
-    QJsonObject welcome;
-    welcome["type"] = "connection";
-    welcome["message"] = "Connected to instrument WebSocket";
-    socket->sendTextMessage(QJsonDocument(welcome).toJson());
+    m_wsClients[socket] = socket->peerAddress().toString();
 
-    QJsonObject initialData;
-    initialData["type"] = "initial_data";
-    QJsonArray channels;
+    if (m_wsClients.size() > 1) {
+        qCDebug(web) << "Maximum clients reached, disconnecting oldest connection";
 
-    {
-        QMutexLocker locker(&m_webmutex);
-        m_wsClients[socket] = socket->peerAddress().toString();
-
-        for (auto it = m_channelData.begin(); it != m_channelData.end(); ++it) {
-            QJsonObject channel;
-            channel["channel"] = it.key();
-            channel["voltage"] = it.value().voltage;
-            channel["current"] = it.value().current;
-            channel["status"] = it.value().status;
-            channels.append(channel);
+        QWebSocket *oldestSocket = m_wsClients.firstKey();
+        if (oldestSocket) {
+            oldestSocket->sendTextMessage("{\"type\":\"system\",\"message\":\"Connection limit reached, disconnecting\"}");
+            oldestSocket->close(QWebSocketProtocol::CloseCodeGoingAway, "Maximum clients limit reached");
+            m_wsClients.remove(oldestSocket);
+            oldestSocket->deleteLater();
         }
     }
-
-    initialData["channels"] = channels;
-    socket->sendTextMessage(QJsonDocument(initialData).toJson());
 }
 
 void WebServer::onWsTextMessageReceived(QWebSocket *socket,const QString &message)
@@ -314,80 +303,35 @@ void WebServer::onWsTextMessageReceived(QWebSocket *socket,const QString &messag
     QMutexLocker locker(&m_webmutex);
 
     QJsonDocument doc = QJsonDocument::fromJson(message.toUtf8());
-    if (doc.isNull()){ return;}
+    if (doc.isNull() || !doc.isObject()) {
+        qCWarning(web) << "Invalid JSON message received";
+        return;
+    }
 
     QJsonObject obj = doc.object();
     QString type = obj["type"].toString();
+    m_responsebuffer.clear();
 
     if (type == "scpi_command") {
-        QString command = obj["command"].toString();
-        qCDebug(web) << "SCPI command received:" << command;
+        QString cmdString = obj["command"].toString();
+        QByteArray cmd = (cmdString+"\n").toUtf8();
+        qCDebug(web) << "SCPI command received:" << cmd;
 
-        QString result = executeScpiCommand(command);
+        m_responsebuffer = m_scpiManager->processCommand(cmd);
+        if (m_responsebuffer.isEmpty()){return;}
 
         QJsonObject response;
         response["type"] = "scpi_response";
-        response["command"] = command;
-        response["result"] = result;
+        response["result"] = QString::fromUtf8(m_responsebuffer);
         response["status"] = "success";
 
         socket->sendTextMessage(QJsonDocument(response).toJson());
     }
-    else if (type == "subscribe_channels") {
-        QJsonArray channels = obj["channels"].toArray();
-        // 处理订阅逻辑
+    else if (type == "channels_update") {
+        QJsonObject channelData;
+        channelData["type"] = "channels_response";
+        channelData["channels"] = m_qmlbridge->getAllChannelsData();
+        socket->sendTextMessage(QJsonDocument(channelData).toJson());
     }
 }
 
-QString WebServer::executeScpiCommand(const QString &command)
-{
-    // 这里实现实际的SCPI命令处理
-    // 示例实现
-    if (command == "*IDN?") {
-        return QString("%1,%2,%3").arg(ConfigManager::s_model)
-                                  .arg(ConfigManager::s_serialNumber)
-                                  .arg(ConfigManager::s_firmwareVersion);
-    }
-    else if (command.startsWith("MEASure:VOLTage?")) {
-        // 返回第一个通道的电压
-        if (!m_channelData.isEmpty()) {
-            return QString::number(m_channelData.first().voltage);
-        }
-        return "0.0";
-    }
-    else if (command == "*RST") {
-        // 复位设备
-        return "OK";
-    }
-
-    return "Command executed";
-}
-
-void WebServer::updateChannelData(int channel, double voltage, double current,
-                                  const QString& status)
-{
-    {
-        QMutexLocker locker(&m_webmutex);
-
-        ChannelData data;
-        data.voltage = voltage;
-        data.current = current;
-        data.status = status;
-        m_channelData[channel] = data;
-    }
-
-    // Broadcast update
-    QJsonObject update;
-    update["type"] = "channel_update";
-    update["channel"] = channel;
-    update["voltage"] = voltage;
-    update["current"] = current;
-    update["status"] = status;
-    update["timestamp"] = QDateTime::currentMSecsSinceEpoch();
-
-    QByteArray jsonData = QJsonDocument(update).toJson();
-
-    for (auto client : m_wsClients.keys()) {
-        client->sendTextMessage(jsonData);
-    }
-}

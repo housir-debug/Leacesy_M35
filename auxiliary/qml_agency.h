@@ -39,24 +39,27 @@ signals:
     CHANNEL_1_TO_33
     #undef CHANNEL
 
-private:
+public:
+    explicit SerialBridge(QObject *parent = nullptr);
+    ~SerialBridge() override = default;
+
     // to qml engine property variate
     QMutex m_RemoteMutex;
     bool mis_Remote{false};
 
     #define CHANNEL(n) \
-        int mCH##n##_status_v{0}; \
-        QString mCH##n##_status{""}; \
         float mCH##n##_Voltage{0.0f}; \
         float mCH##n##_Current{0.0f}; \
+        float mCH##n##_cv{0.0f}; \
+        float mCH##n##_cc{0.0f}; \
+        float mCH##n##_ov{0.0f}; \
+        int mCH##n##_status_v{0}; \
+        QString mCH##n##_status{""}; \
+        bool mCH##n##_isEanle{false}; \
         bool mCH##n##_Current_Unit{false};
 
     CHANNEL_1_TO_33
     #undef CHANNEL
-
-public:
-    explicit SerialBridge(QObject *parent = nullptr);
-    ~SerialBridge() override = default;
 
     // C++ model signal to this for qml engine
     void update_Voltage(int ch,float voltage);
@@ -71,4 +74,5 @@ public:
     Q_INVOKABLE QString setChannel_CurrentUnit();
     Q_INVOKABLE void switch_remotemodel(bool is_remote);
     void toAll_Channel(quint8 cmd,quint8 func,const QByteArray& param);
+    QJsonArray getAllChannelsData();
 };

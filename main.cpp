@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
 
     std::unique_ptr<WebServer> webServer;
     if (ConfigManager::s_enableWEBServer){
-        webServer = std::make_unique<WebServer>();
+        webServer = std::make_unique<WebServer>(Scpi_process.get(),Uart_bridge.get());
         if (!webServer->start()) {return 1;}
     }
 

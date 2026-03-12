@@ -96,7 +96,7 @@ void loggermanage(const QString &loglevel,const QString &parentPath) {
         rules = "APP:.debug=false\n"
                 "LOG:.debug=false\n"
                 "CAN:.debug=false\n"
-                "WEB:.debug=false\n"
+                "WEB:.debug=true\n"
                 "TCP:.debug=true\n"
                 "SCPI:.debug=true\n"
                 "LIBTRIPC:.debug=false\n"

@@ -1,81 +1,133 @@
 class InstrumentApp {
     constructor() {
         this.ws = null;
-        this.channels = new Map();
+        this.commands = [];
         this.initWebSocket();
         this.loadDeviceInfo();
-    }
-
-    initWebSocket() {
-        // 关键：连接WebSocket服务器
-        const wsUrl = `ws://${window.location.hostname}:8080`;
-        console.log('Connecting to WebSocket:', wsUrl);
-        
-        this.ws = new WebSocket(wsUrl);
-
-        this.ws.onopen = () => {
-            console.log('WebSocket connected');
-            document.getElementById('connection-status').textContent = 'WebSocket: Connected';
-        };
-
-        this.ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            this.handleWebSocketMessage(data);
-        };
-
-        this.ws.onclose = () => {
-            console.log('WebSocket disconnected, reconnecting...');
-            document.getElementById('connection-status').textContent = 'WebSocket: Reconnecting...';
-            setTimeout(() => this.initWebSocket(), 3000);
-        };
-    }
-
-    handleWebSocketMessage(data) {
-        if (data.type === 'channel_update') {
-            this.updateChannel(data);
-        } else if (data.type === 'initial_data' && data.channels) {
-            data.channels.forEach(ch => this.updateChannel(ch));
-        }
-    }
-
-    updateChannel(data) {
-        this.channels.set(data.channel, data);
-        this.renderChannels();
-    }
-
-    renderChannels() {
-        const container = document.getElementById('channels-container');
-        if (!container) return;
-
-        let html = '';
-        this.channels.forEach((ch, id) => {
-            html += `
-                <div class="channel-card">
-                    <h3>Channel ${id}</h3>
-                    <div class="voltage">${ch.voltage.toFixed(3)} V</div>
-                    <div class="current">${ch.current.toFixed(3)} A</div>
-                    <div class="status-${ch.status}">${ch.status}</div>
-                </div>
-            `;
-        });
-        container.innerHTML = html;
+        this.loadCommands();
+        this.setupEventListeners();
     }
 
     async loadDeviceInfo() {
         try {
             const response = await fetch('/api/device/info');
             const data = await response.json();
+            document.getElementById('Brand').textContent = data.Brand || 'N/A';
             document.getElementById('model').textContent = data.model || 'N/A';
             document.getElementById('serial').textContent = data.serialNumber || 'N/A';
             document.getElementById('firmware').textContent = data.firmwareVersion || 'N/A';
-            document.getElementById('uptime').textContent = data.uptime || 'N/A';
         } catch (error) {
             console.error('Failed to load device info:', error);
         }
     }
+
+    async loadCommands() {
+        try {
+            const list = document.getElementById('command-list');
+            if (!list) return;
+
+            const response = await fetch('/api/scpi_commands');
+            const data = await response.json();
+            this.commands = data.commands;
+
+            this.commands.forEach(cmd => {
+                const div = document.createElement('div');
+                div.className = 'command-item';
+                div.textContent = cmd;
+                div.ondblclick = () => {
+                    document.getElementById('command-input').value = cmd;
+                    this.sendCommand();
+                };
+                list.appendChild(div);
+            });
+        } catch (error) {
+            console.error('Failed to load commands:', error);
+        }
+    }
+
+    setupEventListeners() {
+        const input = document.getElementById('command-input');
+        if (input) {
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.sendCommand();
+                }
+            });
+        }
+
+        const sendBtn = document.getElementById('send-button');
+        if (sendBtn) {
+            sendBtn.onclick = () => {
+                window.app.sendCommand();
+            };
+        }
+
+        const clearButton = document.getElementById('clear-button');
+        if (clearButton) {
+            clearButton.onclick = () => {
+                const output = document.getElementById('output');
+                if (output) {
+                    output.innerHTML = '';
+                }
+            };
+        }
+    }
+    
+    initWebSocket() {
+        const wsUrl = `ws://${window.location.hostname}:8080`;
+        console.log('Connecting to WebSocket:', wsUrl);
+        this.ws = new WebSocket(wsUrl);
+
+        this.ws.onopen = () => {
+            console.log('WebSocket connected');
+            document.getElementById('connection-status').textContent = 'Device: Connected';
+        };
+
+        this.ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'scpi_response') {
+                this.addToOutput(`Response: ${data.result}`, 'response');
+            }
+        };
+
+        this.ws.onclose = () => {
+            console.log('WebSocket disconnected, reconnecting...');
+            document.getElementById('connection-status').textContent = 'Device: Reconnecting...';
+            //setTimeout(() => this.initWebSocket(), 3000);
+        };
+    }
+
+    sendCommand() {
+        const cmd  = document.getElementById('command-input').value;
+        if (!cmd) return;
+
+        this.addToOutput(`> ${cmd}`, 'command');
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({
+                type: 'scpi_command',
+                command: cmd
+            }));
+        }
+
+        document.getElementById('command-input').value = '';
+    }
+    
+    addToOutput(text, type) {
+        const output = document.getElementById('output');
+        const div = document.createElement('div');
+        div.className = `output-line ${type}`;
+        div.textContent = text;
+        output.appendChild(div);
+        output.scrollTop = output.scrollHeight;
+    }
+
+    destroy() {
+        if (this.ws) {
+            this.ws.close();
+        }
+    }
 }
 
-// 页面加载后初始化
 document.addEventListener('DOMContentLoaded', () => {
     window.app = new InstrumentApp();
 });

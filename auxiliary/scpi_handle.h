@@ -29,6 +29,8 @@ public:
     explicit ScpiManager(QObject *parent = nullptr);
     ~ScpiManager() override = default;
 
+    static const scpi_command_t m_scpiCommands[];
+
     // Control -> this
     QByteArray processCommand(const QByteArray& command);
 
@@ -194,8 +196,6 @@ private:
     static bool sendQueryCmd(scpi_t* context, quint8 cmd, quint8 func);
 
     // Initialization
-    static const scpi_command_t m_scpiCommands[];
-
     QByteArray m_idnManufacturer;
     QByteArray m_idnModel;
     QByteArray m_idnSerialNumber;

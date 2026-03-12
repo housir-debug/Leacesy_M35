@@ -650,7 +650,7 @@ bool ScpiManager::sendAllCHCmd(scpi_t* context, quint8 cmd, quint8 func, const Q
 
 bool ScpiManager::sendQueryCmd(scpi_t* context, quint8 cmd, quint8 func) {
     auto* self = static_cast<ScpiManager*>(context->user_context);
-    if(!SCPI_CommandNumbers(context, &self->m_channel, 1, 0)){return SCPI_RES_ERR;} // Array 1, Default Channel 0
+    if(!SCPI_CommandNumbers(context, &self->m_channel, 1, 0)){return false;} // Array 1, Default Channel 0
     qCDebug(scpi)<<"SCPI_Processing Channel: "<<self->m_channel;
 
     QMutexLocker locker(&self->m_syncMutex);
