@@ -5,128 +5,14 @@ Q_LOGGING_CATEGORY(uart_bridge, "UART_BRIDGE:")
 
 SerialBridge::SerialBridge(QObject *parent) : QObject(parent) {}
 
-// =========================== Qml调用处理 ===========================
-
-void SerialBridge::setChannel_Output(int channel,bool switchs){
-    qCDebug(uart_bridge) << "setChannel_Output - channel:" << channel << "switch:" << switchs;
-    quint8 func = switchs ? 0x01 : 0x00;
-
-    if (channel == 0) {
-        return toAll_Channel(0x01, func, "");
-    }
-
-    switch(channel) {
-        #define CHANNEL(n) case n: return emit to_UartChannel##n(0x01, func, "",false);
-        CHANNEL_1_TO_33
-        #undef CHANNEL
-        default:
-            qCWarning(uart_bridge) << "Invalid channel:" << channel;
-            return;
-    }
-}
-
-void SerialBridge::setChannel_Setstatus(int channel,int model,float value){
-    quint32 intValue;
-    memcpy(&intValue, &value, sizeof(float));
-    intValue = qToBigEndian(intValue);
-
-    QByteArray Status_buffer;
-    Status_buffer.append(reinterpret_cast<const char*>(&intValue),sizeof(quint32));
-
-    quint8 func = 0x00;
-    switch (model) {
-        case 1: func = 0x00; break;  // CV
-        case 2: func = 0x01; break;  // CC
-        case 3: func = 0x03; break;  // OVP
-        default:
-            qCWarning(uart_bridge) << "Invalid model:" << model;
-            return;
-    }
-
-    if (channel == 0) {
-        return toAll_Channel(0x02, func, Status_buffer);
-    }
-
-    switch(channel) {
-        #define CHANNEL(n) case n: return emit to_UartChannel##n(0x02, func, Status_buffer,false);
-        CHANNEL_1_TO_33
-        #undef CHANNEL
-        default:
-            qCWarning(uart_bridge) << "Invalid channel:" << channel;
-            return;
-    }
-}
-
-QString SerialBridge::setChannel_CurrentUnit(){
-    static int step = 0;
-    QString unit;
-    quint8 unitCode;
-
-    switch (step) {
-        case 0: unit = "mA"; unitCode = 0x01; break;
-        case 1: unit = "Auto"; unitCode = 0x10; break;
-        case 2: unit = "A"; unitCode = 0x00; break;
-        default: unit = "A"; unitCode = 0x00; break;
-    }
-
-    QByteArray Unit_buffer;
-    Unit_buffer.append(char(unitCode));
-    toAll_Channel(0x04, 0x0E, Unit_buffer);
-
-    step = (step + 1) % 3;
-    qCDebug(uart_bridge) << "Current unit changed to:" << unit;
-    return unit;
-}
-
-void SerialBridge::switch_remotemodel(bool is_remote){
-    QMutexLocker locker(&m_RemoteMutex);
-
-    mis_Remote = is_remote;
-    emit is_Remote_Change();
-}
-
-// - Auxiliary function ----------
-
-void SerialBridge::toAll_Channel(quint8 cmd,quint8 func,const QByteArray& param){
-    #define CHANNEL(n) emit to_UartChannel##n(cmd, func, param,false);
-    CHANNEL_1_TO_33
-    #undef CHANNEL
-}
-
-QJsonArray SerialBridge::getAllChannelsData() {
-    QJsonArray channels;
-    qCDebug(uart_bridge) << "update Web channels data.";
-
-    #define CHANNEL(n) \
-        do { \
-            QJsonObject channel; \
-            channel["channel"] = n; \
-            channel["voltage"] = mCH##n##_Voltage; \
-            channel["current"] = mCH##n##_Current; \
-            channel["cvSetpoint"] = mCH##n##_cv; \
-            channel["ccSetpoint"] = mCH##n##_cc; \
-            channel["ovSetpoint"] = mCH##n##_ov; \
-            channel["status_v"] = mCH##n##_status_v; \
-            channel["status"] = mCH##n##_status; \
-            channel["enabled"] = mCH##n##_isEanle; \
-            channel["current_unit"] = mCH##n##_Current_Unit; \
-            channels.append(channel); \
-        } while(0);
-
-    CHANNEL_1_TO_33
-    #undef CHANNEL
-
-    return channels;
-}
-
 // Modify the corresponding channel information individually
-// ============================  槽函数  =============================
+// ============================  C++for qml engine =============================
 
 void SerialBridge::update_Voltage(int ch,float voltage){
     switch(ch) {
         #define CHANNEL(n) \
             case n: \
-                mCH##n##_Voltage = voltage; \
+                mCH##n##_Voltage.store(voltage); \
                 emit CH##n##_VoltageChanged(); \
                 qCDebug(uart_bridge) << "Channel" << n << "voltage updated to:" << voltage; \
                 return;
@@ -142,13 +28,13 @@ void SerialBridge::update_CurrentAndUnit(int ch,float current){
     switch(ch) {
         #define CHANNEL(n) \
             case n: { \
-                mCH##n##_Current =  newUnit ? current * 1000.0f : current; \
+                mCH##n##_Current.store(newUnit ? current * 1000.0f : current); \
                 emit CH##n##_CurrentChanged(); \
-                qCDebug(uart_bridge) << "Channel" << n << "current updated to:" << mCH##n##_Current; \
+                qCDebug(uart_bridge) << "Channel" << n << "current updated to:" << current; \
                 \
-                if (mCH##n##_Current_Unit != newUnit) { \
-                    mCH##n##_Current_Unit = newUnit; \
-                    emit CH##n##_Current_Unit_Changed(); \
+                if (mCH##n##_CurrentUnit.load() != newUnit) { \
+                    mCH##n##_CurrentUnit.store(newUnit); \
+                    emit CH##n##_CurrentUnit_Changed(); \
                 } \
                 return; \
             }
@@ -158,9 +44,9 @@ void SerialBridge::update_CurrentAndUnit(int ch,float current){
     }
 }
 
-void SerialBridge::update_status(int ch,QByteArray status){
+void SerialBridge::update_status(int ch,const QByteArray& status){
     if (status.size() < 2) {
-        qCWarning(uart_bridge) << "update_status - status size too small:" << status.size();
+        qCCritical(uart_bridge) << "update_status - status size too small:" << status.size();
         return;
     }
 
@@ -170,22 +56,10 @@ void SerialBridge::update_status(int ch,QByteArray status){
     switch(ch) {
         #define CHANNEL(n) \
             case n: { \
-                if (mCH##n##_status == binaryStr) {return;} \
+                if (mCH##n##_Status == binaryStr) {return;} \
                 \
-                mCH##n##_status = binaryStr; \
+                mCH##n##_Status = binaryStr; \
                 qCDebug(uart_bridge) << "Channel" << n << "status changed to:" << binaryStr; \
-                \
-                if (binaryStr.length() > 14 && binaryStr[14] == '1') { \
-                    mCH##n##_status_v = 1;  /* CV */ \
-                    qCDebug(uart_bridge) << "Channel" << n << "mode: CV"; \
-                } else if (binaryStr.length() > 13 && binaryStr[13] == '1') { \
-                    mCH##n##_status_v = 2;  /* CC */ \
-                    qCDebug(uart_bridge) << "Channel" << n << "mode: CC"; \
-                } else if (binaryStr.length() > 11 && binaryStr[11] == '1') { \
-                    mCH##n##_status_v = 3;  /* OV */ \
-                    qCDebug(uart_bridge) << "Channel" << n << "mode: OV"; \
-                } \
-                \
                 emit CH##n##_StatusChanged(); \
                 return; \
             }
@@ -195,9 +69,95 @@ void SerialBridge::update_status(int ch,QByteArray status){
     }
 }
 
-void SerialBridge::update_remotemodel(bool is_remote){
-    QMutexLocker locker(&m_RemoteMutex);
+QJsonArray SerialBridge::getAllChannelsData() {
+    QJsonArray channels;
+    qCDebug(uart_bridge) << "update Web channels data.";
 
-    mis_Remote = is_remote;
-    emit is_Remote_Change();
+    #define CHANNEL(n) \
+        do { \
+            QJsonObject channel; \
+            channel["channel"] = n; \
+            channel["voltage"] = mCH##n##_Voltage.load(); \
+            channel["current"] = mCH##n##_Current.load(); \
+            channel["cvSetpoint"] = mCH##n##_cv.load(); \
+            channel["ccSetpoint"] = mCH##n##_cc.load(); \
+            channel["ovSetpoint"] = mCH##n##_ov.load(); \
+            channel["status"] = mCH##n##_Status; \
+            channel["enabled"] = mCH##n##_isOutput.load(); \
+            channel["current_unit"] = mCH##n##_CurrentUnit.load(); \
+            channels.append(channel); \
+        } while(0);
+
+    CHANNEL_1_TO_33
+    #undef CHANNEL
+
+    return channels;
 }
+
+void SerialBridge::update_remotemodel(bool is_remote){
+    m_isRemote.store(is_remote);
+    emit isRemote_Change();
+}
+
+
+// =========================== Q_INVOKABLE ===========================
+
+void SerialBridge::setChannel_Output(int channel,bool switchs){
+    quint8 func = switchs ? 0x01 : 0x00;
+    qCDebug(uart_bridge) << "setChannel_Output - channel:" << channel << "switch:" << switchs;
+    return to_Channel(channel,0x01, func, "");
+}
+
+void SerialBridge::setChannel_Setstatus(int channel,int model,float value){
+    quint32 intValue;
+    memcpy(&intValue, &value, sizeof(float));
+    intValue = qToBigEndian(intValue);
+    QByteArray Status_buffer(reinterpret_cast<const char*>(&intValue), sizeof(quint32));
+
+    return to_Channel(channel,0x02, model, Status_buffer);
+}
+
+QString SerialBridge::setChannel_CurrentUnit(){
+    static int step = 0;
+    QString unit;
+    quint8 unitCode;
+
+    switch (step) {
+        case 0:  unitCode = 0x01;unit = "mA";   break;
+        case 1:  unitCode = 0x10;unit = "Auto"; break;
+        case 2:  unitCode = 0x00;unit = "A";    break;
+        default: unitCode = 0x00;unit = "A";    break;
+    }
+    step = (step + 1) % 3;
+
+    QByteArray Unit_buffer;
+    Unit_buffer.append(char(unitCode));
+    to_Channel(0,0x04, 0x0E, Unit_buffer);
+
+    qCDebug(uart_bridge) << "Current unit changed to:" << unit;
+    return unit;
+}
+
+// - Auxiliary function ----------
+
+void SerialBridge::to_Channel(int channel,quint8 cmd,quint8 func,const QByteArray& param){
+    // All channel send
+    if (channel == 0) {
+        #define CHANNEL(n) emit to_UartChannel##n(cmd, func, param,false);
+        CHANNEL_1_TO_33
+        #undef CHANNEL
+        return;
+    }
+
+    // Single channel send
+    switch(channel) {
+        #define CHANNEL(n) case n: return emit to_UartChannel##n(cmd, func, param,false);
+        CHANNEL_1_TO_33
+        #undef CHANNEL
+        default:
+            qCWarning(uart_bridge) << "Invalid channel:" << channel;
+            return;
+    }
+}
+
+
