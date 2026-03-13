@@ -13,7 +13,17 @@ ApplicationWindow {
         anchors.fill: parent
         color: "#0d1b2a"
 
-        KeyinputBox {
+
+        /*DigitalCard {
+            anchors.centerIn: parent
+            scale: 1
+        }*/
+
+        /*SetBox {
+            anchors.centerIn: parent
+            scale: 1
+        }*/
+        SetBoxGroup {
             anchors.centerIn: parent
             scale: 1
         }

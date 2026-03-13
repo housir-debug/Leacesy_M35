@@ -94,6 +94,8 @@ QJsonArray SerialBridge::getAllChannelsData() {
     return channels;
 }
 
+// =========================== Q_INVOKABLE And C++ ===========================
+
 void SerialBridge::update_remotemodel(bool is_remote){
     m_isRemote.store(is_remote);
     emit isRemote_Change();

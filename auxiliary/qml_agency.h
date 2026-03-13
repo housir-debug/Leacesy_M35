@@ -64,13 +64,13 @@ public:
     void update_Voltage(int ch,float voltage);
     void update_CurrentAndUnit(int ch,float current);
     void update_status(int ch,const QByteArray& status);
-    void update_remotemodel(bool is_remote);
     QJsonArray getAllChannelsData();
+
+    Q_INVOKABLE void update_remotemodel(bool is_remote);
 
     // qml procress
     Q_INVOKABLE void setChannel_Output(int channel,bool switchs);
     Q_INVOKABLE void setChannel_Setstatus(int channel,int model,float value);
     Q_INVOKABLE QString setChannel_CurrentUnit();
-    Q_INVOKABLE void switch_remotemodel(bool is_remote);
     void to_Channel(int channel,quint8 cmd,quint8 func,const QByteArray& param);
 };

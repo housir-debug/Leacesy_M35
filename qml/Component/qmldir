@@ -1,4 +1,5 @@
 module Component
 DigitalCard     1.0 DigitalCard.qml
 SetBox          1.0 SetBox.qml
-KeyinputBox 1.0 KeyinputBox.qml
+SetBoxGroup     1.0 SetBoxGroup.qml
+KeyinputBox     1.0 KeyinputBox.qml
