@@ -88,8 +88,7 @@ Item {
             anchors.bottom: parent.bottom
             anchors.bottomMargin: 6 * root.scaleFactor
 
-
-            /*layer {
+            layer {
                 enabled: root.pressed
                 effect: DropShadow {
                     transparentBorder: true
@@ -97,7 +96,7 @@ Item {
                     radius: 8
                     samples: 16
                 }
-            }*/
+            }
         }
 
         Column {
@@ -188,9 +187,9 @@ Item {
     PropertyAnimation {
         id: pressAnimation
         target: root
-        property: "scaleFactor"
-        from: root.scaleFactor
-        to: root.scaleFactor * 0.97
+        property: "scale"
+        from: 1.0
+        to: 0.96
         duration: 100
         easing.type: Easing.OutCubic
     }
@@ -198,9 +197,9 @@ Item {
     PropertyAnimation {
         id: releaseAnimation
         target: root
-        property: "scaleFactor"
-        from: root.scaleFactor * 0.97
-        to: root.scaleFactor
+        property: "scale"
+        from: 0.96
+        to: 1.0
         duration: 150
         easing.type: Easing.OutElastic
         easing.amplitude: 0.2

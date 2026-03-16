@@ -23,18 +23,18 @@ void SerialBridge::update_Voltage(int ch,float voltage){
 }
 
 void SerialBridge::update_CurrentAndUnit(int ch,float current){
-    bool newUnit = (qAbs(current) < 1e-4); // true: mA   false: A
+    QString newUnit = (qAbs(current) < 1e-4) ? "mA" : "A"; // true: mA   false: A
 
     switch(ch) {
         #define CHANNEL(n) \
             case n: { \
-                mCH##n##_Current.store(newUnit ? current * 1000.0f : current); \
+                mCH##n##_Current.store((qAbs(current) < 1e-4) ? current * 1000.0f : current); \
                 emit CH##n##_CurrentChanged(); \
                 qCDebug(uart_bridge) << "Channel" << n << "current updated to:" << current; \
                 \
-                if (mCH##n##_CurrentUnit.load() != newUnit) { \
-                    mCH##n##_CurrentUnit.store(newUnit); \
-                    emit CH##n##_CurrentUnit_Changed(); \
+                if (mCH##n##_CurrentUnit != newUnit) { \
+                    mCH##n##_CurrentUnit == newUnit; \
+                    emit CH##n##_CurrentUnitChanged(); \
                 } \
                 return; \
             }
@@ -81,10 +81,10 @@ QJsonArray SerialBridge::getAllChannelsData() {
             channel["current"] = mCH##n##_Current.load(); \
             channel["cvSetpoint"] = mCH##n##_cv.load(); \
             channel["ccSetpoint"] = mCH##n##_cc.load(); \
-            channel["ovSetpoint"] = mCH##n##_ov.load(); \
+            channel["ovSetpoint"] = mCH##n##_ovp.load(); \
             channel["status"] = mCH##n##_Status; \
             channel["enabled"] = mCH##n##_isOutput.load(); \
-            channel["current_unit"] = mCH##n##_CurrentUnit.load(); \
+            channel["current_unit"] = mCH##n##_CurrentUnit; \
             channels.append(channel); \
         } while(0);
 
@@ -94,11 +94,33 @@ QJsonArray SerialBridge::getAllChannelsData() {
     return channels;
 }
 
+void SerialBridge::update_Configuration(int model,const QString& val){
+    Q_UNUSED(val)
+    switch(model){
+        case 0:{
+            // IP-/etc/network/interfaces
+            return;
+        }
+        case 1:{
+            // SM-/etc/network/interfaces
+            return;
+        }
+        case 2:{
+            // GPIB
+            return;
+        }
+        case 3:{
+            // GPIB
+            return;
+        }
+    }
+}
+
 // =========================== Q_INVOKABLE And C++ ===========================
 
-void SerialBridge::update_remotemodel(bool is_remote){
-    m_isRemote.store(is_remote);
-    emit isRemote_Change();
+void SerialBridge::update_remotemodel(bool isRemote){
+    m_isRemote.store(isRemote);
+    emit isRemote_Changed();
 }
 
 
@@ -108,15 +130,6 @@ void SerialBridge::setChannel_Output(int channel,bool switchs){
     quint8 func = switchs ? 0x01 : 0x00;
     qCDebug(uart_bridge) << "setChannel_Output - channel:" << channel << "switch:" << switchs;
     return to_Channel(channel,0x01, func, "");
-}
-
-void SerialBridge::setChannel_Setstatus(int channel,int model,float value){
-    quint32 intValue;
-    memcpy(&intValue, &value, sizeof(float));
-    intValue = qToBigEndian(intValue);
-    QByteArray Status_buffer(reinterpret_cast<const char*>(&intValue), sizeof(quint32));
-
-    return to_Channel(channel,0x02, model, Status_buffer);
 }
 
 QString SerialBridge::setChannel_CurrentUnit(){
@@ -138,6 +151,86 @@ QString SerialBridge::setChannel_CurrentUnit(){
 
     qCDebug(uart_bridge) << "Current unit changed to:" << unit;
     return unit;
+}
+
+void SerialBridge::setChannel_Setstatus(int channel,int model,const QString& val){
+    // model: 0 - CV ; 1 - CC ; 3 - OVP;
+    float value = val.toFloat();
+
+    if (model==0){
+        if (channel == 0) {
+            #define CHANNEL(n) \
+            mCH##n##_cv = value; \
+            qCDebug(uart_bridge) << "Channel" << n << "status(CV)Value changed to:" << value; \
+            emit CH##n##_cvChanged();
+            CHANNEL_1_TO_33
+            #undef CHANNEL
+        }else{
+            switch(channel) {
+                #define CHANNEL(n) \
+                    case n: { \
+                        mCH##n##_cv = value; \
+                        qCDebug(uart_bridge) << "Channel" << n << "status(CV)Value changed to:" << value; \
+                        emit CH##n##_cvChanged(); \
+                        break; \
+                    }
+                CHANNEL_1_TO_33
+                #undef CHANNEL
+                default: break;
+            }
+        }
+    }else if(model==1){
+        if (channel == 0) {
+            #define CHANNEL(n) \
+            mCH##n##_cc = value; \
+            qCDebug(uart_bridge) << "Channel" << n << "status(CC)Value changed to:" << value; \
+            emit CH##n##_ccChanged();
+            CHANNEL_1_TO_33
+            #undef CHANNEL
+        }else{
+            switch(channel) {
+                #define CHANNEL(n) \
+                    case n: { \
+                        mCH##n##_cc = value; \
+                        qCDebug(uart_bridge) << "Channel" << n << "status(CC)Value changed to:" << value; \
+                        emit CH##n##_ccChanged(); \
+                        break; \
+                    }
+                CHANNEL_1_TO_33
+                #undef CHANNEL
+                default: break;
+            }
+        }
+    }else if(model==3) {
+        if (channel == 0) {
+            #define CHANNEL(n) \
+            mCH##n##_ovp = value; \
+            qCDebug(uart_bridge) << "Channel" << n << "status(OVP)Value changed to:" << value; \
+            emit CH##n##_ovpChanged();
+            CHANNEL_1_TO_33
+            #undef CHANNEL
+        }else{
+            switch(channel) {
+                #define CHANNEL(n) \
+                    case n: { \
+                        mCH##n##_ovp = value; \
+                        qCDebug(uart_bridge) << "Channel" << n << "status(OVP)Value changed to:" << value; \
+                        emit CH##n##_ovpChanged(); \
+                        break; \
+                    }
+                CHANNEL_1_TO_33
+                #undef CHANNEL
+                default: break;
+            }
+        }
+    }
+
+    quint32 intValue;
+    memcpy(&intValue, &value, sizeof(float));
+    intValue = qToBigEndian(intValue);
+    QByteArray Status_buffer(reinterpret_cast<const char*>(&intValue), sizeof(quint32));
+
+    return to_Channel(channel,0x02, model, Status_buffer);
 }
 
 // - Auxiliary function ----------

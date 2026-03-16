@@ -18,14 +18,20 @@ ApplicationWindow {
             anchors.centerIn: parent
             scale: 1
         }*/
+        KeyinputBox {
+            anchors.centerIn: parent
+            scale: 1
+        }
+
 
         /*SetBox {
             anchors.centerIn: parent
             scale: 1
         }*/
-        SetBoxGroup {
+
+        /*SetBoxGroup {
             anchors.centerIn: parent
             scale: 1
-        }
+        }*/
     }
 }

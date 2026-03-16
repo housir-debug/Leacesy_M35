@@ -6,10 +6,7 @@ Item {
 
     implicitWidth: 280
     implicitHeight: 400
-    width: implicitWidth * scaleFactor
-    height: implicitHeight * scaleFactor
 
-    property real scaleFactor: 1.0
     property bool enclick: true
     property bool channelOutput: false
     property string channelName: "CH1"
@@ -17,16 +14,22 @@ Item {
     property real current: 0.0
     property string voltageUnit: "V"
     property string currentUnit: "A"
-    property bool cvModel: false
-    property bool ccModel: false
-    property bool ovpModel: false
     property real cvSetpoint: 0.0
     property real ccSetpoint: 1.0
     property real ovpSetpoint: 8.0
+    property bool cvModel: false
+    property bool ccModel: false
+    property bool ovpModel: false
 
     signal clicked
     signal pressAndHold
 
+    property real scaleFactor: {
+        if (width > 0 && height > 0) {
+            return Math.min(width / implicitWidth, height / implicitHeight)
+        }
+        return 1.0
+    }
     property bool pressed: false
     property bool longpressed: false
     readonly property color colorBackground: "#1E1E2E"
@@ -42,13 +45,13 @@ Item {
         id: card
         radius: 32 * root.scaleFactor
         anchors.fill: parent
-        border.width: 2
+        border.width: 2 * root.scaleFactor
         border.color: root.channelOutput ? colorGlow : colorCardBorder
         color: root.channelOutput ? "#353548" : "#181824"
 
         Rectangle {
             width: parent.width * 0.7
-            height: 1
+            height: 1 * root.scaleFactor
             color: colorGlow
             opacity: 0.4
             anchors.horizontalCenter: parent.horizontalCenter
@@ -57,7 +60,7 @@ Item {
         }
         Rectangle {
             width: parent.width * 0.7
-            height: 1
+            height: 1 * root.scaleFactor
             color: colorGlow
             opacity: 0.4
             anchors.horizontalCenter: parent.horizontalCenter
@@ -350,7 +353,7 @@ Item {
         target: card
         property: "scale"
         from: 1.0
-        to: 0.98
+        to: 0.96
         duration: 100
         easing.type: Easing.OutCubic
     }
@@ -359,7 +362,7 @@ Item {
         id: releaseAnimation
         target: card
         property: "scale"
-        from: 0.98
+        from: 0.96
         to: 1.0
         duration: 120
         easing.type: Easing.OutElastic

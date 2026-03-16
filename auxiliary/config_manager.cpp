@@ -49,6 +49,10 @@ QString ConfigManager::s_manufacturer = "Leacesy";
 QString ConfigManager::s_model = "66004";
 QString ConfigManager::s_serialNumber = "SN123456789";
 QString ConfigManager::s_firmwareVersion = "1.0.0";
+QString ConfigManager::s_IP = "192.168.137.33";
+QString ConfigManager::s_SM = "255.255.255.0";
+int ConfigManager::s_GPIBid = 5;
+int ConfigManager::S_CANid = 6;
 
 QString ConfigManager::s_loglevel = "release";
 bool ConfigManager::s_enablelogfile = false;
@@ -77,6 +81,10 @@ bool ConfigManager::init(const QString &configDir)
     // global variable
     s_model = s_settings->value("Device/Model").toString();
     s_serialNumber = s_settings->value("Device/SerialNumber").toString();
+    s_IP = s_settings->value("Device/IP").toString();
+    s_SM = s_settings->value("Device/SM").toString();
+    s_GPIBid = s_settings->value("Device/GPIBID").toInt();
+    S_CANid = s_settings->value("Device/CANID").toInt();
 
     s_loglevel = s_settings->value("Logger/logLevel").toString();
     s_enablelogfile = s_settings->value("Logger/EnablelogFile").toBool();
@@ -91,5 +99,17 @@ bool ConfigManager::init(const QString &configDir)
     s_enableUARTServer = s_settings->value("Control/EnableUARTServer").toBool();
     s_enableDisplay = s_settings->value("Control/EnableDisplay").toBool();
 
+    return true;
+}
+
+bool ConfigManager::setConfigValue(const QString &key, const QVariant &value)
+{
+    if (!s_settings) {return false;}
+
+    QVariant oldValue = s_settings->value(key);
+    if (oldValue == value && !value.isNull()) {return true;}
+
+    s_settings->setValue(key, value); // 暂时写入内存
+    //s_settings->sync(); // 立即写入文件，可选
     return true;
 }

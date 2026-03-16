@@ -22,6 +22,7 @@ class ConfigManager
 {
 public:
     static bool init(const QString &configDir);
+    static bool setConfigValue(const QString &key, const QVariant &value);
     static QSettings* s_settings;
     static QString s_configFile;
 
@@ -29,6 +30,10 @@ public:
     static QString s_model;
     static QString s_serialNumber;
     static QString s_firmwareVersion;
+    static QString s_IP;
+    static QString s_SM;
+    static int s_GPIBid;
+    static int S_CANid;
 
     static QString s_loglevel;
     static bool s_enablelogfile;

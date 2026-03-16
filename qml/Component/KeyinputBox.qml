@@ -14,7 +14,7 @@ Item {
     property real scaleFactor: 1.0
     property alias text: defaultField.text
 
-    signal entervalue(real value)
+    signal entervalue(string value)
 
     readonly property color colorBackground: "#0A1929"
     readonly property color colorSurface: "#102B40"
@@ -53,11 +53,12 @@ Item {
             TextField {
                 id: defaultField
                 Layout.fillWidth: true
-                Layout.preferredHeight: 56 * scaleFactor
+                Layout.fillHeight: true
+                Layout.preferredHeight: 36
 
                 placeholderText: "请输入"
                 placeholderTextColor: root.colorPlaceholder
-                inputMethodHints: Qt.ImhDigitsOnly
+                inputMethodHints: Qt.ImhNone //Qt.ImhDigitsOnly
                 echoMode: TextInput.Normal
                 font.pixelSize: 18 * scaleFactor
                 font.family: "Segoe UI, Microsoft YaHei, sans-serif"
@@ -132,14 +133,9 @@ Item {
                     }
 
                     onClicked: {
-                        let num = parseFloat(defaultField.text)
-                        if (!isNaN(num)) {
-                            root.entervalue(num)
+                        if (defaultField.text.length > 0) {
+                            root.entervalue(defaultField.text)
                             defaultField.clear()
-                        } else {
-                            if (defaultField.text.length > 0) {
-                                defaultField.clear()
-                            }
                         }
                     }
                 }
@@ -159,6 +155,7 @@ Item {
                 id: keypadGrid
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                Layout.preferredHeight: 188
                 columns: 3
                 columnSpacing: 8 * scaleFactor
                 rowSpacing: 8 * scaleFactor
@@ -272,7 +269,7 @@ Item {
                                                                root.colorAccent.g,
                                                                root.colorAccent.b,
                                                                0.1) : "transparent"
-                                visible: modelData.isClear
+                                visible: modelData.isClear ? true : false
                             }
                         }
 
@@ -311,10 +308,3 @@ Item {
         }
     }
 }
-
-/*##^##
-Designer {
-    D{i:0;formeditorZoom:1.1}
-}
-##^##*/
-

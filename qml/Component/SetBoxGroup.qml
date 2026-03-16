@@ -8,7 +8,7 @@ Item {
     id: root
 
     implicitWidth: 88
-    implicitHeight: 81 * 5 + spacing * 4
+    implicitHeight: 417
     width: implicitWidth * scaleFactor
     height: implicitHeight * scaleFactor
 
@@ -20,6 +20,7 @@ Item {
     property color box1_mainTextColor: "#E0E0E0"
     property color box1_subTextColor: "#8A9FB0"
     property bool box1_enclick: root.enclick
+    property alias box1_pressed: box1.pressed
     signal box1Clicked
     signal box1PressAndHold
     property string box2_mainText: "main"
@@ -27,6 +28,7 @@ Item {
     property color box2_mainTextColor: "#E0E0E0"
     property color box2_subTextColor: "#8A9FB0"
     property bool box2_enclick: root.enclick
+    property alias box2_pressed: box2.pressed
     signal box2Clicked
     signal box2PressAndHold
     property string box3_mainText: "main"
@@ -34,6 +36,7 @@ Item {
     property color box3_mainTextColor: "#E0E0E0"
     property color box3_subTextColor: "#8A9FB0"
     property bool box3_enclick: root.enclick
+    property alias box3_pressed: box3.pressed
     signal box3Clicked
     signal box3PressAndHold
     property string box4_mainText: "main"
@@ -41,6 +44,7 @@ Item {
     property color box4_mainTextColor: "#E0E0E0"
     property color box4_subTextColor: "#8A9FB0"
     property bool box4_enclick: root.enclick
+    property alias box4_pressed: box4.pressed
     signal box4Clicked
     signal box4PressAndHold
     property string box5_mainText: "main"
@@ -48,18 +52,15 @@ Item {
     property color box5_mainTextColor: "#E0E0E0"
     property color box5_subTextColor: "#8A9FB0"
     property bool box5_enclick: root.enclick
+    property alias box5_pressed: box5.pressed
     signal box5Clicked
     signal box5PressAndHold
-
-    property int spacing: 3
-    property color backgroundColor: "#0A1929"
-    property real backgroundRadius: 12
 
     Rectangle {
         id: background
         anchors.fill: parent
-        radius: root.backgroundRadius * root.scaleFactor
-        color: root.backgroundColor
+        radius: 12 * root.scaleFactor
+        color: "#0A1929"
 
         Rectangle {
             anchors.fill: parent
@@ -73,15 +74,15 @@ Item {
             orientation: Gradient.Vertical
             GradientStop {
                 position: 0.0
-                color: Qt.lighter(root.backgroundColor, 1.2)
+                color: Qt.lighter("#0A1929", 1.2)
             }
             GradientStop {
                 position: 0.5
-                color: root.backgroundColor
+                color: "#0A1929"
             }
             GradientStop {
                 position: 1.0
-                color: Qt.darker(root.backgroundColor, 1.1)
+                color: Qt.darker("#0A1929", 1.1)
             }
         }
 
@@ -98,29 +99,30 @@ Item {
         }
     }
 
-    Column {
+    ColumnLayout {
         anchors.fill: parent
-        spacing: root.spacing * root.scaleFactor
+        anchors.leftMargin: 3 * root.scaleFactor
+        anchors.rightMargin: 3 * root.scaleFactor
+        spacing: 3 * root.scaleFactor
         z: 1
 
         Item {
-            width: parent.width
-            height: (parent.height - (root.spacing * 4 + 5 * 80 * root.scaleFactor)) / 2
-            visible: height > 0
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            Layout.preferredHeight: 3
         }
 
         SetBox {
             id: box1
-            width: 80 * root.scaleFactor
-            height: 80 * root.scaleFactor
-            anchors.horizontalCenter: parent.horizontalCenter
+            Layout.fillHeight: true
+            Layout.fillWidth: true
 
             scaleFactor: root.scaleFactor
             mainText: root.box1_mainText
             subText: root.box1_subText
             mainTextColor: root.box1_mainTextColor
             subTextColor: root.box1_subTextColor
-            enclick: root.box1_enclick && root.enclick
+            enclick: root.box1_enclick
 
             onClicked: root.box1Clicked()
             onPressAndHold: root.box1PressAndHold()
@@ -128,16 +130,15 @@ Item {
 
         SetBox {
             id: box2
-            width: 80 * root.scaleFactor
-            height: 80 * root.scaleFactor
-            anchors.horizontalCenter: parent.horizontalCenter
+            Layout.fillHeight: true
+            Layout.fillWidth: true
 
             scaleFactor: root.scaleFactor
             mainText: root.box2_mainText
             subText: root.box2_subText
             mainTextColor: root.box2_mainTextColor
             subTextColor: root.box2_subTextColor
-            enclick: root.box2_enclick && root.enclick
+            enclick: root.box2_enclick
 
             onClicked: root.box2Clicked()
             onPressAndHold: root.box2PressAndHold()
@@ -145,16 +146,15 @@ Item {
 
         SetBox {
             id: box3
-            width: 80 * root.scaleFactor
-            height: 80 * root.scaleFactor
-            anchors.horizontalCenter: parent.horizontalCenter
+            Layout.fillHeight: true
+            Layout.fillWidth: true
 
             scaleFactor: root.scaleFactor
             mainText: root.box3_mainText
             subText: root.box3_subText
             mainTextColor: root.box3_mainTextColor
             subTextColor: root.box3_subTextColor
-            enclick: root.box3_enclick && root.enclick
+            enclick: root.box3_enclick
 
             onClicked: root.box3Clicked()
             onPressAndHold: root.box3PressAndHold()
@@ -162,16 +162,15 @@ Item {
 
         SetBox {
             id: box4
-            width: 80 * root.scaleFactor
-            height: 80 * root.scaleFactor
-            anchors.horizontalCenter: parent.horizontalCenter
+            Layout.fillHeight: true
+            Layout.fillWidth: true
 
             scaleFactor: root.scaleFactor
             mainText: root.box4_mainText
             subText: root.box4_subText
             mainTextColor: root.box4_mainTextColor
             subTextColor: root.box4_subTextColor
-            enclick: root.box4_enclick && root.enclick
+            enclick: root.box4_enclick
 
             onClicked: root.box4Clicked()
             onPressAndHold: root.box4PressAndHold()
@@ -179,25 +178,24 @@ Item {
 
         SetBox {
             id: box5
-            width: 80 * root.scaleFactor
-            height: 80 * root.scaleFactor
-            anchors.horizontalCenter: parent.horizontalCenter
+            Layout.fillHeight: true
+            Layout.fillWidth: true
 
             scaleFactor: root.scaleFactor
             mainText: root.box5_mainText
             subText: root.box5_subText
             mainTextColor: root.box5_mainTextColor
             subTextColor: root.box5_subTextColor
-            enclick: root.box5_enclick && root.enclick
+            enclick: root.box5_enclick
 
             onClicked: root.box5Clicked()
             onPressAndHold: root.box5PressAndHold()
         }
 
         Item {
-            width: parent.width
-            height: (parent.height - (root.spacing * 4 + 5 * 80 * root.scaleFactor)) / 2
-            visible: height > 0
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            Layout.preferredHeight: 3
         }
     }
 }

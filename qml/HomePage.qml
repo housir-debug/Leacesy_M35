@@ -6,138 +6,111 @@ import Component 1.0
 Item {
     id: homePage
 
-    signal toSettingPage(int value)
     signal toSystemPage
-
-    property bool is_RemoteModel: false
-    property real home_ch1cvChange: 0.0
-    property real home_ch1ccChange: 1.0
-    property real home_ch1ovChange: 8.0
-    property real home_ch2cvChange: 0.0
-    property real home_ch2ccChange: 1.0
-    property real home_ch2ovChange: 8.0
+    signal toSettingPage(int value)
 
     Rectangle {
         anchors.fill: parent
         color: "#0d1b2a"
-        visible: true
 
         Row {
-            anchors.centerIn: parent
-            anchors.margins: 10
-            spacing: 150
+            anchors.fill: parent
 
-            DigitalCard {
-                id: channel_1
-                channelName: "CH1"
-                scale: 1.6
-                cvSetpoint: homePage.home_ch1cvChange
-                ccSetpoint: homePage.home_ch1ccChange
-                ovSetpoint: homePage.home_ch1ovChange
-                voltage: Uart_bridge.ch1_Voltage
-                current: Uart_bridge.ch1_Current
-                selectedMode: Uart_bridge.ch1_status_v
-                unitChanged: Uart_bridge.ch1_Current_Unit
-                is_enclick: !homePage.is_RemoteModel
+            GridLayout {
+                id: channelsGrid
+                width: parent.width - groupsetbox.width
+                height: parent.height
+                columns: 9
+                rows: 4
+                columnSpacing: 1
+                rowSpacing: 1
 
-                onClicked: {
-                    Uart_bridge.setChannel_Output(1, channel_1.channelEnabled)
-                }
+                Repeater {
+                    model: 36 // channel count
+                    delegate: DigitalCard {
+                        required property int index
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
 
-                onDoLongPressAction: {
-                    toSettingPage(1)
+                        enclick: !Uart_bridge.isRemote
+                        channelOutput: false
+                        channelName: "CH" + (index + 1)
+                        voltage: Uart_bridge["ch" + (index + 1) + "_Voltage"]
+                        current: Uart_bridge["ch" + (index + 1) + "_Current"]
+                        voltageUnit: "V"
+                        currentUnit: Uart_bridge["ch" + (index + 1) + "_CurrentUnit"]
+                        cvSetpoint: Uart_bridge["ch" + (index + 1) + "_cv"]
+                        ccSetpoint: Uart_bridge["ch" + (index + 1) + "_cc"]
+                        ovpSetpoint: Uart_bridge["ch" + (index + 1) + "_ovp"]
+                        cvModel: Uart_bridge["ch" + (index + 1) + "_Status"].charAt(
+                                     14) === "1"
+                        ccModel: Uart_bridge["ch" + (index + 1) + "_Status"].charAt(
+                                     13) === "1"
+                        ovpModel: Uart_bridge["ch" + (index + 1) + "_Status"].charAt(
+                                      11) === "1"
+
+                        onClicked: {
+                            channelOutput = !channelOutput
+                            Uart_bridge.setChannel_Output(index + 1,
+                                                          channelOutput)
+                        }
+
+                        onPressAndHold: {
+                            if (channelOutput) {
+
+                                //输出详情页，还没开放
+                            } else {
+                                toSettingPage(index + 1)
+                            }
+                        }
+                    }
                 }
             }
 
-            DigitalCard {
-                id: channel_2
-                channelName: "CH2"
-                scale: 1.6
-                cvSetpoint: homePage.home_ch2cvChange
-                ccSetpoint: homePage.home_ch2ccChange
-                ovSetpoint: homePage.home_ch2ovChange
-                voltage: Uart_bridge.ch2_Voltage
-                current: Uart_bridge.ch2_Current
-                selectedMode: Uart_bridge.ch2_status_v
-                unitChanged: Uart_bridge.ch2_Current_Unit
-                is_enclick: !homePage.is_RemoteModel
+            SetBoxGroup {
+                id: groupsetbox
+                scaleFactor: parent.height / implicitHeight
+                enclick: !Uart_bridge.isRemote
 
-                onClicked: {
-                    Uart_bridge.setChannel_Output(2, channel_2.channelEnabled)
+                box1_mainText: "System"
+                box1_subText: ""
+                onBox1Clicked: toSystemPage()
+
+                box2_mainText: "All"
+                box2_subText: "Setting"
+                onBox2Clicked: toSettingPage(0)
+
+                box3_mainText: "All"
+                property bool allOn: false
+                box3_subText: allOn ? "OFF" : "ON"
+                box3_subTextColor: allOn ? "#FF3D52" : "#1DBF75"
+                onBox3Clicked: {
+                    allOn = !allOn
+                    Uart_bridge.setChannel_Output(0, allOn)
                 }
 
-                onDoLongPressAction: {
-                    toSettingPage(2)
-                }
-            }
-
-            Column {
-                anchors.margins: 0
-                spacing: 15
-
-                SetBox {
-                    id: system_box
-                    scale: 1.1
-                    mainText: "System"
-                    is_enclick: !homePage.is_RemoteModel
-                    onClicked: {
-                        toSystemPage()
-                    }
+                box4_mainText: "Unit"
+                property string currentUnit: "A"
+                box4_subText: currentUnit
+                onBox4Clicked: {
+                    currentUnit = Uart_bridge.setChannel_CurrentUnit()
                 }
 
-                SetBox {
-                    id: setting_box
-                    scale: 1.1
-                    mainText: "Setting"
-                    is_enclick: !homePage.is_RemoteModel
-
-                    onClicked: {
-                        toSettingPage(0)
-                    }
-                }
-
-                SetBox {
-                    id: all_s_box
-                    scale: 1.1
-                    mainText: "All"
-                    subText: all_s_box.is_subTcolor_s ? "OFF" : "ON"
-                    is_enclick: !homePage.is_RemoteModel
-
-                    onClicked: {
-                        channel_1.channelEnabled = !channel_1.channelEnabled
-                        channel_2.channelEnabled = !channel_2.channelEnabled
-
-                        all_s_box.is_subTcolor_s = !all_s_box.is_subTcolor_s
-                        Uart_bridge.setChannel_Output(0,
-                                                      all_s_box.is_subTcolor_s)
-                    }
-                }
-
-                SetBox {
-                    id: unit_box
-                    scale: 1.1
-                    mainText: "Unit"
-                    subText: "A"
-                    is_enclick: !homePage.is_RemoteModel
-
-                    onClicked: {
-                        unit_box.subText = Uart_bridge.setChannel_CurrentUnit()
-                    }
-                }
-
-                SetBox {
-                    id: model_box
-                    scale: 1.1
-                    mainText: "Model"
-                    subText: "Local" // switching model_remote
-
-                    onClicked: {
-                        homePage.is_RemoteModel = !homePage.is_RemoteModel
-                        model_box.is_subTcolor_s = !model_box.is_subTcolor_s
-                        model_box.subText = homePage.is_RemoteModel ? "Remote" : "Local"
-                    }
+                box5_mainText: "Model"
+                box5_subText: Uart_bridge.isRemote ? "Remote" : "Local"
+                box5_subTextColor: Uart_bridge.isRemote ? "#FF3D52" : "#1DBF75"
+                onBox5Clicked: {
+                    box5_enclick = true
+                    Uart_bridge.update_remotemodel(!Uart_bridge.isRemote)
                 }
             }
         }
     }
 }
+
+/*##^##
+Designer {
+    D{i:0;autoSize:true;height:480;width:640}
+}
+##^##*/
+
