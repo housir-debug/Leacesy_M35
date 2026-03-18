@@ -9,12 +9,16 @@ Item {
 
     implicitWidth: 88
     implicitHeight: 417
-    width: implicitWidth * scaleFactor
-    height: implicitHeight * scaleFactor
 
-    property real scaleFactor: 1.0
     property bool enclick: true
 
+    //property real scaleFactor: 1.0
+    property real scaleFactor: {
+        if (width > 0 && height > 0) {
+            return Math.min(width / implicitWidth, height / implicitHeight)
+        }
+        return 1.0
+    }
     property string box1_mainText: "main"
     property string box1_subText: "sub"
     property color box1_mainTextColor: "#E0E0E0"
@@ -91,7 +95,7 @@ Item {
             effect: DropShadow {
                 transparentBorder: true
                 color: Qt.rgba(0, 0, 0, 0.3)
-                radius: 16
+                radius: 16 * root.scaleFactor
                 samples: 20
                 horizontalOffset: 0
                 verticalOffset: 2
@@ -101,16 +105,9 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.leftMargin: 3 * root.scaleFactor
-        anchors.rightMargin: 3 * root.scaleFactor
-        spacing: 3 * root.scaleFactor
+        anchors.margins: 3.6 * root.scaleFactor
+        spacing: 3.6 * root.scaleFactor
         z: 1
-
-        Item {
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            Layout.preferredHeight: 3
-        }
 
         SetBox {
             id: box1
@@ -190,12 +187,6 @@ Item {
 
             onClicked: root.box5Clicked()
             onPressAndHold: root.box5PressAndHold()
-        }
-
-        Item {
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            Layout.preferredHeight: 3
         }
     }
 }

@@ -8,14 +8,17 @@ Item {
 
     implicitWidth: 280
     implicitHeight: 400
-    width: implicitWidth * scaleFactor
-    height: implicitHeight * scaleFactor
 
-    property real scaleFactor: 1.0
     property alias text: defaultField.text
-
     signal entervalue(string value)
 
+    //property real scaleFactor: 1.0
+    property real scaleFactor: {
+        if (width > 0 && height > 0) {
+            return Math.min(width / implicitWidth, height / implicitHeight)
+        }
+        return 1.0
+    }
     readonly property color colorBackground: "#0A1929"
     readonly property color colorSurface: "#102B40"
     readonly property color colorSurfaceHover: "#1E3A5F"
@@ -28,11 +31,10 @@ Item {
     readonly property color colorPlaceholder: "#5F7D9C"
 
     Rectangle {
-        id: card
-        radius: 16 * scaleFactor
-        color: root.colorBackground
         anchors.fill: parent
-        border.width: 1
+        radius: 16 * root.scaleFactor
+        color: root.colorBackground
+        border.width: 1 * root.scaleFactor
         border.color: Qt.rgba(root.colorAccent.r, root.colorAccent.g,
                               root.colorAccent.b, 0.2)
 
@@ -40,34 +42,34 @@ Item {
             anchors.fill: parent
             radius: parent.radius
             color: "transparent"
-            border.width: 2
+            border.width: 2 * root.scaleFactor
             border.color: Qt.rgba(root.colorAccent.r, root.colorAccent.g,
                                   root.colorAccent.b, 0.1)
         }
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 12 * scaleFactor
-            spacing: 8 * scaleFactor
+            anchors.margins: 12 * root.scaleFactor
+            spacing: 8 * root.scaleFactor
 
             TextField {
                 id: defaultField
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.preferredHeight: 36
+                Layout.preferredHeight: 16
 
                 placeholderText: "请输入"
                 placeholderTextColor: root.colorPlaceholder
                 inputMethodHints: Qt.ImhNone //Qt.ImhDigitsOnly
                 echoMode: TextInput.Normal
-                font.pixelSize: 18 * scaleFactor
+                font.pixelSize: 18 * root.scaleFactor
                 font.family: "Segoe UI, Microsoft YaHei, sans-serif"
                 color: root.colorTextPrimary
                 selectionColor: root.colorAccent
                 selectedTextColor: root.colorBackground
 
                 background: Rectangle {
-                    radius: 12 * scaleFactor
+                    radius: 12 * root.scaleFactor
                     color: root.colorSurface
                     border.width: defaultField.activeFocus ? 2 : 1
                     border.color: defaultField.activeFocus ? root.colorAccent : root.colorBorder
@@ -79,7 +81,7 @@ Item {
                             color: Qt.rgba(root.colorAccent.r,
                                            root.colorAccent.g,
                                            root.colorAccent.b, 0.3)
-                            radius: 12
+                            radius: 12 * root.scaleFactor
                             samples: 24
                             horizontalOffset: 0
                             verticalOffset: 0
@@ -90,13 +92,13 @@ Item {
                 ToolButton {
                     id: enterBtn
                     anchors.right: parent.right
-                    anchors.rightMargin: 6 * scaleFactor
+                    anchors.rightMargin: 6 * root.scaleFactor
                     anchors.verticalCenter: parent.verticalCenter
 
                     background: Rectangle {
-                        implicitWidth: 48 * scaleFactor
-                        implicitHeight: 32 * scaleFactor
-                        radius: 8 * scaleFactor
+                        implicitWidth: 48 * root.scaleFactor
+                        implicitHeight: 32 * root.scaleFactor
+                        radius: 8 * root.scaleFactor
                         color: root.colorAccent
                         opacity: enterBtn.hovered ? 1.0 : 0.9
 
@@ -125,7 +127,7 @@ Item {
 
                     contentItem: Text {
                         text: "↵"
-                        font.pixelSize: 22 * scaleFactor
+                        font.pixelSize: 22 * root.scaleFactor
                         font.bold: true
                         color: root.colorBackground
                         horizontalAlignment: Text.AlignHCenter
@@ -141,24 +143,24 @@ Item {
                 }
 
                 Rectangle {
-                    width: 2
-                    height: 24 * scaleFactor
+                    width: 2 * root.scaleFactor
+                    height: 24 * root.scaleFactor
                     color: root.colorAccent
                     opacity: 0.5
                     anchors.left: parent.left
-                    anchors.leftMargin: 4 * scaleFactor
+                    anchors.leftMargin: 4 * root.scaleFactor
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
 
             GridLayout {
-                id: keypadGrid
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.preferredHeight: 188
+                Layout.preferredHeight: 84
+                columnSpacing: 8 * root.scaleFactor
+                rowSpacing: 8 * root.scaleFactor
                 columns: 3
-                columnSpacing: 8 * scaleFactor
-                rowSpacing: 8 * scaleFactor
+                rows: 4
 
                 Repeater {
                     model: [{
@@ -201,32 +203,19 @@ Item {
 
                     delegate: Button {
                         id: btn
-                        Layout.preferredWidth: 1
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        Layout.columnSpan: 1
+                        Layout.preferredWidth: 1
+                        Layout.preferredHeight: 1
 
                         text: modelData.label
-
-                        MouseArea {
-                            id: mouseArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            onClicked: parent.clicked()
-                            cursorShape: Qt.PointingHandCursor
-                            pressAndHoldInterval: 500
-                            onPressAndHold: {
-                                if (modelData.isClear) {
-                                    defaultField.clear()
-                                }
-                            }
-                        }
+                        hoverEnabled: true
 
                         background: Rectangle {
-                            color: mouseArea.containsMouse ? root.colorSurfaceHover : root.colorSurface
-                            radius: 12 * scaleFactor
+                            color: btn.hovered ? root.colorSurfaceHover : root.colorSurface
+                            radius: 12 * root.scaleFactor
                             border.width: 1
-                            border.color: mouseArea.containsMouse ? root.colorAccent : root.colorBorder
+                            border.color: btn.hovered ? root.colorAccent : root.colorBorder
 
                             Behavior on color {
                                 ColorAnimation {
@@ -255,7 +244,7 @@ Item {
                                 anchors.fill: parent
                                 radius: parent.radius
                                 color: "transparent"
-                                border.width: mouseArea.pressed ? 2 : 0
+                                border.width: btn.pressed ? 2 : 0
                                 border.color: Qt.rgba(root.colorAccent.r,
                                                       root.colorAccent.g,
                                                       root.colorAccent.b, 0.5)
@@ -275,7 +264,7 @@ Item {
 
                         contentItem: Text {
                             text: parent.text
-                            font.pixelSize: modelData.isClear ? 24 : 22 * scaleFactor
+                            font.pixelSize: modelData.isClear ? 24 : 22 * root.scaleFactor
                             font.bold: !modelData.isClear
                             color: modelData.isClear ? root.colorAccent : root.colorTextPrimary
                             horizontalAlignment: Text.AlignHCenter

@@ -13,17 +13,18 @@ Item {
         anchors.fill: parent
         color: "#0d1b2a"
 
-        Row {
+        RowLayout {
             anchors.fill: parent
 
             GridLayout {
                 id: channelsGrid
-                width: parent.width - groupsetbox.width
-                height: parent.height
+                Layout.fillHeight: true
+                Layout.fillWidth: true
+                Layout.margins: 1.8
+                columnSpacing: 1.8
+                rowSpacing: 1.8
                 columns: 9
                 rows: 4
-                columnSpacing: 1
-                rowSpacing: 1
 
                 Repeater {
                     model: 36 // channel count
@@ -33,7 +34,7 @@ Item {
                         Layout.fillHeight: true
 
                         enclick: !Uart_bridge.isRemote
-                        channelOutput: false
+                        channelOutput: Uart_bridge["ch" + (index + 1) + "_isOutput"]
                         channelName: "CH" + (index + 1)
                         voltage: Uart_bridge["ch" + (index + 1) + "_Voltage"]
                         current: Uart_bridge["ch" + (index + 1) + "_Current"]
@@ -50,9 +51,8 @@ Item {
                                       11) === "1"
 
                         onClicked: {
-                            channelOutput = !channelOutput
                             Uart_bridge.setChannel_Output(index + 1,
-                                                          channelOutput)
+                                                          !channelOutput)
                         }
 
                         onPressAndHold: {
@@ -69,7 +69,8 @@ Item {
 
             SetBoxGroup {
                 id: groupsetbox
-                scaleFactor: parent.height / implicitHeight
+                Layout.fillHeight: true
+                Layout.fillWidth: true
                 enclick: !Uart_bridge.isRemote
 
                 box1_mainText: "System"

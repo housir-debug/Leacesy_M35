@@ -27,6 +27,7 @@ Item {
         return arr
     })()
 
+    //property real scaleFactor: 1.0
     property real scaleFactor: {
         if (width > 0 && height > 0) {
             return Math.min(width / implicitWidth, height / implicitHeight)
@@ -41,39 +42,39 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: bgColor
-        border.color: borderColor
-        border.width: 1 * scaleFactor
-        radius: 6 * scaleFactor
+        color: root.bgColor
+        border.color: root.borderColor
+        border.width: 1 * root.scaleFactor
+        radius: 6 * root.scaleFactor
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 2.4 * scaleFactor
-            spacing: 2.4 * scaleFactor
+            anchors.margins: 2.4 * root.scaleFactor
+            spacing: 2.4 * root.scaleFactor
 
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.preferredHeight: 36
-                color: headerBgColor
-                radius: 6 * scaleFactor
-                border.color: borderColor
-                border.width: 1 * scaleFactor
+                Layout.preferredHeight: 8
+                color: root.headerBgColor
+                radius: 6 * root.scaleFactor
+                border.color: root.borderColor
+                border.width: 1 * root.scaleFactor
 
                 RowLayout {
                     anchors.fill: parent
 
                     Text {
                         text: "SW-Ver:    V" + root.softwareVersion
-                        font.pixelSize: 16 * scaleFactor
-                        color: textColor
+                        font.pixelSize: 16 * root.scaleFactor
+                        color: root.textColor
                         Layout.alignment: Qt.AlignHCenter
                     }
 
                     Text {
                         text: "HW-Ver:    V" + root.hardwareVersion
-                        font.pixelSize: 16 * scaleFactor
-                        color: textColor
+                        font.pixelSize: 16 * root.scaleFactor
+                        color: root.textColor
                         Layout.alignment: Qt.AlignHCenter
                     }
                 }
@@ -83,11 +84,11 @@ Item {
                 id: channelsGridinfrom
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.preferredHeight: 520
+                Layout.preferredHeight: 92
+                columnSpacing: 1 * root.scaleFactor
+                rowSpacing: 1 * root.scaleFactor
                 columns: 9
                 rows: 4
-                columnSpacing: 1 * scaleFactor
-                rowSpacing: 1 * scaleFactor
 
                 Repeater {
                     model: 36 // channel count
@@ -95,33 +96,32 @@ Item {
                         required property int index
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        color: headerBgColor
-                        radius: 6 * scaleFactor
-                        border.color: borderColor
-                        border.width: 1 * scaleFactor
+                        color: root.headerBgColor
+                        radius: 6 * root.scaleFactor
+                        border.color: root.borderColor
+                        border.width: 1 * root.scaleFactor
 
                         ColumnLayout {
                             anchors.fill: parent
-                            anchors.centerIn: parent
 
                             Text {
                                 text: "CH_" + (index + 1)
-                                font.pixelSize: 9.8 * scaleFactor
-                                color: accentColor
+                                font.pixelSize: 9.8 * root.scaleFactor
+                                color: root.accentColor
                                 Layout.alignment: Qt.AlignHCenter
                             }
 
                             Text {
                                 text: "S:V" + root.channelSoftwareVersions[index]
-                                font.pixelSize: 9 * scaleFactor
-                                color: textColor
+                                font.pixelSize: 9 * root.scaleFactor
+                                color: root.textColor
                                 Layout.alignment: Qt.AlignHCenter
                             }
 
                             Text {
                                 text: "H:V" + root.channelHardwareVersions[index]
-                                font.pixelSize: 9 * scaleFactor
-                                color: textColor
+                                font.pixelSize: 9 * root.scaleFactor
+                                color: root.textColor
                                 Layout.alignment: Qt.AlignHCenter
                             }
                         }

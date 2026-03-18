@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import QtQuick.Layouts 1.15
 
 Item {
     id: root
@@ -24,6 +25,7 @@ Item {
     signal clicked
     signal pressAndHold
 
+    //property real scaleFactor: 1.0
     property real scaleFactor: {
         if (width > 0 && height > 0) {
             return Math.min(width / implicitWidth, height / implicitHeight)
@@ -46,13 +48,13 @@ Item {
         radius: 32 * root.scaleFactor
         anchors.fill: parent
         border.width: 2 * root.scaleFactor
-        border.color: root.channelOutput ? colorGlow : colorCardBorder
+        border.color: root.channelOutput ? root.colorGlow : root.colorCardBorder
         color: root.channelOutput ? "#353548" : "#181824"
 
         Rectangle {
             width: parent.width * 0.7
             height: 1 * root.scaleFactor
-            color: colorGlow
+            color: root.colorGlow
             opacity: 0.4
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: parent.top
@@ -61,25 +63,26 @@ Item {
         Rectangle {
             width: parent.width * 0.7
             height: 1 * root.scaleFactor
-            color: colorGlow
+            color: root.colorGlow
             opacity: 0.4
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottom: parent.bottom
             anchors.bottomMargin: 8 * root.scaleFactor
         }
 
-        Column {
+        ColumnLayout {
             anchors.fill: parent
             anchors.margins: 18 * root.scaleFactor
             spacing: 16 * root.scaleFactor
 
             Item {
-                width: parent.width
-                height: parent.height * 0.18
+                Layout.fillWidth: true
+                Layout.preferredHeight: parent.height * 0.18
+                Layout.alignment: Qt.AlignTop
 
                 Text {
                     id: channelText
-                    color: textPrimary
+                    color: root.textPrimary
                     font.bold: true
                     font.pixelSize: 36 * root.scaleFactor
                     anchors.centerIn: parent
@@ -98,7 +101,7 @@ Item {
                     height: 36 * root.scaleFactor
                     radius: width / 2
                     color: root.channelOutput ? "#1AF080" : "#3A3A4E"
-                    border.width: 1
+                    border.width: 1 * root.scaleFactor
                     border.color: "#000000"
 
                     Rectangle {
@@ -107,8 +110,8 @@ Item {
                         height: parent.height + 4 * root.scaleFactor
                         radius: width / 2
                         color: "transparent"
-                        border.width: 1
-                        border.color: root.channelOutput ? colorGlow : "transparent"
+                        border.width: 1 * root.scaleFactor
+                        border.color: root.channelOutput ? root.colorGlow : "transparent"
                         opacity: 0.6
                     }
                 }
@@ -118,10 +121,10 @@ Item {
                 id: measurementCard
                 radius: 16 * root.scaleFactor
                 color: "#080810"
-                border.width: 1.2
+                border.width: 1.2 * root.scaleFactor
                 border.color: "#3A3A4E"
-                width: parent.width
-                height: parent.height * 0.4
+                Layout.fillWidth: true
+                Layout.preferredHeight: parent.height * 0.4
 
                 gradient: Gradient {
                     orientation: Gradient.Vertical
@@ -135,7 +138,7 @@ Item {
                     }
                 }
 
-                Column {
+                ColumnLayout {
                     anchors.centerIn: parent
                     spacing: 12 * root.scaleFactor
 
@@ -144,7 +147,7 @@ Item {
                         color: root.colorCv
                         font.bold: true
                         font.pixelSize: 36 * root.scaleFactor
-                        anchors.horizontalCenter: parent.horizontalCenter
+                        Layout.alignment: Qt.AlignHCenter
                         text: root.voltage.toFixed(4) + " " + root.voltageUnit
                         style: Text.Raised
                         styleColor: "#000000"
@@ -155,7 +158,7 @@ Item {
                         color: root.colorCc
                         font.bold: true
                         font.pixelSize: (root.currentUnit == "mA" ? 30 : 36) * root.scaleFactor
-                        anchors.horizontalCenter: parent.horizontalCenter
+                        Layout.alignment: Qt.AlignHCenter
                         text: root.current.toFixed(4) + " " + root.currentUnit
                         style: Text.Raised
                         styleColor: "#000000"
@@ -164,8 +167,8 @@ Item {
 
                 Rectangle {
                     width: parent.width - 20 * root.scaleFactor
-                    height: 2
-                    color: colorGlow
+                    height: 2 * root.scaleFactor
+                    color: root.colorGlow
                     opacity: 0.3
                     anchors.bottom: parent.bottom
                     anchors.bottomMargin: 5 * root.scaleFactor
@@ -173,143 +176,130 @@ Item {
                 }
             }
 
-            Column {
+            ColumnLayout {
                 id: setpointsColumn
-                width: parent.width
-                height: parent.height * 0.3
+                Layout.fillWidth: true
+                Layout.preferredHeight: parent.height * 0.3
                 spacing: 6 * root.scaleFactor
 
                 Item {
                     id: cvRow
-                    width: parent.width * 0.96
-                    height: parent.height * 0.3
-                    anchors.horizontalCenter: parent.horizontalCenter
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 30 * root.scaleFactor
 
                     Text {
                         text: "CV"
                         color: root.colorCv
                         font.bold: true
                         font.pixelSize: 20 * root.scaleFactor
+                        style: Text.Raised
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
-                        style: Text.Raised
+                        anchors.leftMargin: 3 * root.scaleFactor
                     }
 
                     Text {
                         text: root.cvSetpoint.toFixed(3) + " V"
-                        anchors.centerIn: parent
-                        color: textSecondary
+                        color: root.textSecondary
                         font.pixelSize: 15 * root.scaleFactor
                         font.bold: root.cvModel
+                        anchors.centerIn: parent
+                        anchors.verticalCenter: parent.verticalCenter
                     }
 
                     Rectangle {
                         width: 22 * root.scaleFactor
                         height: 22 * root.scaleFactor
                         radius: width / 2
-                        border.width: 2
+                        border.width: 2 * root.scaleFactor
                         border.color: root.colorCv
                         color: root.cvModel ? root.colorCv : "transparent"
                         anchors.right: parent.right
+                        anchors.rightMargin: 3 * root.scaleFactor
                         anchors.verticalCenter: parent.verticalCenter
-                        Rectangle {
-                            anchors.centerIn: parent
-                            width: 8 * root.scaleFactor
-                            height: 8 * root.scaleFactor
-                            radius: width / 2
-                            color: root.colorCv
-                            visible: root.cvModel
-                        }
                     }
                 }
 
                 Item {
                     id: ccRow
-                    width: parent.width * 0.96
-                    height: parent.height * 0.3
-                    anchors.horizontalCenter: parent.horizontalCenter
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 30 * root.scaleFactor
 
                     Text {
                         text: "CC"
                         color: root.colorCc
                         font.bold: true
                         font.pixelSize: 20 * root.scaleFactor
+                        style: Text.Raised
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
-                        style: Text.Raised
+                        anchors.leftMargin: 3 * root.scaleFactor
                     }
 
                     Text {
                         text: root.ccSetpoint.toFixed(3) + " A"
-                        anchors.centerIn: parent
-                        color: textSecondary
+                        color: root.textSecondary
                         font.pixelSize: 15 * root.scaleFactor
                         font.bold: root.ccModel
+                        anchors.centerIn: parent
+                        anchors.verticalCenter: parent.verticalCenter
                     }
 
                     Rectangle {
                         width: 22 * root.scaleFactor
                         height: 22 * root.scaleFactor
                         radius: width / 2
-                        border.width: 2
+                        border.width: 2 * root.scaleFactor
                         border.color: root.colorCc
                         color: root.ccModel ? root.colorCc : "transparent"
                         anchors.right: parent.right
+                        anchors.rightMargin: 3 * root.scaleFactor
                         anchors.verticalCenter: parent.verticalCenter
-                        Rectangle {
-                            anchors.centerIn: parent
-                            width: 8 * root.scaleFactor
-                            height: 8 * root.scaleFactor
-                            radius: width / 2
-                            color: root.colorCc
-                            visible: root.ccModel
-                        }
                     }
                 }
 
                 Item {
                     id: ovRow
-                    width: parent.width * 0.96
-                    height: parent.height * 0.3
-                    anchors.horizontalCenter: parent.horizontalCenter
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 30 * root.scaleFactor
 
                     Text {
                         text: "OVP"
                         color: root.colorOv
                         font.bold: true
                         font.pixelSize: 20 * root.scaleFactor
+                        style: Text.Raised
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
-                        style: Text.Raised
+                        anchors.leftMargin: 3 * root.scaleFactor
                     }
 
                     Text {
                         text: root.ovpSetpoint.toFixed(3) + " V"
-                        anchors.centerIn: parent
-                        color: textSecondary
+                        color: root.textSecondary
                         font.pixelSize: 15 * root.scaleFactor
                         font.bold: root.ovpModel
+                        anchors.centerIn: parent
+                        anchors.verticalCenter: parent.verticalCenter
                     }
 
                     Rectangle {
                         width: 22 * root.scaleFactor
                         height: 22 * root.scaleFactor
                         radius: width / 2
-                        border.width: 2
+                        border.width: 2 * root.scaleFactor
                         border.color: root.colorOv
                         color: root.ovpModel ? root.colorOv : "transparent"
                         anchors.right: parent.right
+                        anchors.rightMargin: 3 * root.scaleFactor
                         anchors.verticalCenter: parent.verticalCenter
-                        Rectangle {
-                            anchors.centerIn: parent
-                            width: 8 * root.scaleFactor
-                            height: 8 * root.scaleFactor
-                            radius: width / 2
-                            color: root.colorOv
-                            visible: root.ovpModel
-                        }
                     }
                 }
+            }
+
+            Item {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
             }
         }
 
@@ -370,3 +360,10 @@ Item {
         easing.period: 0.4
     }
 }
+
+/*##^##
+Designer {
+    D{i:0;autoSize:true;height:400;width:280}
+}
+##^##*/
+

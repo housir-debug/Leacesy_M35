@@ -8,10 +8,7 @@ Item {
 
     implicitWidth: 80
     implicitHeight: 80
-    width: implicitWidth * scaleFactor
-    height: implicitHeight * scaleFactor
 
-    property real scaleFactor: 1.0
     property bool enclick: true
     property string mainText: "main"
     property string subText: "sub"
@@ -21,6 +18,13 @@ Item {
     signal clicked
     signal pressAndHold
 
+    //property real scaleFactor: 1.0
+    property real scaleFactor: {
+        if (width > 0 && height > 0) {
+            return Math.min(width / implicitWidth, height / implicitHeight)
+        }
+        return 1.0
+    }
     property bool pressed: false
     property bool longpressed: false
     readonly property color colorBackground: "#0A1929"
@@ -30,10 +34,9 @@ Item {
     readonly property color colorGlow: "#4A9EFF"
 
     Rectangle {
-        id: box_Button
-        radius: 18 * root.scaleFactor
         anchors.fill: parent
-        border.width: 1.2
+        radius: 18 * root.scaleFactor
+        border.width: 1.2 * root.scaleFactor
         border.color: root.pressed ? root.colorBorderPressed : root.colorBorder
         color: root.pressed ? root.colorBackgroundPressed : root.colorBackground
 
@@ -74,14 +77,14 @@ Item {
             anchors.fill: parent
             radius: parent.radius - 1.8
             color: "transparent"
-            border.width: 1.8
+            border.width: 1.8 * root.scaleFactor
             border.color: Qt.rgba(root.colorGlow.r, root.colorGlow.g,
                                   root.colorGlow.b, 0.15)
         }
 
         Rectangle {
             width: parent.width * 0.6
-            height: 2
+            height: 2 * root.scaleFactor
             color: root.colorGlow
             opacity: root.pressed ? 0.5 : 0.2
             anchors.horizontalCenter: parent.horizontalCenter
@@ -93,8 +96,8 @@ Item {
                 effect: DropShadow {
                     transparentBorder: true
                     color: root.colorGlow
-                    radius: 8
-                    samples: 16
+                    radius: 8 * root.scaleFactor
+                    samples: 16 * root.scaleFactor
                 }
             }
         }

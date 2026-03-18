@@ -18,10 +18,12 @@ ApplicationWindow {
             anchors.centerIn: parent
             scale: 1
         }*/
-        KeyinputBox {
+
+
+        /*KeyinputBox {
             anchors.centerIn: parent
             scale: 1
-        }
+        }*/
 
 
         /*SetBox {
@@ -29,9 +31,14 @@ ApplicationWindow {
             scale: 1
         }*/
 
+
         /*SetBoxGroup {
             anchors.centerIn: parent
             scale: 1
         }*/
+        SystemVersionBox {
+            anchors.centerIn: parent
+            scale: 1
+        }
     }
 }
