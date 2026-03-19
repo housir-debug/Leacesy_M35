@@ -12,8 +12,14 @@ class SerialBridge : public QObject
     Q_PROPERTY(bool isRemote MEMBER m_isRemote NOTIFY isRemote_Changed)
     Q_PROPERTY(QString IPaddress MEMBER m_IPaddress NOTIFY ipAdress_Changed)
     Q_PROPERTY(QString SM MEMBER m_SM NOTIFY sm_Changed)
-    Q_PROPERTY(int GPIBid MEMBER m_GPIBid NOTIFY gpibId_Changed)
-    Q_PROPERTY(int CANid MEMBER m_CANid NOTIFY canId_Changed)
+    Q_PROPERTY(QString GPIBid MEMBER m_GPIBid NOTIFY gpibId_Changed)
+    Q_PROPERTY(QString CANid MEMBER m_CANid NOTIFY canId_Changed)
+
+    //const
+    Q_PROPERTY(QString SoftVer MEMBER m_SoftVer NOTIFY softver_Changed)
+    Q_PROPERTY(QString HardVer MEMBER m_HardVer NOTIFY hardver_Changed)
+    Q_PROPERTY(QVariantList ChannelSV MEMBER m_ChannelSV NOTIFY channelSVChanged)
+    Q_PROPERTY(QVariantList ChannelHV MEMBER m_ChannelHV NOTIFY channelHVChanged)
 
     #define CHANNEL(n) \
         Q_PROPERTY(float ch##n##_Voltage MEMBER mCH##n##_Voltage NOTIFY CH##n##_VoltageChanged) \
@@ -31,6 +37,8 @@ class SerialBridge : public QObject
 
 signals:
     // to C++ model control
+    void to_GPIBid(QString id);
+    void to_CANid(QString id);
     #define CHANNEL(n) void to_UartChannel##n(quint8 cmd, quint8 func, const QByteArray& param,bool isScpi);
 
     CHANNEL_1_TO_33
@@ -42,6 +50,12 @@ signals:
     void sm_Changed();
     void gpibId_Changed();
     void canId_Changed();
+
+    //const
+    void softver_Changed();
+    void hardver_Changed();
+    void channelSVChanged();
+    void channelHVChanged();
 
     #define CHANNEL(n) \
         void CH##n##_VoltageChanged(); \
@@ -65,15 +79,20 @@ public:
     std::atomic<bool> m_isRemote{false};
     QString m_IPaddress;
     QString m_SM;
-    std::atomic<int> m_GPIBid{0};
-    std::atomic<int> m_CANid{0};
+    QString m_GPIBid;
+    QString m_CANid;
+
+    //const
+    QString m_SoftVer;
+    QString m_HardVer;
+    QVariantList m_ChannelSV;
+    QVariantList m_ChannelHV;
 
     #define CHANNEL(n) \
         std::atomic<float> mCH##n##_Voltage{0.0f}; \
         std::atomic<float> mCH##n##_Current{0.0f}; \
-        QString mCH##n##_Status; \
         QString mCH##n##_CurrentUnit{"A"}; \
-        \
+        QString mCH##n##_Status; \
         std::atomic<float> mCH##n##_cv{0.0f}; \
         std::atomic<float> mCH##n##_cc{1.0f}; \
         std::atomic<float> mCH##n##_ovp{8.0f}; \
@@ -82,19 +101,28 @@ public:
     CHANNEL_1_TO_33
     #undef CHANNEL
 
+    //web
+    QJsonArray getAllChannelsData();
+
     // C++ model signal to this for qml engine
     void update_Voltage(int ch,float voltage);
     void update_CurrentAndUnit(int ch,float current);
-    void update_status(int ch,const QByteArray& status);
-    QJsonArray getAllChannelsData();
-    void update_Configuration(int model,const QString& val);
+    void update_Status(int ch,quint16 status);
+    void update_Cv(int ch,float cv);
+    void update_Cc(int ch,float cc);
+    void update_Ovp(int ch,float ovp);
+    void update_IsOutput(int ch,bool status);
+    void update_SoftVer(int ch,const QString &ver);
+    void update_HardVer(int ch,const QString &ver);
 
     //Q_INVOKABLE And C++
     Q_INVOKABLE void update_remotemodel(bool is_remote);
+    Q_INVOKABLE void update_Configuration(int model,const QString& val);
+    void refresh_interfaces(const QString& ip, const QString& netmask);
 
     // qml procress
     Q_INVOKABLE void setChannel_Output(int channel,bool switchs);
-    Q_INVOKABLE QString setChannel_CurrentUnit();
     Q_INVOKABLE void setChannel_Setstatus(int channel,int model,const QString& val);
+    Q_INVOKABLE QString setChannel_CurrentUnit();
     void to_Channel(int channel,quint8 cmd,quint8 func,const QByteArray& param);
 };

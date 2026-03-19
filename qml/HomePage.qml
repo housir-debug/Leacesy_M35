@@ -100,8 +100,8 @@ Item {
                 box5_mainText: "Model"
                 box5_subText: Uart_bridge.isRemote ? "Remote" : "Local"
                 box5_subTextColor: Uart_bridge.isRemote ? "#FF3D52" : "#1DBF75"
+                box5_enclick: true
                 onBox5Clicked: {
-                    box5_enclick = true
                     Uart_bridge.update_remotemodel(!Uart_bridge.isRemote)
                 }
             }

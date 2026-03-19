@@ -30,10 +30,11 @@ public:
     static QString s_model;
     static QString s_serialNumber;
     static QString s_firmwareVersion;
+    static QString s_hardwareVersion;
     static QString s_IP;
     static QString s_SM;
-    static int s_GPIBid;
-    static int S_CANid;
+    static QString s_GPIBid;
+    static QString s_CANid;
 
     static QString s_loglevel;
     static bool s_enablelogfile;

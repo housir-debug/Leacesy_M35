@@ -130,16 +130,4 @@ Item {
             }
         }
     }
-
-    function setAllChannelSoftwareVersions(versions) {
-        if (versions && versions.length === 36) {
-            root.channelSoftwareVersions = versions.slice()
-        }
-    }
-
-    function setAllChannelHardwareVersions(versions) {
-        if (versions && versions.length === 36) {
-            root.channelHardwareVersions = versions.slice()
-        }
-    }
 }

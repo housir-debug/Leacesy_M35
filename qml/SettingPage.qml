@@ -23,10 +23,10 @@ Item {
                 id: channel
                 Layout.fillHeight: true
                 Layout.fillWidth: true
-                Layout.preferredWidth: 280
-                Layout.preferredHeight: 400
                 enclick: !Uart_bridge.isRemote
-                channelOutput: false
+                channelOutput: settingPage.initialChannel
+                               !== 0 ? Uart_bridge["ch" + settingPage.initialChannel
+                                                   + "_isOutput"] : false
                 channelName: settingPage.initialChannel
                              === 0 ? "CH*" : "CH" + settingPage.initialChannel
                 voltage: settingPage.initialChannel
@@ -53,14 +53,16 @@ Item {
                           !== 0 ? Uart_bridge["ch" + settingPage.initialChannel + "_Status"].charAt(
                                       11) === "1" : false
 
-
-                /*onClicked: {
-                    channelOutput = !channelOutput
+                onClicked: {
                     Uart_bridge.setChannel_Output(settingPage.initialChannel,
-                                                  channelOutput)
+                                                  !channelOutput)
+                    if (settingPage.initialChannel === 0) {
+                        channelOutput = !channelOutput
+                    }
                 }
 
-                onPressAndHold: {
+
+                /*onPressAndHold: {
                     if (channelOutput) {
                     } else {
                     }---用于扩展功能
@@ -69,10 +71,9 @@ Item {
 
             KeyinputBox {
                 id: keyinputset
+                enclick: !Uart_bridge.isRemote
                 Layout.fillHeight: true
                 Layout.fillWidth: true
-                Layout.preferredWidth: 280
-                Layout.preferredHeight: 400
 
                 onEntervalue: {
                     //console.log("设置通道状态：" + value)
@@ -86,8 +87,6 @@ Item {
                 id: groupsetbox
                 Layout.fillHeight: true
                 Layout.fillWidth: true
-                Layout.preferredWidth: 88
-                Layout.preferredHeight: 417
                 enclick: !Uart_bridge.isRemote
                 property int currentsetmodel: 0
 
@@ -121,27 +120,18 @@ Item {
                     box3_pressed = true
                 }
 
-
-                /*box4_mainText: settingPage.initialChannel === 0 ? "All" : ""
-                box4_subText: "SOC"
+                box4_mainText: "EXIT"
+                box4_subText: ""
                 onBox4Clicked: {
-
-                    // 待补充
-                }*/
-                box4_mainText: settingPage.initialChannel === 0 ? "All" : ""
-                property bool allOn: false
-                box4_subText: allOn ? "OFF" : "ON"
-                box4_subTextColor: allOn ? "#FF3D52" : "#1DBF75"
-                onBox4Clicked: {
-                    allOn = !allOn
-                    Uart_bridge.setChannel_Output(settingPage.initialChannel,
-                                                  allOn)
+                    backRequested()
                 }
 
-                box5_mainText: "EXIT"
-                box5_subText: ""
+                box5_mainText: "Model"
+                box5_subText: Uart_bridge.isRemote ? "Remote" : "Local"
+                box5_subTextColor: Uart_bridge.isRemote ? "#FF3D52" : "#1DBF75"
+                box5_enclick: true
                 onBox5Clicked: {
-                    backRequested()
+                    Uart_bridge.update_remotemodel(!Uart_bridge.isRemote)
                 }
             }
         }

@@ -46,9 +46,15 @@ private:
     void handleErrorcmd          (quint8 func);
 
     void startLoopbackTest();
-    void sendNextCommand(QMap<int, QByteArray>::iterator it,QMap<int, QByteArray>::iterator end);
+    void sendInitCommand();
 
 private:
+    struct Command {
+        quint8 cmd;
+        quint8 func;
+        QByteArray param;
+        bool isScpi;
+    };
 
     QSerialPort *m_serialPort{nullptr};
     QThread *m_serialThread{nullptr};
@@ -58,7 +64,8 @@ private:
     SerialBridge* m_qmlbridge{nullptr};
 
     quint8 m_channel{0};
-    QMap<int, QByteArray> m_commands;
+    QVector<Command> m_initCommands;
+    int m_currentInitIndex{0};
     QElapsedTimer m_testTimer;
     bool m_isTesting{false};
 

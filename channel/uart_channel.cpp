@@ -7,18 +7,20 @@ Q_LOGGING_CATEGORY(uart_channel, "UART_CHANNEL:")
 
 SerialWorker::SerialWorker(ScpiManager* scpi,SerialBridge* qml,QObject *parent):
     QObject(parent), m_scpiManager(scpi), m_qmlbridge(qml){
-    m_commands = {
-        {0,  QByteArray::fromHex("aa 55 04 01 00 01 06 ee")},
-        {1,  QByteArray::fromHex("aa 55 05 04 0e 01 00 18 ee")},
-        {2,  QByteArray::fromHex("aa 55 08 04 0c 01 3f 80 00 00 d8 ee")},
-        {3,  QByteArray::fromHex("aa 55 08 04 1e 01 37 82 dc bf 7f ee")},
-        {4,  QByteArray::fromHex("aa 55 05 04 0f 01 01 1a ee")},
-        {5,  QByteArray::fromHex("aa 55 08 02 00 01 00 00 00 00 0b ee")},
-        {6,  QByteArray::fromHex("aa 55 08 02 01 01 3f 80 00 00 cb ee")},
-        {7,  QByteArray::fromHex("aa 55 08 04 1f 01 ff ff ff ff 28 ee")},
-        {8,  QByteArray::fromHex("aa 55 08 02 03 01 41 00 00 00 4f ee")},
-        {9,  QByteArray::fromHex("aa 55 06 04 1d 01 00 01 29 ee")},
-        {10, QByteArray::fromHex("aa 55 08 02 02 01 00 00 00 00 0d ee")}
+    m_initCommands = {
+        {0x01, 0x00, "", false},// Turnoff output
+        {0x04, 0x0e, QByteArray::fromHex("00"), false},//set A Unit
+        {0x04, 0x0c, QByteArray::fromHex("3f 80 00 00"), false},//set NPLC =1
+        {0x04, 0x1e, QByteArray::fromHex("37 82 dc bf"), false},//set Tint =1.56e-05
+        {0x04, 0x0f, QByteArray::fromHex("01"), false},//set measure average =1
+        {0x02, 0x00, QByteArray::fromHex("00 00 00 00"), false},//set cv =0
+        {0x02, 0x01, QByteArray::fromHex("3f 80 00 00"), false},//set cc =1
+        {0x04, 0x1f, QByteArray::fromHex("ff ff ff ff"), false},//set relarge
+        {0x02, 0x03, QByteArray::fromHex("41 00 00 00"), false},//set ovp =8
+        {0x04, 0x1d, QByteArray::fromHex("00 01"), false},//set Output impedance step =1
+        {0x02, 0x02, QByteArray::fromHex("00 00 00 00"), false},//set Output impedance =0
+        {0x05, 0x84, "", false},//query software
+        {0x05, 0x85, "", false},//query Hardware
     };
 }
 SerialWorker::~SerialWorker()
@@ -106,7 +108,7 @@ bool SerialWorker::initSerialPort(const QString &portName,
 
         QMetaObject::invokeMethod(this, [this]() {
             if (m_serialPort->open(QIODevice::ReadWrite)) {
-                sendNextCommand(m_commands.begin(), m_commands.end());
+                sendInitCommand();
             }
         }, Qt::QueuedConnection);
 
@@ -116,21 +118,22 @@ bool SerialWorker::initSerialPort(const QString &portName,
     return false;
 }
 
-void SerialWorker::sendNextCommand(QMap<int, QByteArray>::iterator it,
-                     QMap<int, QByteArray>::iterator end)
+void SerialWorker::sendInitCommand()
 {
-    if (it == end) {
-        qCDebug(uart_channel) << "All init commands sent, starting refresh timer";
-        // startLoopbackTest();   // Self-assessment
-        //m_refreshtimer->start();
+    if (m_currentInitIndex >= m_initCommands.size()) {
+        qCDebug(uart_channel)<<"Channel_"<< m_channel<< "All init commands sent, starting refresh timer";
+        if(ConfigManager::s_enableDisplay || ConfigManager::s_enableWEBServer){
+            //m_refreshtimer->start();
+        }
         return;
     }
 
-    writeSerialData(it.value(), false);
-    // 100ms
-    QTimer::singleShot(100, this, [this, it, end]() {
-        sendNextCommand(std::next(it), end);
-    });
+    const Command& cmd = m_initCommands[m_currentInitIndex];
+    writeFrame(cmd.cmd, cmd.func, cmd.param, cmd.isScpi);
+    m_currentInitIndex++;
+
+    // 60ms
+    QTimer::singleShot(60, this, &SerialWorker::sendInitCommand);
 }
 
 // ========================== 信息处理部分 ===================================
@@ -256,22 +259,28 @@ void SerialWorker::handleuartrequest(quint8 length){
 
 void SerialWorker::handleOutputcmd(quint8 func){
     quint8 raw = -1;
+    bool status = false;
     if (!m_readparam.isEmpty()){
         raw = static_cast<quint8>(m_readparam[0]);
+        status = raw==0 ? false:true;
     }
 
     switch (func){
         case 0x80:{
-            bool status = raw==0 ? false:true;
             m_scpiManager->processCHStateResponse(status);
             qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Query:"<<status;
             return;
         }
-        case 0x00:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Been OFF";return;
-        case 0x01:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Been ON"; return;
+        case 0x00:
+            m_qmlbridge->update_IsOutput(m_channel,false);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Been OFF";
+            return;
+        case 0x01:
+            m_qmlbridge->update_IsOutput(m_channel,true);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Been ON";
+            return;
         case 0x08:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Bandwidth Been:"<<(raw==0 ? "LOW":"HIGH");return;
         case 0x88:{
-            bool status = raw==0 ? false:true;
             m_scpiManager->processCHStateResponse(status);
             qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Output Query:"<<(status ? "HIGH":"LOW");
             return;
@@ -299,12 +308,18 @@ void SerialWorker::handleSettingcmd(quint8 func){
             m_scpiManager->processCHFloatResponse(shf);
             qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Setting Volt:"<<shf;
             return;
-        case 0x00:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Setting Volt:"<<shf;return;
+        case 0x00:
+            m_qmlbridge->update_Cv(m_channel,shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Setting Volt:"<<shf;
+            return;
         case 0x81:
             m_scpiManager->processCHFloatResponse(shf);
             qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Setting Curr:"<<shf;
             return;
-        case 0x01:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Setting Curr:"<<shf;return;
+        case 0x01:
+            m_qmlbridge->update_Cc(m_channel,shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Setting Curr:"<<shf;
+            return;
         case 0x82:
             m_scpiManager->processCHFloatResponse(shf);
             qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Setting Tmpe:"<<shf;
@@ -314,7 +329,10 @@ void SerialWorker::handleSettingcmd(quint8 func){
             m_scpiManager->processCHFloatResponse(shf);
             qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Setting Prot:"<<shf;
             return;
-        case 0x03:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Setting Prot:"<<shf;return;
+        case 0x03:
+            m_qmlbridge->update_Ovp(m_channel,shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Setting OVP Prot:"<<shf;
+            return;
         case 0x84:
             m_scpiManager->processCHFloatResponse(shf);
             qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Setting Ther:"<<shf;
@@ -580,13 +598,16 @@ void SerialWorker::handleMeasurementcmd(quint8 func){
 }
 
 void SerialWorker::handleRegistercmd(quint8 func){
-    float shf{0.0f};
+    QString verString;
     quint16 sht{0};
     quint8 shts{0};
 
     if (m_readparam.size() == 4){
-        quint32 raw = qFromBigEndian<quint32>(reinterpret_cast<const uchar*>(m_readparam.constData()));
-        memcpy(&shf, &raw, sizeof(float));
+        verString = QString("%1.%2.%3.%4")
+                      .arg(static_cast<quint8>(m_readparam[0]))
+                      .arg(static_cast<quint8>(m_readparam[1]))
+                      .arg(static_cast<quint8>(m_readparam[2]))
+                      .arg(static_cast<quint8>(m_readparam[3]));
     }else if (m_readparam.size() == 2){
         quint16 raw = qFromBigEndian<quint16>(reinterpret_cast<const uchar*>(m_readparam.constData()));
         memcpy(&sht, &raw, 2);
@@ -596,7 +617,7 @@ void SerialWorker::handleRegistercmd(quint8 func){
 
     switch (func){
         case 0x80:
-            m_qmlbridge->update_status(m_channel,m_readparam);
+            m_qmlbridge->update_Status(m_channel,sht);
             if (m_isSCPIrequest){m_scpiManager->processCHIntResponse(sht);}
             qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Register Status:"<<sht;
             return;
@@ -614,12 +635,12 @@ void SerialWorker::handleRegistercmd(quint8 func){
             return;
         case 0x03:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Register QUECLE";return;
         case 0x84:
-            m_scpiManager->processCHFloatResponse(shf);
-            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Register Software:"<<shf;
+            m_qmlbridge->update_SoftVer(m_channel,verString);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Register Software:"<<verString;
             return;
         case 0x85:
-            m_scpiManager->processCHFloatResponse(shf);
-            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Register Hardware:"<<shf;
+            m_qmlbridge->update_HardVer(m_channel,verString);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Register Hardware:"<<verString;
             return;
     }
 }

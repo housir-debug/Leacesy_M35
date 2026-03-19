@@ -9,6 +9,7 @@ Item {
     implicitWidth: 280
     implicitHeight: 400
 
+    property bool enclick: true
     property alias text: defaultField.text
     signal entervalue(string value)
 
@@ -91,6 +92,7 @@ Item {
 
                 ToolButton {
                     id: enterBtn
+                    enabled: root.enclick
                     anchors.right: parent.right
                     anchors.rightMargin: 6 * root.scaleFactor
                     anchors.verticalCenter: parent.verticalCenter
@@ -203,6 +205,7 @@ Item {
 
                     delegate: Button {
                         id: btn
+                        enabled: root.enclick
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         Layout.preferredWidth: 1

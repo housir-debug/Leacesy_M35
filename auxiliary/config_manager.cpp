@@ -49,10 +49,11 @@ QString ConfigManager::s_manufacturer = "Leacesy";
 QString ConfigManager::s_model = "66004";
 QString ConfigManager::s_serialNumber = "SN123456789";
 QString ConfigManager::s_firmwareVersion = "1.0.0";
+QString ConfigManager::s_hardwareVersion = "1.0.0";
 QString ConfigManager::s_IP = "192.168.137.33";
 QString ConfigManager::s_SM = "255.255.255.0";
-int ConfigManager::s_GPIBid = 5;
-int ConfigManager::S_CANid = 6;
+QString ConfigManager::s_GPIBid = "0";
+QString ConfigManager::s_CANid = "0";
 
 QString ConfigManager::s_loglevel = "release";
 bool ConfigManager::s_enablelogfile = false;
@@ -83,8 +84,8 @@ bool ConfigManager::init(const QString &configDir)
     s_serialNumber = s_settings->value("Device/SerialNumber").toString();
     s_IP = s_settings->value("Device/IP").toString();
     s_SM = s_settings->value("Device/SM").toString();
-    s_GPIBid = s_settings->value("Device/GPIBID").toInt();
-    S_CANid = s_settings->value("Device/CANID").toInt();
+    s_GPIBid = s_settings->value("Device/GPIBID").toString();
+    s_CANid = s_settings->value("Device/CANID").toString();
 
     s_loglevel = s_settings->value("Logger/logLevel").toString();
     s_enablelogfile = s_settings->value("Logger/EnablelogFile").toBool();

@@ -20,7 +20,7 @@ Item {
                 id: sysStacklayout
                 Layout.fillHeight: true
                 Layout.fillWidth: true
-                Layout.preferredWidth: 480
+                //Layout.preferredWidth: 480
                 currentIndex: 0
 
                 // index=0
@@ -35,10 +35,10 @@ Item {
 
                 // index=1
                 SystemVersionBox {
-                    softwareVersion: ""
-                    hardwareVersion: ""
-                    //channelSoftwareVersions: "" //组
-                    //channelHardwareVersions: "" //组
+                    softwareVersion: Uart_bridge.SoftVer
+                    hardwareVersion: Uart_bridge.HardVer
+                    channelSoftwareVersions: Uart_bridge.ChannelSV
+                    channelHardwareVersions: Uart_bridge.ChannelHV
                 }
             }
 
@@ -46,7 +46,7 @@ Item {
                 id: groupsysbox
                 Layout.fillHeight: true
                 Layout.fillWidth: true
-                Layout.preferredWidth: 88
+                //Layout.preferredWidth: 88
                 enclick: !Uart_bridge.isRemote
                 property int currentsetmodel: 0
 
