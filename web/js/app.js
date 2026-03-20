@@ -36,7 +36,7 @@ class InstrumentApp {
                 div.textContent = cmd;
                 div.ondblclick = () => {
                     document.getElementById('command-input').value = cmd;
-                    this.sendCommand();
+                    //this.sendCommand();//需要添加通道号等等
                 };
                 list.appendChild(div);
             });

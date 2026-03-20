@@ -85,6 +85,8 @@ void UartServerManager::handleReadyRead()
     m_qmlbridge->update_remotemodel(true);
     m_responsebuffer = m_scpiManager->processCommand(m_readbuffer);
     m_qmlbridge->update_remotemodel(false);
+    if (m_responsebuffer.isEmpty()){return;}
+
     qCDebug(uart_server)<<"Uart SCPI Response: "<<m_responsebuffer;
     if (!m_responsebuffer.isEmpty()){m_uartServer->write(m_responsebuffer);}
 }

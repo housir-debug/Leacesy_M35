@@ -18,7 +18,7 @@ SerialWorker::SerialWorker(ScpiManager* scpi,SerialBridge* qml,QObject *parent):
         {0x04, 0x1f, QByteArray::fromHex("ff ff ff ff"), false},//set relarge
         {0x02, 0x03, QByteArray::fromHex("41 00 00 00"), false},//set ovp =8
         {0x04, 0x1d, QByteArray::fromHex("00 01"), false},//set Output impedance step =1
-        {0x02, 0x02, QByteArray::fromHex("00 00 00 00"), false},//set Output impedance =0
+        {0x02, 0x02, QByteArray::fromHex("00 00 00 00"), false},//set Output impedance =0 -> cv model
         {0x05, 0x84, "", false},//query software
         {0x05, 0x85, "", false},//query Hardware
     };

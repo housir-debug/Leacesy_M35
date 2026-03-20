@@ -20,14 +20,14 @@ QJsonArray SerialBridge::getAllChannelsData() {
         do { \
             QJsonObject channel; \
             channel["channel"] = n; \
+            channel["isOutput"] = mCH##n##_isOutput.load(); \
             channel["voltage"] = mCH##n##_Voltage.load(); \
             channel["current"] = mCH##n##_Current.load(); \
+            channel["current_unit"] = mCH##n##_CurrentUnit; \
             channel["cvSetpoint"] = mCH##n##_cv.load(); \
             channel["ccSetpoint"] = mCH##n##_cc.load(); \
             channel["ovSetpoint"] = mCH##n##_ovp.load(); \
             channel["status"] = mCH##n##_Status; \
-            channel["enabled"] = mCH##n##_isOutput.load(); \
-            channel["current_unit"] = mCH##n##_CurrentUnit; \
             channels.append(channel); \
         } while(0);
 

@@ -84,7 +84,7 @@ public:
         std::atomic<float> mCH##n##_Voltage{0.0f}; \
         std::atomic<float> mCH##n##_Current{0.0f}; \
         QString mCH##n##_CurrentUnit{"A"}; \
-        QString mCH##n##_Status; \
+        QString mCH##n##_Status{"0000000000000000"}; \
         std::atomic<float> mCH##n##_cv{0.0f}; \
         std::atomic<float> mCH##n##_cc{1.0f}; \
         std::atomic<float> mCH##n##_ovp{8.0f}; \

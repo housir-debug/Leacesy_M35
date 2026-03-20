@@ -755,8 +755,16 @@ size_t ScpiManager::staticWrite(scpi_t* context, const char* data, size_t len) {
 }
 
 int ScpiManager::staticError(scpi_t* context, int_fast16_t err) {
-    Q_UNUSED(context);
-    qCWarning(scpi) << "SCPI Error Code:" << err << "Desc:" << SCPI_ErrorTranslate(err);
+    auto* self = static_cast<ScpiManager*>(context->user_context);
+    if (self && err != 0) {
+        qCWarning(scpi) << "SCPI Error Code:" << err << "Desc:" << SCPI_ErrorTranslate(err);
+        QString errorMsg = QString("%1,\"%2\"").arg(err).arg(SCPI_ErrorTranslate(err));
+        self->m_responseBuffer.append(errorMsg.toUtf8());
+    }
+
+    // 0    : 错误已被处理，解析器不需要再处理
+    // 1    : 错误未被处理，让解析器使用默认错误处理
+    // !0   : 解析器需要继续处理或执行默认行为
     return 0;
 }
 

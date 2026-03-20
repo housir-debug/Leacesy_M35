@@ -139,8 +139,8 @@ void TcpServerManager::processClientData(QTcpSocket *client)
         m_qmlbridge->update_remotemodel(true);
         QByteArray response = m_scpiManager->processCommand(m_readbuffer);
         m_qmlbridge->update_remotemodel(false);
-        qCDebug(tcp)<<"SOCKET SCPI Response: "<<response;
         if (!response.isEmpty()){ client->write(response);}
+        qCDebug(tcp)<<"SOCKET SCPI Response: "<<response;
         m_readbuffer.clear();
         return;
     }
