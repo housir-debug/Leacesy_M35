@@ -3,7 +3,8 @@
 
 Q_LOGGING_CATEGORY(uart_server, "UART_SERVER:")
 
-UartServerManager::UartServerManager(ScpiManager* scpi,QObject *parent): QObject(parent), m_scpiManager(scpi) {}
+UartServerManager::UartServerManager(ScpiManager* scpi,SerialBridge* qml,QObject *parent):
+    QObject(parent), m_scpiManager(scpi), m_qmlbridge(qml) {}
 UartServerManager::~UartServerManager()
 {
     qCDebug(uart_server)<<"UartServerManager Destroyed!!!";
@@ -81,7 +82,9 @@ void UartServerManager::handleReadyRead()
     qCDebug(uart_server)<<"Uart SCPI Request Commend: "<<message;
 
     m_responsebuffer.clear();
+    m_qmlbridge->update_remotemodel(true);
     m_responsebuffer = m_scpiManager->processCommand(m_readbuffer);
+    m_qmlbridge->update_remotemodel(false);
     qCDebug(uart_server)<<"Uart SCPI Response: "<<m_responsebuffer;
     if (!m_responsebuffer.isEmpty()){m_uartServer->write(m_responsebuffer);}
 }

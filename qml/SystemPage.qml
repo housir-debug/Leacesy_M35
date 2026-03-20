@@ -20,12 +20,13 @@ Item {
                 id: sysStacklayout
                 Layout.fillHeight: true
                 Layout.fillWidth: true
-                //Layout.preferredWidth: 480
+                Layout.preferredWidth: 88
                 currentIndex: 0
 
                 // index=0
                 KeyinputBox {
                     id: syskeyinput
+                    text: Uart_bridge.IPaddress
                     onEntervalue: {
                         //console.log("设置通道状态：" + value)
                         Uart_bridge.update_Configuration(
@@ -34,11 +35,96 @@ Item {
                 }
 
                 // index=1
-                SystemVersionBox {
-                    softwareVersion: Uart_bridge.SoftVer
-                    hardwareVersion: Uart_bridge.HardVer
-                    channelSoftwareVersions: Uart_bridge.ChannelSV
-                    channelHardwareVersions: Uart_bridge.ChannelHV
+                Rectangle {
+                    id: versionBox
+                    property real scaleFactor: 1.0
+                    color: "#0d1b2a"
+                    border.color: "#2a3b4c"
+                    border.width: 1 * versionBox.scaleFactor
+                    radius: 6 * versionBox.scaleFactor
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 2.4 * versionBox.scaleFactor
+                        spacing: 2.4 * versionBox.scaleFactor
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            Layout.preferredHeight: 9
+                            color: "#2a3b4c"
+                            radius: 6 * versionBox.scaleFactor
+                            border.color: "#2a3b4c"
+                            border.width: 1 * versionBox.scaleFactor
+
+                            RowLayout {
+                                anchors.fill: parent
+
+                                Text {
+                                    text: "SW-Ver:    V" + Uart_bridge.SoftVer
+                                    font.pixelSize: 18 * versionBox.scaleFactor
+                                    color: "#e0e0e0"
+                                    Layout.alignment: Qt.AlignHCenter
+                                }
+
+                                Text {
+                                    text: "HW-Ver:    V" + Uart_bridge.HardVer
+                                    font.pixelSize: 18 * versionBox.scaleFactor
+                                    color: "#e0e0e0"
+                                    Layout.alignment: Qt.AlignHCenter
+                                }
+                            }
+                        }
+
+                        GridLayout {
+                            id: channelsGridinfrom
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            Layout.preferredHeight: 91
+                            columnSpacing: 1 * versionBox.scaleFactor
+                            rowSpacing: 1 * versionBox.scaleFactor
+                            columns: 9
+                            rows: 4
+
+                            Repeater {
+                                model: 36 // channel count
+                                delegate: Rectangle {
+                                    required property int index
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    color: "#2a3b4c"
+                                    radius: 6 * versionBox.scaleFactor
+                                    border.color: "#2a3b4c"
+                                    border.width: 1 * versionBox.scaleFactor
+
+                                    ColumnLayout {
+                                        anchors.fill: parent
+
+                                        Text {
+                                            text: "CH_" + (index + 1)
+                                            font.pixelSize: 18 * versionBox.scaleFactor
+                                            color: "#4a9eff"
+                                            Layout.alignment: Qt.AlignHCenter
+                                        }
+
+                                        Text {
+                                            text: "S:V" + Uart_bridge["ch" + (index + 1) + "_sv"]
+                                            font.pixelSize: 12 * versionBox.scaleFactor
+                                            color: "#e0e0e0"
+                                            Layout.alignment: Qt.AlignHCenter
+                                        }
+
+                                        Text {
+                                            text: "H:V" + Uart_bridge["ch" + (index + 1) + "_hv"]
+                                            font.pixelSize: 12 * versionBox.scaleFactor
+                                            color: "#e0e0e0"
+                                            Layout.alignment: Qt.AlignHCenter
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -46,7 +132,7 @@ Item {
                 id: groupsysbox
                 Layout.fillHeight: true
                 Layout.fillWidth: true
-                //Layout.preferredWidth: 88
+                Layout.preferredWidth: 12
                 enclick: !Uart_bridge.isRemote
                 property int currentsetmodel: 0
 

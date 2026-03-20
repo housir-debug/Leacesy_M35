@@ -136,7 +136,9 @@ void TcpServerManager::processClientData(QTcpSocket *client)
     QString message = QString::fromUtf8(m_readbuffer).trimmed();
     if (message.startsWith("*") || message.contains(":")) {     // SOCKET ASCll Define(0x00-0x7F)
         qCDebug(tcp)<<"SOCKET SCPI Request Commend: "<<message;
+        m_qmlbridge->update_remotemodel(true);
         QByteArray response = m_scpiManager->processCommand(m_readbuffer);
+        m_qmlbridge->update_remotemodel(false);
         qCDebug(tcp)<<"SOCKET SCPI Response: "<<response;
         if (!response.isEmpty()){ client->write(response);}
         m_readbuffer.clear();
@@ -247,7 +249,9 @@ void TcpServerManager::handleDeviceWrite(QTcpSocket* client,const quint32 xid,co
     qCDebug(tcp)<<"VXI-11 Link: " <<lid<<" Received SCPI Command: "<<QString::fromUtf8(scpicmd).trimmed();
 
     DeviceLink& link = m_deviceLinks[lid];
+    m_qmlbridge->update_remotemodel(true);
     link.VxiScpi_response = m_scpiManager->processCommand(scpicmd);
+    m_qmlbridge->update_remotemodel(false);
 
     QDataStream stream(&m_responsebuffer, QIODevice::WriteOnly);
     stream.setByteOrder(QDataStream::BigEndian);

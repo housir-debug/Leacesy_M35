@@ -317,7 +317,9 @@ void WebServer::onWsTextMessageReceived(QWebSocket *socket,const QString &messag
         QByteArray cmd = (cmdString+"\n").toUtf8();
         qCDebug(web) << "SCPI command received:" << cmd;
 
+        m_qmlbridge->update_remotemodel(true);
         m_responsebuffer = m_scpiManager->processCommand(cmd);
+        m_qmlbridge->update_remotemodel(false);
         if (m_responsebuffer.isEmpty()){return;}
 
         QJsonObject response;

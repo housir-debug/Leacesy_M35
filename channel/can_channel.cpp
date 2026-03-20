@@ -1,4 +1,4 @@
-#include "canworker.h"
+#include "can_channel.h"
 #include <QtCore>
 
 // Linux SocketCAN

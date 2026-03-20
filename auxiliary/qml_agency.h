@@ -14,12 +14,8 @@ class SerialBridge : public QObject
     Q_PROPERTY(QString SM MEMBER m_SM NOTIFY sm_Changed)
     Q_PROPERTY(QString GPIBid MEMBER m_GPIBid NOTIFY gpibId_Changed)
     Q_PROPERTY(QString CANid MEMBER m_CANid NOTIFY canId_Changed)
-
-    //const
     Q_PROPERTY(QString SoftVer MEMBER m_SoftVer NOTIFY softver_Changed)
     Q_PROPERTY(QString HardVer MEMBER m_HardVer NOTIFY hardver_Changed)
-    Q_PROPERTY(QVariantList ChannelSV MEMBER m_ChannelSV NOTIFY channelSVChanged)
-    Q_PROPERTY(QVariantList ChannelHV MEMBER m_ChannelHV NOTIFY channelHVChanged)
 
     #define CHANNEL(n) \
         Q_PROPERTY(float ch##n##_Voltage MEMBER mCH##n##_Voltage NOTIFY CH##n##_VoltageChanged) \
@@ -30,7 +26,9 @@ class SerialBridge : public QObject
         Q_PROPERTY(float ch##n##_cv MEMBER mCH##n##_cv NOTIFY CH##n##_cvChanged) \
         Q_PROPERTY(float ch##n##_cc MEMBER mCH##n##_cc NOTIFY CH##n##_ccChanged) \
         Q_PROPERTY(float ch##n##_ovp MEMBER mCH##n##_ovp NOTIFY CH##n##_ovpChanged) \
-        Q_PROPERTY(bool ch##n##_isOutput MEMBER mCH##n##_isOutput NOTIFY CH##n##_isOutputChanged)
+        Q_PROPERTY(bool ch##n##_isOutput MEMBER mCH##n##_isOutput NOTIFY CH##n##_isOutputChanged) \
+        Q_PROPERTY(QString ch##n##_sv MEMBER mCH##n##_sv NOTIFY CH##n##_svChanged) \
+        Q_PROPERTY(QString ch##n##_hv MEMBER mCH##n##_hv NOTIFY CH##n##_hvChanged)
 
     CHANNEL_1_TO_33
     #undef CHANNEL
@@ -50,12 +48,8 @@ signals:
     void sm_Changed();
     void gpibId_Changed();
     void canId_Changed();
-
-    //const
     void softver_Changed();
     void hardver_Changed();
-    void channelSVChanged();
-    void channelHVChanged();
 
     #define CHANNEL(n) \
         void CH##n##_VoltageChanged(); \
@@ -66,7 +60,9 @@ signals:
         void CH##n##_cvChanged(); \
         void CH##n##_ccChanged(); \
         void CH##n##_ovpChanged(); \
-        void CH##n##_isOutputChanged();
+        void CH##n##_isOutputChanged(); \
+        void CH##n##_svChanged(); \
+        void CH##n##_hvChanged();
 
     CHANNEL_1_TO_33
     #undef CHANNEL
@@ -81,12 +77,8 @@ public:
     QString m_SM;
     QString m_GPIBid;
     QString m_CANid;
-
-    //const
     QString m_SoftVer;
     QString m_HardVer;
-    QVariantList m_ChannelSV;
-    QVariantList m_ChannelHV;
 
     #define CHANNEL(n) \
         std::atomic<float> mCH##n##_Voltage{0.0f}; \
@@ -96,7 +88,9 @@ public:
         std::atomic<float> mCH##n##_cv{0.0f}; \
         std::atomic<float> mCH##n##_cc{1.0f}; \
         std::atomic<float> mCH##n##_ovp{8.0f}; \
-        std::atomic<bool> mCH##n##_isOutput{false};
+        std::atomic<bool> mCH##n##_isOutput{false}; \
+        QString mCH##n##_sv{"0.0.0.0"}; \
+        QString mCH##n##_hv{"0.0.0.0"};
 
     CHANNEL_1_TO_33
     #undef CHANNEL

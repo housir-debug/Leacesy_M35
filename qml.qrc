@@ -10,7 +10,6 @@
         <file>qml/SettingPage.qml</file>
         <file>qml/HomePage.qml</file>
         <file>qml/SystemPage.qml</file>
-        <file>qml/Component/SystemVersionBox.qml</file>
     </qresource>
     <qresource prefix="/web">
         <file>web/index.html</file>

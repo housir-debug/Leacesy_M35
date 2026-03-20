@@ -14,8 +14,9 @@ HEADERS += \
     auxiliary/scpi_handle.h \
     auxiliary/simple_logger.h \
     auxiliary/config_manager.h \
+    channel/can_channel.h \
     channel/uart_channel.h \
-    channel/canworker.h \
+    control/can_server.h \
     control/tcp_server.h \
     control/tirpc_loader.h \
     control/web_server.h \
@@ -27,8 +28,9 @@ SOURCES += \
     auxiliary/scpi_handle.cpp \
     auxiliary/simple_logger.cpp \
     auxiliary/config_manager.cpp \
+    channel/can_channel.cpp \
     channel/uart_channel.cpp \
-    channel/canworker.cpp \
+    control/can_server.cpp \
     control/tcp_server.cpp \
     control/tirpc_loader.cpp \
     control/web_server.cpp \

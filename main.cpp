@@ -8,7 +8,7 @@
 #include "auxiliary/scpi_handle.h"
 #include "auxiliary/qml_agency.h"
 #include "channel/uart_channel.h"
-#include "channel/canworker.h"
+#include "channel/can_channel.h"
 #include "control/tcp_server.h"
 #include "control/web_server.h"
 #include "control/uart_server.h"
@@ -180,7 +180,7 @@ int main(int argc, char *argv[])
 
     std::unique_ptr<UartServerManager> uartServer;
     if (ConfigManager::s_enableUARTServer){
-        uartServer = std::make_unique<UartServerManager>(Scpi_process.get());
+        uartServer = std::make_unique<UartServerManager>(Scpi_process.get(),Uart_bridge.get());
         if (!uartServer->startServer("/dev/ttyWCH27",QSerialPort::Baud38400)) {return 1;}
     }
 

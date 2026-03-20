@@ -10,13 +10,6 @@ SerialBridge::SerialBridge(QObject *parent) : QObject(parent) {
     m_CANid = ConfigManager::s_CANid;
     m_SoftVer = ConfigManager::s_firmwareVersion;
     m_HardVer = ConfigManager::s_hardwareVersion;
-    m_ChannelSV.reserve(36);
-    m_ChannelHV.reserve(36);
-
-    for (int i = 0; i < 36; ++i) {
-        m_ChannelSV.append("0.0.0.0");
-        m_ChannelHV.append("0.0.0.0");
-    }
 }
 
 QJsonArray SerialBridge::getAllChannelsData() {
@@ -71,7 +64,7 @@ void SerialBridge::update_CurrentAndUnit(int ch,float current){
                 qCDebug(uart_bridge) << "Channel" << n << "current updated to:" << current; \
                 \
                 if (mCH##n##_CurrentUnit != newUnit) { \
-                    mCH##n##_CurrentUnit == newUnit; \
+                    mCH##n##_CurrentUnit = newUnit; \
                     emit CH##n##_CurrentUnitChanged(); \
                 } \
                 return; \
@@ -158,13 +151,31 @@ void SerialBridge::update_IsOutput(int ch,bool status){
 }
 
 void SerialBridge::update_SoftVer(int ch,const QString &ver){
-    m_ChannelSV[ch-1]=ver;
-    emit channelSVChanged();
+    switch(ch) {
+        #define CHANNEL(n) \
+            case n: \
+                mCH##n##_sv = ver; \
+                emit CH##n##_svChanged(); \
+                qCDebug(uart_bridge) << "Channel" << n << "SV updated to:" << ver; \
+                return;
+        CHANNEL_1_TO_33
+        #undef CHANNEL
+        default: return;
+    }
 }
 
 void SerialBridge::update_HardVer(int ch,const QString &ver){
-    m_ChannelHV[ch-1]=ver;
-    emit channelHVChanged();
+    switch(ch) {
+        #define CHANNEL(n) \
+            case n: \
+                mCH##n##_hv = ver; \
+                emit CH##n##_hvChanged(); \
+                qCDebug(uart_bridge) << "Channel" << n << "HV updated to:" << ver; \
+                return;
+        CHANNEL_1_TO_33
+        #undef CHANNEL
+        default: return;
+    }
 }
 
 
