@@ -30,6 +30,7 @@ Item {
     readonly property color colorTextPrimary: "#E0E0E0"
     readonly property color colorTextSecondary: "#8A9FB0"
     readonly property color colorPlaceholder: "#5F7D9C"
+    readonly property var valueslist: ["7", "8", "9", "4", "5", "6", "1", "2", "3", "0", ".", "↵"]
 
     Rectangle {
         anchors.fill: parent
@@ -91,7 +92,7 @@ Item {
                 }
 
                 ToolButton {
-                    id: enterBtn
+                    id: deleteBtn
                     enabled: root.enclick
                     anchors.right: parent.right
                     anchors.rightMargin: 6 * root.scaleFactor
@@ -102,13 +103,7 @@ Item {
                         implicitHeight: 32 * root.scaleFactor
                         radius: 8 * root.scaleFactor
                         color: root.colorAccent
-                        opacity: enterBtn.hovered ? 1.0 : 0.9
-
-                        Behavior on opacity {
-                            NumberAnimation {
-                                duration: 150
-                            }
-                        }
+                        opacity: 1.0
 
                         Rectangle {
                             width: parent.width
@@ -128,19 +123,21 @@ Item {
                     }
 
                     contentItem: Text {
-                        text: "↵"
-                        font.pixelSize: 22 * root.scaleFactor
-                        font.bold: true
+                        text: "⌫"
                         color: root.colorBackground
+                        anchors.fill: parent
+                        font.bold: true
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
 
                     onClicked: {
-                        if (defaultField.text.length > 0) {
-                            root.entervalue(defaultField.text)
-                            defaultField.clear()
-                        }
+                        defaultField.remove(defaultField.cursorPosition - 1,
+                                            defaultField.cursorPosition)
+                    }
+
+                    onPressAndHold: {
+                        defaultField.clear()
                     }
                 }
 
@@ -165,44 +162,7 @@ Item {
                 rows: 4
 
                 Repeater {
-                    model: [{
-                            "label": "7",
-                            "value": "7"
-                        }, {
-                            "label": "8",
-                            "value": "8"
-                        }, {
-                            "label": "9",
-                            "value": "9"
-                        }, {
-                            "label": "4",
-                            "value": "4"
-                        }, {
-                            "label": "5",
-                            "value": "5"
-                        }, {
-                            "label": "6",
-                            "value": "6"
-                        }, {
-                            "label": "1",
-                            "value": "1"
-                        }, {
-                            "label": "2",
-                            "value": "2"
-                        }, {
-                            "label": "3",
-                            "value": "3"
-                        }, {
-                            "label": "0",
-                            "value": "0"
-                        }, {
-                            "label": ".",
-                            "value": "."
-                        }, {
-                            "label": "⌫",
-                            "isClear": true
-                        }]
-
+                    model: 12
                     delegate: Button {
                         id: btn
                         enabled: root.enclick
@@ -211,20 +171,15 @@ Item {
                         Layout.preferredWidth: 1
                         Layout.preferredHeight: 1
 
-                        text: modelData.label
-                        hoverEnabled: true
+                        //hoverEnabled: true
+                        text: root.valueslist[index]
+                        required property int index
 
                         background: Rectangle {
-                            color: btn.hovered ? root.colorSurfaceHover : root.colorSurface
+                            color: btn.pressed ? root.colorSurfaceHover : root.colorSurface
+                            border.color: btn.pressed ? root.colorAccent : root.colorBorder
+                            border.width: 1 * root.scaleFactor
                             radius: 12 * root.scaleFactor
-                            border.width: 1
-                            border.color: btn.hovered ? root.colorAccent : root.colorBorder
-
-                            Behavior on color {
-                                ColorAnimation {
-                                    duration: 150
-                                }
-                            }
 
                             Rectangle {
                                 width: parent.width
@@ -256,33 +211,35 @@ Item {
                             Rectangle {
                                 anchors.fill: parent
                                 radius: parent.radius
-                                color: modelData.isClear ? Qt.rgba(
-                                                               root.colorAccent.r,
-                                                               root.colorAccent.g,
-                                                               root.colorAccent.b,
-                                                               0.1) : "transparent"
-                                visible: modelData.isClear ? true : false
+                                color: root.valueslist[index]
+                                       === "↵" ? Qt.rgba(root.colorAccent.r,
+                                                         root.colorAccent.g,
+                                                         root.colorAccent.b,
+                                                         0.1) : "transparent"
+                                visible: valueslist[index] === "↵" ? true : false
                             }
                         }
 
                         contentItem: Text {
                             text: parent.text
-                            font.pixelSize: modelData.isClear ? 24 : 22 * root.scaleFactor
-                            font.bold: !modelData.isClear
-                            color: modelData.isClear ? root.colorAccent : root.colorTextPrimary
+                            font.pixelSize: root.valueslist[index]
+                                            === "↵" ? 36 : 22 * root.scaleFactor
+                            font.bold: root.valueslist[index] !== "↵"
+                            color: root.valueslist[index]
+                                   === "↵" ? root.colorAccent : root.colorTextPrimary
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
 
-                            font.family: modelData.label === "0" ? "Segoe UI, Microsoft YaHei, sans-serif" : "Segoe UI, Microsoft YaHei, sans-serif"
+                            font.family: root.valueslist[index] === "0" ? "Segoe UI, Microsoft YaHei, sans-serif" : "Segoe UI, Microsoft YaHei, sans-serif"
                         }
 
                         onClicked: {
-                            if (modelData.isClear) {
-                                defaultField.remove(
-                                            defaultField.cursorPosition - 1,
-                                            defaultField.cursorPosition)
+                            if (root.valueslist[index] === "↵"
+                                    && defaultField.text.length > 0) {
+                                root.entervalue(defaultField.text)
+                                defaultField.clear()
                             } else {
-                                let val = modelData.value
+                                let val = valueslist[index]
                                 defaultField.insert(
                                             defaultField.cursorPosition, val)
                             }

@@ -8,6 +8,7 @@ Item {
 
     signal toSystemPage
     signal toSettingPage(int value)
+    signal toFunctionPage(int value)
 
     Rectangle {
         anchors.fill: parent
@@ -57,8 +58,7 @@ Item {
 
                         onPressAndHold: {
                             if (channelOutput) {
-
-                                //输出详情页，还没开放
+                                toFunctionPage(index + 1)
                             } else {
                                 toSettingPage(index + 1)
                             }

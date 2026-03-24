@@ -12,6 +12,7 @@ ApplicationWindow {
     visible: true
 
     property int settingsChannel: 0
+    property int functionChannel: 0
 
     StackLayout {
         id: stackLayout
@@ -28,6 +29,10 @@ ApplicationWindow {
                 stackLayout.currentIndex = 1
             }
             onToSystemPage: stackLayout.currentIndex = 2
+            onToFunctionPage: {
+                mainWindow.functionChannel = value
+                stackLayout.currentIndex = 3
+            }
         }
 
         // Index: 1
@@ -40,6 +45,13 @@ ApplicationWindow {
         // Index: 2
         SystemPage {
             id: system_page
+            onBackRequested: stackLayout.currentIndex = 0
+        }
+
+        // Index: 3
+        FunctionPage {
+            id: function_page
+            initialChannel: mainWindow.functionChannel
             onBackRequested: stackLayout.currentIndex = 0
         }
     }
