@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
         engine.addImportPath(QStringLiteral("qrc:/qml"));
         engine.rootContext()->setContextProperty("Uart_bridge", Uart_bridge.get());
 
-        const QUrl url(QStringLiteral("qrc:/qml/main.qml"));   //main.qml   Component/test.qml
+        const QUrl url(QStringLiteral("qrc:/qml/Component/test.qml"));   //main.qml   Component/test.qml
         QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,&app, [url](QObject *obj, const QUrl &objUrl) {
             if (!obj && url == objUrl){QCoreApplication::exit(-1);}
         }, Qt::QueuedConnection);

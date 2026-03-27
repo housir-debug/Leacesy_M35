@@ -324,7 +324,10 @@ void SerialWorker::handleSettingcmd(quint8 func){
             m_scpiManager->processCHFloatResponse(shf);
             qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Setting Tmpe:"<<shf;
             return;
-        case 0x02:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Setting Tmpe:"<<shf;return;
+        case 0x02:
+            m_qmlbridge->update_Imp(m_channel,shf);
+            qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Setting Tmpe:"<<shf;
+            return;
         case 0x83:
             m_scpiManager->processCHFloatResponse(shf);
             qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Query Setting Prot:"<<shf;

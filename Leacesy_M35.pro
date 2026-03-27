@@ -10,6 +10,7 @@ INCLUDEPATH += $$PWD/thirdparty/scpi/inc
 LIBS += -L$$PWD/thirdparty/scpi/lib -lscpi -lm
 
 HEADERS += \
+    auxiliary/battery_model.h \
     auxiliary/qml_agency.h \
     auxiliary/scpi_handle.h \
     auxiliary/simple_logger.h \
@@ -24,6 +25,7 @@ HEADERS += \
 
 
 SOURCES += \
+    auxiliary/battery_model.cpp \
     auxiliary/qml_agency.cpp \
     auxiliary/scpi_handle.cpp \
     auxiliary/simple_logger.cpp \

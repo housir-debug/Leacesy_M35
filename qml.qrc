@@ -11,6 +11,7 @@
         <file>qml/HomePage.qml</file>
         <file>qml/SystemPage.qml</file>
         <file>qml/FunctionPage.qml</file>
+        <file>qml/Component/BatteryBar.qml</file>
     </qresource>
     <qresource prefix="/web">
         <file>web/index.html</file>

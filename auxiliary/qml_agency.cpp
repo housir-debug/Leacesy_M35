@@ -46,6 +46,31 @@ void SerialBridge::update_Voltage(int ch,float voltage){
                 mCH##n##_Voltage.store(voltage); \
                 emit CH##n##_VoltageChanged(); \
                 qCDebug(uart_bridge) << "Channel" << n << "voltage updated to:" << voltage; \
+                \
+                if(mCH##n##_isbatteryModel.load()){\
+                    quint32 ocvint; \
+                    float newocv = m_activeModel->getOCV(mCH##n##_currentSOC); \
+                    memcpy(&ocvint, &newocv, sizeof(float)); \
+                    ocvint = qToBigEndian(ocvint); \
+                    QByteArray Status_buffer(reinterpret_cast<const char*>(&ocvint), sizeof(quint32)); \
+                    to_Channel(ch,0x02, 0x00, Status_buffer); \
+                    mCH##n##_cv.store(newocv); \
+                    emit CH##n##_cvChanged(); \
+                    \
+                    quint32 esrint; \
+                    float newesr = m_activeModel->getESR(mCH##n##_currentSOC); \
+                    memcpy(&esrint, &newesr, sizeof(float)); \
+                    esrint = qToBigEndian(esrint); \
+                    QByteArray Statusub_buffer(reinterpret_cast<const char*>(&esrint), sizeof(quint32)); \
+                    to_Channel(ch,0x02, 0x02, Statusub_buffer); \
+                    mCH##n##_imp.store(esrint); \
+                    emit CH##n##_impChanged(); \
+                    \
+                    if (m_activeModel->isOver(mCH##n##_currentSOC)){ \
+                        mCH##n##_isbatteryModel.store(false); \
+                        mCH##n##_timerStarted.store(false); \
+                    } \
+                } \
                 return;
         CHANNEL_1_TO_33
         #undef CHANNEL
@@ -67,6 +92,33 @@ void SerialBridge::update_CurrentAndUnit(int ch,float current){
                     mCH##n##_CurrentUnit = newUnit; \
                     emit CH##n##_CurrentUnitChanged(); \
                 } \
+                \
+                if(mCH##n##_isbatteryModel.load()){\
+                    if (!mCH##n##_timerStarted.load()){ \
+                        mCH##n##_integralTimer.restart(); \
+                        mCH##n##_timerStarted.store(true); \
+                        return; \
+                    } \
+                    \
+                    qint64 elapsedMs = mCH##n##_integralTimer.elapsed();\
+                    float deltaTimeHours = elapsedMs / 3600000.0f; \
+                    float capacityAH = mCH##n##_capacityAH.load(); \
+                    float deltaSOC = (current * deltaTimeHours * 100) / capacityAH; \
+                    float currentsoc = mCH##n##_currentSOC.load(); \
+                    if (deltaSOC < 0 && qAbs(deltaSOC)>=currentsoc){ \
+                        mCH##n##_currentSOC.store(0.0f); \
+                        qCDebug(uart_bridge) << "Battery depleted!"; \
+                    } \
+                    else if(deltaSOC > 0 && (currentsoc+deltaSOC)>=100.0f){ \
+                        mCH##n##_currentSOC.store(100.0f); \
+                        qDebug() << "Battery fully charged!"; \
+                    } \
+                    else{ \
+                        mCH##n##_currentSOC.store(currentsoc+deltaSOC); \
+                        mCH##n##_integralTimer.restart(); \
+                    } \
+                    emit CH##n##_CurrentSOCChanged(); \
+                }\
                 return; \
             }
         CHANNEL_1_TO_33
@@ -115,6 +167,20 @@ void SerialBridge::update_Cc(int ch,float cc){
                 mCH##n##_cc.store(cc); \
                 emit CH##n##_ccChanged(); \
                 qCDebug(uart_bridge) << "Channel" << n << "CC updated to:" << cc; \
+                return;
+        CHANNEL_1_TO_33
+        #undef CHANNEL
+        default: return;
+    }
+}
+
+void SerialBridge::update_Imp(int ch,float imp){
+    switch(ch) {
+        #define CHANNEL(n) \
+            case n: \
+                mCH##n##_imp.store(imp); \
+                emit CH##n##_impChanged(); \
+                qCDebug(uart_bridge) << "Channel" << n << "IMP updated to:" << imp; \
                 return;
         CHANNEL_1_TO_33
         #undef CHANNEL

@@ -36,7 +36,7 @@ ApplicationWindow {
             anchors.centerIn: parent
             scale: 1
         }*/
-        SystemVersionBox {
+        BatteryBar {
             anchors.centerIn: parent
             scale: 1
         }
