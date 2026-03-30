@@ -7,6 +7,9 @@ Item {
     id: systemPage
 
     signal backRequested
+    signal changeMode
+
+    property int initialmodel: 0
 
     Rectangle {
         anchors.fill: parent
@@ -147,37 +150,31 @@ Item {
                     sysStacklayout.currentIndex = 0
                     box1_pressed = true
                     box2_pressed = false
-                    box3_pressed = false
                 }
 
-                box2_mainText: "GPIB"
-                box2_subText: ""
+                box2_mainText: "Other"
+                property bool modelsub: false
+                box2_subText: modelsub ? "CAN" : "GPIB"
                 box2_pressed: false
                 onBox2Clicked: {
-                    currentsetmodel = 2
-                    syskeyinput.text = Uart_bridge.GPIBid
+                    modelsub = !modelsub
+                    currentsetmodel = modelsub ? 3 : 2
+                    syskeyinput.text = modelsub ? Uart_bridge.CANid : Uart_bridge.GPIBid
                     sysStacklayout.currentIndex = 0
                     box1_pressed = false
                     box2_pressed = true
-                    box3_pressed = false
                 }
 
-                box3_mainText: "CAN"
-                box3_subText: ""
-                box3_pressed: false
+                box3_mainText: "SYSTEM"
+                box3_subText: "Version"
                 onBox3Clicked: {
-                    syskeyinput.text = Uart_bridge.CANid
-                    sysStacklayout.currentIndex = 0
-                    currentsetmodel = 3
-                    box1_pressed = false
-                    box2_pressed = false
-                    box3_pressed = true
+                    sysStacklayout.currentIndex = 1
                 }
 
-                box4_mainText: "SYSTEM"
-                box4_subText: "Version"
+                box4_mainText: "Model"
+                box4_subText: systemPage.initialmodel == 0 ? "General" : "Battery"
                 onBox4Clicked: {
-                    sysStacklayout.currentIndex = 1
+                    changeMode()
                 }
 
                 box5_mainText: "EXIT"

@@ -7,7 +7,7 @@ Item {
     id: homePage
 
     signal toSystemPage(int value)
-    signal toSettingPage(int value)
+    signal toBatterySettingPage(int value)
     signal toFunctionPage(int value)
 
     Rectangle {
@@ -29,7 +29,7 @@ Item {
 
                 Repeater {
                     model: 36 // channel count
-                    delegate: DigitalCard {
+                    delegate: BatteryBar {
                         required property int index
                         Layout.fillWidth: true
                         Layout.fillHeight: true
@@ -37,19 +37,16 @@ Item {
                         enclick: !Uart_bridge.isRemote
                         channelOutput: Uart_bridge["ch" + (index + 1) + "_isOutput"]
                         channelName: "CH" + (index + 1)
+                        soc: Uart_bridge["ch" + (index + 1) + "_CurrentSOC"]
                         voltage: Uart_bridge["ch" + (index + 1) + "_Voltage"]
-                        current: Uart_bridge["ch" + (index + 1) + "_Current"]
                         voltageUnit: "V"
+                        current: Uart_bridge["ch" + (index + 1) + "_Current"]
                         currentUnit: Uart_bridge["ch" + (index + 1) + "_CurrentUnit"]
-                        cvSetpoint: Uart_bridge["ch" + (index + 1) + "_cv"]
-                        ccSetpoint: Uart_bridge["ch" + (index + 1) + "_cc"]
-                        ovpSetpoint: Uart_bridge["ch" + (index + 1) + "_ovp"]
-                        cvModel: Uart_bridge["ch" + (index + 1) + "_Status"].charAt(
-                                     14) === "1"
-                        ccModel: Uart_bridge["ch" + (index + 1) + "_Status"].charAt(
-                                     13) === "1"
-                        ovpModel: Uart_bridge["ch" + (index + 1) + "_Status"].charAt(
-                                      11) === "1"
+                        esr: Uart_bridge["ch" + (index + 1) + "_imp"]
+                        esrUnit: "Ω"
+                        batteryMode: Uart_bridge["ch" + (index + 1) + "_BatteryMode"]
+                        workMode: Uart_bridge["ch" + (index + 1) + "_WorkMode"]
+                        batteryCapacity: Uart_bridge["ch" + (index + 1) + "_CapacityAH"]
 
                         onClicked: {
                             Uart_bridge.setChannel_Output(index + 1,
@@ -60,7 +57,7 @@ Item {
                             if (channelOutput) {
                                 toFunctionPage(index + 1)
                             } else {
-                                toSettingPage(index + 1)
+                                toBatterySettingPage(index + 1)
                             }
                         }
                     }
@@ -75,11 +72,11 @@ Item {
 
                 box1_mainText: "System"
                 box1_subText: ""
-                onBox1Clicked: toSystemPage(0)
+                onBox1Clicked: toSystemPage(1)
 
                 box2_mainText: "All"
                 box2_subText: "Setting"
-                onBox2Clicked: toSettingPage(0)
+                onBox2Clicked: toBatterySettingPage(0)
 
                 box3_mainText: "All"
                 property bool allOn: false

@@ -13,6 +13,7 @@ ApplicationWindow {
 
     property int settingsChannel: 0
     property int functionChannel: 0
+    property int workModel: 0
 
     StackLayout {
         id: stackLayout
@@ -28,7 +29,10 @@ ApplicationWindow {
                 mainWindow.settingsChannel = value
                 stackLayout.currentIndex = 1
             }
-            onToSystemPage: stackLayout.currentIndex = 2
+            onToSystemPage: {
+                mainWindow.workModel = value
+                stackLayout.currentIndex = 2
+            }
             onToFunctionPage: {
                 mainWindow.functionChannel = value
                 stackLayout.currentIndex = 3
@@ -45,7 +49,20 @@ ApplicationWindow {
         // Index: 2
         SystemPage {
             id: system_page
-            onBackRequested: stackLayout.currentIndex = 0
+            onChangeMode: {
+                if (workModel == 1) {
+                    stackLayout.currentIndex = 0
+                } else {
+                    stackLayout.currentIndex = 4
+                }
+            }
+            onBackRequested: {
+                if (workModel == 1) {
+                    stackLayout.currentIndex = 4
+                } else {
+                    stackLayout.currentIndex = 0
+                }
+            }
         }
 
         // Index: 3
@@ -53,6 +70,32 @@ ApplicationWindow {
             id: function_page
             initialChannel: mainWindow.functionChannel
             onBackRequested: stackLayout.currentIndex = 0
+        }
+
+        // Index: 4
+        BatteryHomePage {
+            id: batterymain_page
+
+            onToBatterySettingPage: {
+                //console.log("当前点击值：" + value)
+                mainWindow.settingsChannel = value
+                stackLayout.currentIndex = 5
+            }
+            onToSystemPage: {
+                mainWindow.workModel = value
+                stackLayout.currentIndex = 2
+            }
+            onToFunctionPage: {
+                mainWindow.functionChannel = value
+                stackLayout.currentIndex = 3
+            }
+        }
+
+        // Index: 5
+        BatterySettingPage {
+            id: batterysetting_page
+            initialChannel: mainWindow.settingsChannel
+            onBackRequested: stackLayout.currentIndex = 4
         }
     }
 }
