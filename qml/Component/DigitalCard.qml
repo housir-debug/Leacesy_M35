@@ -10,17 +10,19 @@ Item {
 
     property bool enclick: true
     property bool channelOutput: false
+
     property string channelName: "CH1"
     property real voltage: 0.0
-    property real current: 0.0
     property string voltageUnit: "V"
+    property real current: 0.0
     property string currentUnit: "A"
+
     property real cvSetpoint: 0.0
+    property bool cvMode: false
     property real ccSetpoint: 1.0
+    property bool ccMode: false
     property real ovpSetpoint: 8.0
-    property bool cvModel: false
-    property bool ccModel: false
-    property bool ovpModel: false
+    property bool ovpMode: false
 
     signal clicked
     signal pressAndHold
@@ -213,7 +215,7 @@ Item {
                         radius: width / 2
                         border.width: 2 * root.scaleFactor
                         border.color: root.colorCv
-                        color: root.cvModel ? root.colorCv : "transparent"
+                        color: root.cvMode ? root.colorCv : "transparent"
                         anchors.right: parent.right
                         anchors.rightMargin: 3 * root.scaleFactor
                         anchors.verticalCenter: parent.verticalCenter
@@ -251,7 +253,7 @@ Item {
                         radius: width / 2
                         border.width: 2 * root.scaleFactor
                         border.color: root.colorCc
-                        color: root.ccModel ? root.colorCc : "transparent"
+                        color: root.ccMode ? root.colorCc : "transparent"
                         anchors.right: parent.right
                         anchors.rightMargin: 3 * root.scaleFactor
                         anchors.verticalCenter: parent.verticalCenter
@@ -289,7 +291,7 @@ Item {
                         radius: width / 2
                         border.width: 2 * root.scaleFactor
                         border.color: root.colorOv
-                        color: root.ovpModel ? root.colorOv : "transparent"
+                        color: root.ovpMode ? root.colorOv : "transparent"
                         anchors.right: parent.right
                         anchors.rightMargin: 3 * root.scaleFactor
                         anchors.verticalCenter: parent.verticalCenter

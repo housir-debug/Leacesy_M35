@@ -9,130 +9,279 @@ Item {
 
     signal backRequested
 
-    property int initialChannel: 0
+    property color backgroundcolor: "#0d1b2a" //"#0a0f1a"
+    property int currentsetmodel: 0
 
     Rectangle {
         anchors.fill: parent
-        color: "#0d1b2a"
+        color: backgroundcolor
 
         RowLayout {
             anchors.fill: parent
-            anchors.margins: 3
+            anchors.margins: 1.8
 
-            DigitalCard {
-                id: channel
+            Rectangle {
+                id: background
                 Layout.fillHeight: true
                 Layout.fillWidth: true
-                enclick: !Uart_bridge.isRemote
-                channelOutput: settingPage.initialChannel
-                               !== 0 ? Uart_bridge["ch" + settingPage.initialChannel
-                                                   + "_isOutput"] : false
-                channelName: settingPage.initialChannel
-                             === 0 ? "CH*" : "CH" + settingPage.initialChannel
-                voltage: settingPage.initialChannel
-                         !== 0 ? Uart_bridge["ch" + settingPage.initialChannel + "_Voltage"] : 0.0
-                current: settingPage.initialChannel
-                         !== 0 ? Uart_bridge["ch" + settingPage.initialChannel + "_Current"] : 0.0
-                voltageUnit: "V"
-                currentUnit: settingPage.initialChannel
-                             !== 0 ? Uart_bridge["ch" + settingPage.initialChannel
-                                                 + "_CurrentUnit"] : "A"
-                cvSetpoint: settingPage.initialChannel
-                            !== 0 ? Uart_bridge["ch" + settingPage.initialChannel + "_cv"] : 0.0
-                ccSetpoint: settingPage.initialChannel
-                            !== 0 ? Uart_bridge["ch" + settingPage.initialChannel + "_cc"] : 1.0
-                ovpSetpoint: settingPage.initialChannel
-                             !== 0 ? Uart_bridge["ch" + settingPage.initialChannel + "_ovp"] : 8.0
-                cvModel: settingPage.initialChannel
-                         !== 0 ? Uart_bridge["ch" + settingPage.initialChannel + "_Status"].charAt(
-                                     14) === "1" : false
-                ccModel: settingPage.initialChannel
-                         !== 0 ? Uart_bridge["ch" + settingPage.initialChannel + "_Status"].charAt(
-                                     13) === "1" : false
-                ovpModel: settingPage.initialChannel
-                          !== 0 ? Uart_bridge["ch" + settingPage.initialChannel + "_Status"].charAt(
-                                      11) === "1" : false
+                Layout.preferredWidth: 70
+                color: "#0A1929"
 
-                onClicked: {
-                    Uart_bridge.setChannel_Output(settingPage.initialChannel,
-                                                  !channelOutput)
-                    if (settingPage.initialChannel === 0) {
-                        channelOutput = !channelOutput
+                GridLayout {
+                    anchors.fill: parent
+                    columnSpacing: 1.8
+                    rowSpacing: 1.8
+                    columns: 4
+                    rows: 3
+
+                    SetBox {
+                        Layout.fillHeight: true
+                        Layout.fillWidth: true
+
+                        mainText: "LAN-IP"
+                        subText: Uart_bridge.IPaddress
+                        pressed: settingPage.currentsetmodel === 1
+
+                        enclick: !Uart_bridge.isRemote
+                        onClicked: {
+                            settingPage.currentsetmodel = 1
+                            keyinput.text = subText
+                        }
+                    }
+                    SetBox {
+                        Layout.fillHeight: true
+                        Layout.fillWidth: true
+
+                        mainText: "GPIB-ID"
+                        subText: Uart_bridge.GPIBid
+                        pressed: settingPage.currentsetmodel === 2
+
+                        enclick: !Uart_bridge.isRemote
+                        onClicked: {
+                            settingPage.currentsetmodel = 2
+                            keyinput.text = subText
+                        }
+                    }
+                    SetBox {
+                        Layout.fillHeight: true
+                        Layout.fillWidth: true
+
+                        mainText: "CAN-ID"
+                        subText: Uart_bridge.CANid
+                        pressed: settingPage.currentsetmodel === 3
+
+                        enclick: !Uart_bridge.isRemote
+                        onClicked: {
+                            settingPage.currentsetmodel = 3
+                            keyinput.text = subText
+                        }
+                    }
+                    SetBox {
+                        Layout.fillHeight: true
+                        Layout.fillWidth: true
+                        property bool Output: false
+
+                        mainText: "A-OutPut"
+                        subText: Output ? "OFF" : "ON"
+                        subTextColor: Output ? "#B06A6A" : "#8CAF6A"
+
+                        enclick: !Uart_bridge.isRemote
+                        onClicked: {
+                            Output = !Output
+                            Uart_bridge.setChannel_Output(0, Output)
+                        }
+                    }
+                    SetBox {
+                        Layout.fillHeight: true
+                        Layout.fillWidth: true
+
+                        mainText: "LAN-SM"
+                        subText: Uart_bridge.SM
+                        pressed: settingPage.currentsetmodel === 5
+
+                        enclick: !Uart_bridge.isRemote
+                        onClicked: {
+                            settingPage.currentsetmodel = 5
+                            keyinput.text = subText
+                        }
+                    }
+                    SetBox {
+                        id: initsoc
+                        Layout.fillHeight: true
+                        Layout.fillWidth: true
+
+                        mainText: "A-InitSOC"
+                        subText: "100.00 %"
+                        pressed: settingPage.currentsetmodel === 6
+
+                        enclick: !Uart_bridge.isRemote
+                        onClicked: {
+                            settingPage.currentsetmodel = 6
+                            keyinput.text = subText
+                        }
+                    }
+                    SetBox {
+                        id: capacity
+                        Layout.fillHeight: true
+                        Layout.fillWidth: true
+
+                        mainText: "A-Capacity"
+                        subText: "00.00 Ah"
+                        pressed: settingPage.currentsetmodel === 7
+
+                        enclick: !Uart_bridge.isRemote
+                        onClicked: {
+                            settingPage.currentsetmodel = 7
+                            keyinput.text = subText
+                        }
+                    }
+                    SetBox {
+                        Layout.fillHeight: true
+                        Layout.fillWidth: true
+
+                        mainText: "A-Model"
+                        subText: "Model-1"
+                        subTextColor: "#6AA8B0"
+
+                        enclick: !Uart_bridge.isRemote
+                        onClicked: {
+                            subText = Uart_bridge.setChannel_BatteryModel(0)
+                        }
+                    }
+
+                    SetBox {
+                        id: cv
+                        Layout.fillHeight: true
+                        Layout.fillWidth: true
+
+                        mainText: "A-CV"
+                        subText: "0.000 V"
+                        pressed: settingPage.currentsetmodel === 9
+
+                        enclick: !Uart_bridge.isRemote
+                        onClicked: {
+                            settingPage.currentsetmodel = 9
+                            keyinput.text = subText
+                        }
+                    }
+                    SetBox {
+                        id: cc
+                        Layout.fillHeight: true
+                        Layout.fillWidth: true
+
+                        mainText: "A-CC"
+                        subText: "1.000 A"
+                        pressed: settingPage.currentsetmodel === 10
+
+                        enclick: !Uart_bridge.isRemote
+                        onClicked: {
+                            settingPage.currentsetmodel = 10
+                            keyinput.text = subText
+                        }
+                    }
+                    SetBox {
+                        id: ovp
+                        Layout.fillHeight: true
+                        Layout.fillWidth: true
+
+                        mainText: "A-OVP"
+                        subText: "8.000 V"
+                        pressed: settingPage.currentsetmodel === 11
+
+                        enclick: !Uart_bridge.isRemote
+                        onClicked: {
+                            settingPage.currentsetmodel = 11
+                            keyinput.text = subText
+                        }
+                    }
+                    SetBox {
+                        Layout.fillHeight: true
+                        Layout.fillWidth: true
+
+                        mainText: "A-I-Unit"
+                        subText: "A"
+                        subTextColor: "#9A6AB0"
+
+                        enclick: !Uart_bridge.isRemote
+                        onClicked: {
+                            subText = Uart_bridge.setChannel_CurrentUnit(0)
+                        }
                     }
                 }
-
-
-                /*onPressAndHold: {
-                    if (channelOutput) {
-                    } else {
-                    }---用于扩展功能
-                }*/
             }
 
             KeyinputBox {
-                id: keyinputset
+                id: keyinput
                 enclick: !Uart_bridge.isRemote
+                Layout.preferredWidth: 30
                 Layout.fillHeight: true
                 Layout.fillWidth: true
 
                 onEntervalue: {
-                    //console.log("设置通道状态：" + value)
-                    Uart_bridge.setChannel_Setstatus(
-                                settingPage.initialChannel,
-                                groupsetbox.currentsetmodel, value)
+                    switch (settingPage.currentsetmodel) {
+                    case 1:
+                        // LAN-IP automatic update binding
+                        Uart_bridge.update_Configuration(0, value)
+                        break
+                    case 2:
+                        // GPIB-ID automatic update binding
+                        Uart_bridge.update_Configuration(2, value)
+                        break
+                    case 3:
+                        // CAN-ID automatic update binding
+                        Uart_bridge.update_Configuration(3, value)
+                        break
+                    case 5:
+                        // LAN-SM automatic update binding
+                        Uart_bridge.update_Configuration(1, value)
+                        break
+                    case 6:
+                        // A-InitSOC
+                        initsoc.subText = value
+                        Uart_bridge.setChannel_InitSOC(0, value)
+                        break
+                    case 7:
+                        // A-Capacity
+                        capacity.subText = value
+                        Uart_bridge.setChannel_Capacity(0, value)
+                        break
+                    case 9:
+                        // A-CV
+                        cv.subText = value
+                        Uart_bridge.setChannel_Setstatus(0, 0, value)
+                        break
+                    case 10:
+                        // A-CC
+                        cc.subText = value
+                        Uart_bridge.setChannel_Setstatus(0, 1, value)
+                        break
+                    case 11:
+                        // A-OVP
+                        ovp.subText = value
+                        Uart_bridge.setChannel_Setstatus(0, 3, value)
+                        break
+                    default:
+                        console.log("Unknown model:", model)
+                        return
+                    }
                 }
             }
+        }
+    }
 
-            SetBoxGroup {
-                id: groupsetbox
-                Layout.fillHeight: true
-                Layout.fillWidth: true
-                enclick: !Uart_bridge.isRemote
-                property int currentsetmodel: 0
+    MouseArea {
+        id: topEdgeSwipe
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: 36
+        property real startY: 0
 
-                box1_mainText: "CV"
-                box1_subText: ""
-                box1_pressed: true
-                onBox1Clicked: {
-                    currentsetmodel = 0
-                    box1_pressed = true
-                    box2_pressed = false
-                    box3_pressed = false
-                }
-
-                box2_mainText: "CC"
-                box2_subText: ""
-                box2_pressed: false
-                onBox2Clicked: {
-                    currentsetmodel = 1
-                    box1_pressed = false
-                    box2_pressed = true
-                    box3_pressed = false
-                }
-
-                box3_mainText: "OVP"
-                box3_subText: ""
-                box3_pressed: false
-                onBox3Clicked: {
-                    currentsetmodel = 3
-                    box1_pressed = false
-                    box2_pressed = false
-                    box3_pressed = true
-                }
-
-                box4_mainText: "EXIT"
-                box4_subText: ""
-                onBox4Clicked: {
-                    backRequested()
-                }
-
-                box5_mainText: "Model"
-                box5_subText: Uart_bridge.isRemote ? "Remote" : "Local"
-                box5_subTextColor: Uart_bridge.isRemote ? "#FF3D52" : "#1DBF75"
-                box5_enclick: true
-                onBox5Clicked: {
-                    Uart_bridge.update_remotemodel(!Uart_bridge.isRemote)
-                }
+        onPressed: startY = mouseY
+        onReleased: {
+            var delta = mouseY - startY
+            if (delta > 108) {
+                backRequested()
             }
         }
     }
@@ -140,7 +289,7 @@ Item {
 
 /*##^##
 Designer {
-    D{i:0;autoSize:true;formeditorZoom:0.75;height:480;width:640}
+    D{i:0;autoSize:true;formeditorZoom:0.75;height:360;width:960}
 }
 ##^##*/
 

@@ -9,7 +9,7 @@ Item {
     signal backRequested
     signal changeMode
 
-    property int initialmodel: 0
+    property int initialmodel: 1
 
     Rectangle {
         anchors.fill: parent
@@ -24,7 +24,7 @@ Item {
                 Layout.fillHeight: true
                 Layout.fillWidth: true
                 Layout.preferredWidth: 88
-                currentIndex: 0
+                currentIndex: 1
 
                 // index=0
                 KeyinputBox {

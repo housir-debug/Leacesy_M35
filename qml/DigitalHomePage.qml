@@ -4,11 +4,11 @@ import QtQuick.Layouts 1.15
 import Component 1.0
 
 Item {
-    id: batteryhomePage
+    id: digitalhomePage
 
     signal toFunctionPage(int value)
     signal toSettingPage
-    signal toDigitalHomePage
+    signal toBatteryHomePage
 
     property color backgroundcolor: "#0d1b2a" //"#0a0f1a"
     property int totalChannels: 36
@@ -42,7 +42,7 @@ Item {
                 opacity: PathView.opacity
                 z: PathView.z
 
-                BatteryCard {
+                DigitalCard {
                     required property int index
                     anchors.fill: parent
 
@@ -50,17 +50,20 @@ Item {
                     channelOutput: Uart_bridge["ch" + existChannels[index] + "_isOutput"]
 
                     channelName: "CH" + existChannels[index]
-                    soc: Uart_bridge["ch" + existChannels[index] + "_CurrentSOC"]
                     voltage: Uart_bridge["ch" + existChannels[index] + "_Voltage"]
                     voltageUnit: "V"
                     current: Uart_bridge["ch" + existChannels[index] + "_Current"]
                     currentUnit: Uart_bridge["ch" + existChannels[index] + "_CurrentUnit"]
-                    esr: Uart_bridge["ch" + existChannels[index] + "_imp"]
-                    esrUnit: "Ω"
 
-                    batteryModel: Uart_bridge["ch" + existChannels[index] + "_BatteryMode"]
-                    workMode: Uart_bridge["ch" + existChannels[index] + "_WorkMode"]
-                    batteryCapacity: Uart_bridge["ch" + existChannels[index] + "_CapacityAH"]
+                    cvSetpoint: Uart_bridge["ch" + existChannels[index] + "_cv"]
+                    cvMode: Uart_bridge["ch" + existChannels[index] + "_Status"].charAt(
+                                14) === "1"
+                    ccSetpoint: Uart_bridge["ch" + existChannels[index] + "_cc"]
+                    ccMode: Uart_bridge["ch" + existChannels[index] + "_Status"].charAt(
+                                13) === "1"
+                    ovpSetpoint: Uart_bridge["ch" + existChannels[index] + "_ovp"]
+                    ovpMode: Uart_bridge["ch" + existChannels[index] + "_Status"].charAt(
+                                 11) === "1"
 
                     onClicked: {
                         Uart_bridge.setChannel_Output(existChannels[index],
@@ -133,7 +136,7 @@ Item {
         onReleased: {
             var delta = startY - mouseY
             if (delta > 108) {
-                toDigitalHomePage()
+                toBatteryHomePage()
             }
         }
     }
@@ -158,7 +161,7 @@ Item {
 
 /*##^##
 Designer {
-    D{i:0;autoSize:true;height:480;width:640}
+    D{i:0;autoSize:true;formeditorZoom:0.75;height:360;width:960}
 }
 ##^##*/
 

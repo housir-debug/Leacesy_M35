@@ -5,8 +5,9 @@ import QtQuick.VirtualKeyboard 2.15
 
 ApplicationWindow {
     id: mainWindow
-    width: 1024
-    height: 800
+    width: Screen.desktopAvailableWidth
+    height: Screen.desktopAvailableHeight
+    visibility: "FullScreen"
     visible: true
 
     Rectangle {
@@ -36,7 +37,7 @@ ApplicationWindow {
             anchors.centerIn: parent
             scale: 1
         }*/
-        BatteryBar {
+        BatteryCard {
             anchors.centerIn: parent
             scale: 1
         }

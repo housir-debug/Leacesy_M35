@@ -3,6 +3,7 @@
 #include <QQmlContext>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
+#include "auxiliary/battery_model.h"
 #include "auxiliary/simple_logger.h"
 #include "auxiliary/config_manager.h"
 #include "auxiliary/scpi_handle.h"
@@ -106,12 +107,10 @@ int main(int argc, char *argv[])
     QDir appDir(appPath);
     if (!appDir.cdUp()){return 1;}
     QString parentPath = appDir.absolutePath();
-    if (!ConfigManager::init(parentPath)) {return 1;}
 
     loggermanage(ConfigManager::s_loglevel,parentPath);
-    if (ConfigManager::s_enablelogfile){
-        QObject::connect(&app, &QGuiApplication::aboutToQuit, &shutdownLogger);
-    }
+    QObject::connect(&app, &QGuiApplication::aboutToQuit, &shutdownLogger);
+    if (!ConfigManager::init(parentPath)) {return 1;}
 
     std::unique_ptr<CanWorker> canWorker;
     std::unique_ptr<QThread> canThread;
@@ -134,7 +133,7 @@ int main(int argc, char *argv[])
     std::unique_ptr<SerialBridge> Uart_bridge;
     std::vector<std::unique_ptr<SerialWorker>> Uart_Channels;
     if (ConfigManager::s_enableUartMess){
-        Uart_bridge = std::make_unique<SerialBridge>();
+        Uart_bridge = std::make_unique<SerialBridge>(parentPath);
         Scpi_process = std::make_unique<ScpiManager>();
 
         for (const auto& config : configs) {

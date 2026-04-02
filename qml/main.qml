@@ -8,12 +8,12 @@ ApplicationWindow {
     id: mainWindow
     width: Screen.desktopAvailableWidth
     height: Screen.desktopAvailableHeight
+    color: "#0d1b2a" //"#0a0f1a"
     visibility: "FullScreen"
     visible: true
 
-    property int settingsChannel: 0
+    property int homePageModel: 0
     property int functionChannel: 0
-    property int workModel: 0
 
     StackLayout {
         id: stackLayout
@@ -21,46 +21,61 @@ ApplicationWindow {
         currentIndex: 0
 
         // Index: 0
-        HomePage {
-            id: main_page
+        DigitalHomePage {
+            id: digitalmain_page
+            backgroundcolor: mainWindow.color
+
+            onToBatteryHomePage: {
+                mainWindow.homePageModel = 0
+                stackLayout.currentIndex = 1 // to batterymain_page
+            }
 
             onToSettingPage: {
-                //console.log("当前点击值：" + value)
-                mainWindow.settingsChannel = value
-                stackLayout.currentIndex = 1
+                mainWindow.homePageModel = 0
+                stackLayout.currentIndex = 2 // to setting_page
             }
-            onToSystemPage: {
-                mainWindow.workModel = value
-                stackLayout.currentIndex = 2
-            }
+
             onToFunctionPage: {
+                mainWindow.homePageModel = 0
+                stackLayout.currentIndex = 3 // to function_page
                 mainWindow.functionChannel = value
-                stackLayout.currentIndex = 3
             }
         }
 
         // Index: 1
-        SettingPage {
-            id: setting_page
-            initialChannel: mainWindow.settingsChannel
-            onBackRequested: stackLayout.currentIndex = 0
+        BatteryHomePage {
+            id: batterymain_page
+            backgroundcolor: mainWindow.color
+
+            onToDigitalHomePage: {
+                mainWindow.homePageModel = 1
+                stackLayout.currentIndex = 0 // to digitalmain_page
+            }
+
+            onToSettingPage: {
+                mainWindow.homePageModel = 1
+                stackLayout.currentIndex = 2 // to setting_page
+            }
+
+            onToFunctionPage: {
+                mainWindow.homePageModel = 1
+                stackLayout.currentIndex = 3 // to function_page
+                mainWindow.functionChannel = value
+            }
+
+            Component.completed: {
+                Uart_bridge.load_BatteryModel()
+            }
         }
 
         // Index: 2
-        SystemPage {
-            id: system_page
-            onChangeMode: {
-                if (workModel == 1) {
-                    stackLayout.currentIndex = 0
-                } else {
-                    stackLayout.currentIndex = 4
-                }
-            }
+        SettingPage {
+            id: setting_page
             onBackRequested: {
-                if (workModel == 1) {
-                    stackLayout.currentIndex = 4
-                } else {
+                if (homePageModel === 0) {
                     stackLayout.currentIndex = 0
+                } else {
+                    stackLayout.currentIndex = 1
                 }
             }
         }
@@ -71,31 +86,41 @@ ApplicationWindow {
             initialChannel: mainWindow.functionChannel
             onBackRequested: stackLayout.currentIndex = 0
         }
+    }
 
-        // Index: 4
-        BatteryHomePage {
-            id: batterymain_page
+    Rectangle {
+        id: remoteOverlay
+        anchors.fill: parent
+        color: "#80000000" // Transparency
+        visible: Uart_bridge.isRemote
+        z: 100
 
-            onToBatterySettingPage: {
-                //console.log("当前点击值：" + value)
-                mainWindow.settingsChannel = value
-                stackLayout.currentIndex = 5
-            }
-            onToSystemPage: {
-                mainWindow.workModel = value
-                stackLayout.currentIndex = 2
-            }
-            onToFunctionPage: {
-                mainWindow.functionChannel = value
-                stackLayout.currentIndex = 3
-            }
+        Image {
+            id: logoImage
+            anchors.centerIn: parent
+            width: parent.width * 0.5
+            height: parent.height * 0.5
+            source: "logo.png"
+            fillMode: Image.PreserveAspectFit
+            opacity: 0.7
         }
 
-        // Index: 5
-        BatterySettingPage {
-            id: batterysetting_page
-            initialChannel: mainWindow.settingsChannel
-            onBackRequested: stackLayout.currentIndex = 4
+        Text {
+            anchors.top: logoImage.bottom
+            anchors.topMargin: 20
+            anchors.horizontalCenter: parent.horizontalCenter
+            text: "Remote Mode - Double tap to exit"
+            color: "white"
+            font.pixelSize: 16
+            opacity: 0.8
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            onDoubleClicked: {
+                // default 200ms
+                Uart_bridge.update_remotemodel(false)
+            }
         }
     }
 }

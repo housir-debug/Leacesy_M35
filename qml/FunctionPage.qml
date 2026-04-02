@@ -9,74 +9,64 @@ Item {
 
     signal backRequested
 
+    property color backgroundcolor: "#0d1b2a" //"#0a0f1a"
     property int initialChannel: 0
 
     Rectangle {
         anchors.fill: parent
-        color: "#0d1b2a"
+        color: backgroundcolor
 
         RowLayout {
             anchors.fill: parent
-            anchors.margins: 3
+            anchors.margins: 1.8
 
-            DigitalCard {
-                id: channel
+            Rectangle {
                 Layout.fillHeight: true
                 Layout.fillWidth: true
-                Layout.preferredWidth: 360
-                enclick: !Uart_bridge.isRemote
-                channelOutput: functionPage.initialChannel
-                               !== 0 ? Uart_bridge["ch" + functionPage.initialChannel
-                                                   + "_isOutput"] : false
-                channelName: functionPage.initialChannel
-                             === 0 ? "CH*" : "CH" + functionPage.initialChannel
-                voltage: functionPage.initialChannel
-                         !== 0 ? Uart_bridge["ch" + functionPage.initialChannel + "_Voltage"] : 0.0
-                current: functionPage.initialChannel
-                         !== 0 ? Uart_bridge["ch" + functionPage.initialChannel + "_Current"] : 0.0
-                voltageUnit: "V"
-                currentUnit: functionPage.initialChannel
-                             !== 0 ? Uart_bridge["ch" + functionPage.initialChannel
-                                                 + "_CurrentUnit"] : "A"
-                cvSetpoint: functionPage.initialChannel
-                            !== 0 ? Uart_bridge["ch" + functionPage.initialChannel + "_cv"] : 0.0
-                ccSetpoint: functionPage.initialChannel
-                            !== 0 ? Uart_bridge["ch" + functionPage.initialChannel + "_cc"] : 1.0
-                ovpSetpoint: functionPage.initialChannel
-                             !== 0 ? Uart_bridge["ch" + functionPage.initialChannel + "_ovp"] : 8.0
-                cvModel: functionPage.initialChannel
-                         !== 0 ? Uart_bridge["ch" + functionPage.initialChannel + "_Status"].charAt(
-                                     14) === "1" : false
-                ccModel: functionPage.initialChannel
-                         !== 0 ? Uart_bridge["ch" + functionPage.initialChannel + "_Status"].charAt(
-                                     13) === "1" : false
-                ovpModel: functionPage.initialChannel
-                          !== 0 ? Uart_bridge["ch" + functionPage.initialChannel
-                                              + "_Status"].charAt(
-                                      11) === "1" : false
+                Layout.preferredWidth: 66
+                color: "#2a3b4c"
+                border.color: "#1a2f42"
+                border.width: 1
+                radius: 18
 
-                onClicked: {
-                    Uart_bridge.setChannel_Output(functionPage.initialChannel,
-                                                  !channelOutput)
-                    if (functionPage.initialChannel === 0) {
-                        channelOutput = !channelOutput
+                ColumnLayout {
+                    anchors.fill: parent
+
+                    Text {
+                        text: "SW-Ver:    V" + Uart_bridge.SoftVer
+                        font.pixelSize: 18 * versionBox.scaleFactor
+                        color: "#e0e0e0"
+                        Layout.alignment: Qt.AlignHCenter
+                    }
+
+                    Text {
+                        text: "HW-Ver:    V" + Uart_bridge.HardVer
+                        font.pixelSize: 18 * versionBox.scaleFactor
+                        color: "#e0e0e0"
+                        Layout.alignment: Qt.AlignHCenter
+                    }
+
+                    Text {
+                        text: "S:V" + Uart_bridge["ch" + (index + 1) + "_sv"]
+                        font.pixelSize: 12 * versionBox.scaleFactor
+                        color: "#e0e0e0"
+                        Layout.alignment: Qt.AlignHCenter
+                    }
+
+                    Text {
+                        text: "H:V" + Uart_bridge["ch" + (index + 1) + "_hv"]
+                        font.pixelSize: 12 * versionBox.scaleFactor
+                        color: "#e0e0e0"
+                        Layout.alignment: Qt.AlignHCenter
                     }
                 }
-
-
-                /*onPressAndHold: {
-                    if (channelOutput) {
-                    } else {
-                    }---用于扩展功能
-                }*/
             }
-
             Rectangle {
                 id: statusIndicator
                 property real scaleFactor: 1.0
                 Layout.fillHeight: true
                 Layout.fillWidth: true
-                Layout.preferredWidth: 360
+                Layout.preferredWidth: 66
                 color: "#0d1b2a"
                 border.color: "#1a2f42"
                 border.width: 1 * statusIndicator.scaleFactor
@@ -172,10 +162,68 @@ Item {
                 }
             }
 
+            DigitalCard {
+                id: channel
+                Layout.fillHeight: true
+                Layout.fillWidth: true
+                Layout.preferredWidth: 66
+                enclick: !Uart_bridge.isRemote
+                channelOutput: functionPage.initialChannel
+                               !== 0 ? Uart_bridge["ch" + functionPage.initialChannel
+                                                   + "_isOutput"] : false
+                channelName: functionPage.initialChannel
+                             === 0 ? "CH*" : "CH" + functionPage.initialChannel
+                voltage: functionPage.initialChannel
+                         !== 0 ? Uart_bridge["ch" + functionPage.initialChannel + "_Voltage"] : 0.0
+                current: functionPage.initialChannel
+                         !== 0 ? Uart_bridge["ch" + functionPage.initialChannel + "_Current"] : 0.0
+                voltageUnit: "V"
+                currentUnit: functionPage.initialChannel
+                             !== 0 ? Uart_bridge["ch" + functionPage.initialChannel
+                                                 + "_CurrentUnit"] : "A"
+                cvSetpoint: functionPage.initialChannel
+                            !== 0 ? Uart_bridge["ch" + functionPage.initialChannel + "_cv"] : 0.0
+                ccSetpoint: functionPage.initialChannel
+                            !== 0 ? Uart_bridge["ch" + functionPage.initialChannel + "_cc"] : 1.0
+                ovpSetpoint: functionPage.initialChannel
+                             !== 0 ? Uart_bridge["ch" + functionPage.initialChannel + "_ovp"] : 8.0
+                cvMode: functionPage.initialChannel
+                        !== 0 ? Uart_bridge["ch" + functionPage.initialChannel + "_Status"].charAt(
+                                    14) === "1" : false
+                ccMode: functionPage.initialChannel
+                        !== 0 ? Uart_bridge["ch" + functionPage.initialChannel + "_Status"].charAt(
+                                    13) === "1" : false
+                ovpMode: functionPage.initialChannel
+                         !== 0 ? Uart_bridge["ch" + functionPage.initialChannel + "_Status"].charAt(
+                                     11) === "1" : false
+
+                onClicked: {
+                    Uart_bridge.setChannel_Output(functionPage.initialChannel,
+                                                  !channelOutput)
+                    if (functionPage.initialChannel === 0) {
+                        channelOutput = !channelOutput
+                    }
+                }
+
+
+                /*onPressAndHold: {
+                    if (channelOutput) {
+                    } else {
+                    }---用于扩展功能
+                }*/
+            }
+
+            BatteryCard {
+                Layout.fillHeight: true
+                Layout.fillWidth: true
+                Layout.preferredWidth: 66
+            }
+
             SetBoxGroup {
                 id: groupsetbox
                 Layout.fillHeight: true
                 Layout.fillWidth: true
+                Layout.preferredWidth: 66
                 enclick: !Uart_bridge.isRemote
                 property int currentsetmodel: 0
 
@@ -217,13 +265,26 @@ Item {
                     Uart_bridge.update_remotemodel(!Uart_bridge.isRemote)
                 }
             }
+
+            KeyinputBox {
+                id: syskeyinput
+                text: Uart_bridge.IPaddress
+                Layout.fillHeight: true
+                Layout.fillWidth: true
+                Layout.preferredWidth: 66
+                onEntervalue: {
+                    //console.log("设置通道状态：" + value)
+                    Uart_bridge.update_Configuration(
+                                groupsysbox.currentsetmodel, value)
+                }
+            }
         }
     }
 }
 
 /*##^##
 Designer {
-    D{i:0;autoSize:true;formeditorZoom:0.75;height:480;width:640}
+    D{i:0;autoSize:true;formeditorZoom:0.75;height:360;width:960}
 }
 ##^##*/
 

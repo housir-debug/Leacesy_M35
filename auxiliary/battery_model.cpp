@@ -122,7 +122,7 @@ bool BatteryModelManager::loadAllModels() {
     QFileInfoList fileList = modelDir.entryInfoList(filters, QDir::Files);
 
     int loadedCount = 0;
-    for (const auto &fileInfo : fileList) {
+    for (const auto &fileInfo : qAsConst(fileList)) {
         auto model = parseCSV(fileInfo.absoluteFilePath());
 
         if (model && model->isValid()) {

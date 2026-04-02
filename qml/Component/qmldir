@@ -3,4 +3,4 @@ DigitalCard        1.0 DigitalCard.qml
 SetBox             1.0 SetBox.qml
 SetBoxGroup        1.0 SetBoxGroup.qml
 KeyinputBox        1.0 KeyinputBox.qml
-BatteryBar         1.0 BatteryBar.qml
+BatteryCard        1.0 BatteryCard.qml

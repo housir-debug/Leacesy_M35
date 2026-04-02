@@ -34,9 +34,9 @@ class SerialBridge : public QObject
         Q_PROPERTY(QString ch##n##_hv MEMBER mCH##n##_hv NOTIFY CH##n##_hvChanged) \
         \
         Q_PROPERTY(float ch##n##_CurrentSOC MEMBER mCH##n##_currentSOC NOTIFY CH##n##_CurrentSOCChanged) \
-        Q_PROPERTY(float ch##n##_BatteryMode MEMBER mCH##n##_batteryMode NOTIFY CH##n##_BatteryModeChanged) \
-        Q_PROPERTY(float ch##n##_WorkMode MEMBER mCH##n##_workMode NOTIFY CH##n##_WorkModeChanged) \
-        Q_PROPERTY(float ch##n##_CapacityAH MEMBER mCH##n##_capacityAH NOTIFY CH##n##_CapacityAHChanged)
+        Q_PROPERTY(float ch##n##_CapacityAH MEMBER mCH##n##_capacityAH NOTIFY CH##n##_CapacityAHChanged) \
+        Q_PROPERTY(QString ch##n##_BatteryMode MEMBER mCH##n##_batteryMode NOTIFY CH##n##_BatteryModeChanged) \
+        Q_PROPERTY(QString ch##n##_WorkMode MEMBER mCH##n##_workMode NOTIFY CH##n##_WorkModeChanged)
 
     CHANNEL_1_TO_33
     #undef CHANNEL
@@ -74,16 +74,19 @@ signals:
         void CH##n##_hvChanged(); \
         \
         void CH##n##_CurrentSOCChanged(); \
+        void CH##n##_CapacityAHChanged(); \
         void CH##n##_BatteryModeChanged(); \
         void CH##n##_WorkModeChanged(); \
-        void CH##n##_CapacityAHChanged();
 
     CHANNEL_1_TO_33
     #undef CHANNEL
 
 public:
-    explicit SerialBridge(QObject *parent = nullptr);
+    explicit SerialBridge(const QString& parentPath,QObject *parent = nullptr);
     ~SerialBridge() override = default;
+
+    QSharedPointer<BatteryModelManager> m_modelManager;
+    QStringList m_currentModelList;
 
     // to qml engine property variate
     std::atomic<bool> m_isRemote{false};
@@ -93,8 +96,6 @@ public:
     QString m_CANid;
     QString m_SoftVer;
     QString m_HardVer;
-
-    QSharedPointer<BatteryModel> m_activeModel;
 
     #define CHANNEL(n) \
         std::atomic<float> mCH##n##_Voltage{0.0f}; \
@@ -109,17 +110,19 @@ public:
         QString mCH##n##_sv{"0.0.0.0"}; \
         QString mCH##n##_hv{"0.0.0.0"}; \
         \
-        std::atomic<bool> mCH##n##_isbatteryModel{false}; \
+        std::atomic<bool> mCH##n##_activebattery{false}; \
         std::atomic<bool> mCH##n##_timerStarted{false}; \
         std::atomic<float> mCH##n##_currentSOC{100}; \
-        QString mCH##n##_batteryMode{"model-1"}; \
-        QString mCH##n##_workMode{"static"}; \
         std::atomic<float> mCH##n##_capacityAH{1}; \
+        QString mCH##n##_batteryMode{"model-1"}; \
+        QSharedPointer<BatteryModel> mCH##n##_activeModel; \
+        QString mCH##n##_workMode{"static"}; \
         QElapsedTimer mCH##n##_integralTimer;
 
     CHANNEL_1_TO_33
     #undef CHANNEL
 
+public:
     //web
     QJsonArray getAllChannelsData();
 
@@ -143,6 +146,10 @@ public:
     // qml procress
     Q_INVOKABLE void setChannel_Output(int channel,bool switchs);
     Q_INVOKABLE void setChannel_Setstatus(int channel,int model,const QString& val);
-    Q_INVOKABLE QString setChannel_CurrentUnit();
+    Q_INVOKABLE QString setChannel_CurrentUnit(int channel);
+    Q_INVOKABLE void setChannel_InitSOC(int channel,const QString& val);
+    Q_INVOKABLE void setChannel_Capacity(int channel,const QString& val);
+    Q_INVOKABLE QString setChannel_BatteryModel(int channel);
     void to_Channel(int channel,quint8 cmd,quint8 func,const QByteArray& param);
+    Q_INVOKABLE void load_BatteryModel();
 };

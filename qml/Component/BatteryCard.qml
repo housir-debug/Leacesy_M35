@@ -10,15 +10,17 @@ Item {
 
     property bool enclick: true
     property bool channelOutput: false
+
     property string channelName: "CH1"
     property real soc: 100
     property real voltage: 0.0
-    property real current: 0.0
-    property real esr: 0.0
     property string voltageUnit: "V"
+    property real current: 0.0
     property string currentUnit: "A"
+    property real esr: 0.0
     property string esrUnit: "Ω"
-    property string batteryMode: "model-1"
+
+    property string batteryModel: "model-1"
     property string workMode: "static" //Dynamic
     property real batteryCapacity: 50.0
 
@@ -248,7 +250,7 @@ Item {
                 Repeater {
                     model: [{
                             "label": "电池模型",
-                            "value": root.batteryMode,
+                            "value": root.batteryModel,
                             "unit": ""
                         }, {
                             "label": "当前电压",

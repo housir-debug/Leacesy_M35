@@ -115,11 +115,11 @@ Item {
                 font.bold: true
                 font.pixelSize: {
                     var baseSize = 18 * root.scaleFactor
-                    if (root.mainText.length <= 4)
+                    if (root.mainText.length <= 9)
                         return baseSize
-                    else if (root.mainText.length <= 6)
+                    else if (root.mainText.length <= 12)
                         return baseSize * 0.9
-                    else if (root.mainText.length <= 8)
+                    else if (root.mainText.length <= 18)
                         return baseSize * 0.7
                     else
                         return baseSize * 0.4
@@ -137,11 +137,11 @@ Item {
                 font.bold: true
                 font.pixelSize: {
                     var baseSize = 18 * root.scaleFactor
-                    if (root.subText.length <= 4)
+                    if (root.subText.length <= 9)
                         return baseSize
-                    else if (root.subText.length <= 6)
+                    else if (root.subText.length <= 12)
                         return baseSize * 0.9
-                    else if (root.subText.length <= 8)
+                    else if (root.subText.length <= 18)
                         return baseSize * 0.7
                     else
                         return baseSize * 0.4
