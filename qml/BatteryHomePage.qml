@@ -51,15 +51,12 @@ Item {
 
                     channelName: "CH" + existChannels[index]
                     soc: Uart_bridge["ch" + existChannels[index] + "_CurrentSOC"]
-                    voltage: Uart_bridge["ch" + existChannels[index] + "_Voltage"]
-                    voltageUnit: "V"
-                    current: Uart_bridge["ch" + existChannels[index] + "_Current"]
-                    currentUnit: Uart_bridge["ch" + existChannels[index] + "_CurrentUnit"]
+                    ocv: Uart_bridge["ch" + existChannels[index] + "_cv"]
+                    ocveUnit: "V"
                     esr: Uart_bridge["ch" + existChannels[index] + "_imp"]
                     esrUnit: "Ω"
 
                     batteryModel: Uart_bridge["ch" + existChannels[index] + "_BatteryMode"]
-                    workMode: Uart_bridge["ch" + existChannels[index] + "_WorkMode"]
                     batteryCapacity: Uart_bridge["ch" + existChannels[index] + "_CapacityAH"]
 
                     onClicked: {

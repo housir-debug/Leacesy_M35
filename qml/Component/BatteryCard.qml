@@ -13,15 +13,12 @@ Item {
 
     property string channelName: "CH1"
     property real soc: 100
-    property real voltage: 0.0
-    property string voltageUnit: "V"
-    property real current: 0.0
-    property string currentUnit: "A"
+    property real ocv: 0.0
+    property string ocveUnit: "V"
     property real esr: 0.0
     property string esrUnit: "Ω"
 
     property string batteryModel: "model-1"
-    property string workMode: "static" //Dynamic
     property real batteryCapacity: 50.0
 
     signal clicked
@@ -126,7 +123,7 @@ Item {
                 color: "#2A2A3C"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.preferredHeight: parent.height * 0.27
+                Layout.preferredHeight: parent.height * 0.36
 
                 Rectangle {
                     id: batteryBody
@@ -243,39 +240,32 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.preferredHeight: parent.height * 0.48
+                Layout.margins: 3.6
                 columns: 2
                 columnSpacing: 1.8 * root.scaleFactor
                 rowSpacing: 1.8 * root.scaleFactor
 
                 Repeater {
                     model: [{
-                            "label": "电池模型",
-                            "value": root.batteryModel,
-                            "unit": ""
-                        }, {
-                            "label": "当前电压",
+                            "label": "OCV",
                             "value": root.voltage.toFixed(3),
                             "unit": root.voltageUnit
                         }, {
-                            "label": "工作模式",
-                            "value": root.workMode,
-                            "unit": ""
+                            "label": "ESR",
+                            "value": root.esr.toFixed(3),
+                            "unit": root.esrUnit
                         }, {
-                            "label": "当前电流",
-                            "value": root.current.toFixed(3),
-                            "unit": root.currentUnit
-                        }, {
-                            "label": "电池容量",
+                            "label": "Capacity",
                             "value": root.batteryCapacity.toFixed(2),
                             "unit": "Ah"
                         }, {
-                            "label": "当前内阻",
-                            "value": root.esr.toFixed(3),
-                            "unit": root.esrUnit
+                            "label": "Model",
+                            "value": root.batteryModel,
+                            "unit": ""
                         }]
 
                     Rectangle {
-                        radius: 9 * root.scaleFactor
+                        radius: 18 * root.scaleFactor
                         color: root.channelOutput ? "#151E2C" : "#181824"
                         border.color: "#2A3448"
                         border.width: 1.2 * root.scaleFactor

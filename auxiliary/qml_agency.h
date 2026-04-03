@@ -35,8 +35,7 @@ class SerialBridge : public QObject
         \
         Q_PROPERTY(float ch##n##_CurrentSOC MEMBER mCH##n##_currentSOC NOTIFY CH##n##_CurrentSOCChanged) \
         Q_PROPERTY(float ch##n##_CapacityAH MEMBER mCH##n##_capacityAH NOTIFY CH##n##_CapacityAHChanged) \
-        Q_PROPERTY(QString ch##n##_BatteryMode MEMBER mCH##n##_batteryMode NOTIFY CH##n##_BatteryModeChanged) \
-        Q_PROPERTY(QString ch##n##_WorkMode MEMBER mCH##n##_workMode NOTIFY CH##n##_WorkModeChanged)
+        Q_PROPERTY(QString ch##n##_BatteryMode MEMBER mCH##n##_batteryMode NOTIFY CH##n##_BatteryModeChanged)
 
     CHANNEL_1_TO_33
     #undef CHANNEL
@@ -75,8 +74,7 @@ signals:
         \
         void CH##n##_CurrentSOCChanged(); \
         void CH##n##_CapacityAHChanged(); \
-        void CH##n##_BatteryModeChanged(); \
-        void CH##n##_WorkModeChanged(); \
+        void CH##n##_BatteryModeChanged();
 
     CHANNEL_1_TO_33
     #undef CHANNEL
@@ -111,12 +109,11 @@ public:
         QString mCH##n##_hv{"0.0.0.0"}; \
         \
         std::atomic<bool> mCH##n##_activebattery{false}; \
-        std::atomic<bool> mCH##n##_timerStarted{false}; \
         std::atomic<float> mCH##n##_currentSOC{100}; \
         std::atomic<float> mCH##n##_capacityAH{1}; \
         QString mCH##n##_batteryMode{"model-1"}; \
         QSharedPointer<BatteryModel> mCH##n##_activeModel; \
-        QString mCH##n##_workMode{"static"}; \
+        std::atomic<bool> mCH##n##_timerStarted{false}; \
         QElapsedTimer mCH##n##_integralTimer;
 
     CHANNEL_1_TO_33
