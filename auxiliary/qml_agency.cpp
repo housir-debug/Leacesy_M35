@@ -96,8 +96,8 @@ void SerialBridge::update_CurrentAndUnit(int ch,float current){
                 \
                 if(mCH##n##_activebattery.load()){\
                     if (!mCH##n##_timerStarted.load()){ \
-                        mCH##n##_integralTimer.restart(); \
                         mCH##n##_timerStarted.store(true); \
+                        mCH##n##_integralTimer.restart(); \
                         return; \
                     } \
                     \
@@ -371,6 +371,44 @@ QString SerialBridge::setChannel_CurrentUnit(int channel){
     return unit;
 }
 
+void SerialBridge::setChannel_BatteryOutput(int channel,bool switchs){
+    switch(channel) {
+        #define CHANNEL(n) \
+            case n:{ \
+                if (mCH##n##_batterystaticmode){ \
+                    quint32 ocvint; \
+                    float newocv = mCH##n##_activeModel->getOCV(mCH##n##_currentSOC); \
+                    memcpy(&ocvint, &newocv, sizeof(float)); \
+                    ocvint = qToBigEndian(ocvint); \
+                    QByteArray Status_buffer(reinterpret_cast<const char*>(&ocvint), sizeof(quint32)); \
+                    to_Channel(channel,0x02, 0x00, Status_buffer); \
+                    mCH##n##_cv.store(newocv); \
+                    emit CH##n##_cvChanged(); \
+                    \
+                    quint32 esrint; \
+                    float newesr = mCH##n##_activeModel->getESR(mCH##n##_currentSOC); \
+                    memcpy(&esrint, &newesr, sizeof(float)); \
+                    esrint = qToBigEndian(esrint); \
+                    QByteArray Statusub_buffer(reinterpret_cast<const char*>(&esrint), sizeof(quint32)); \
+                    to_Channel(channel,0x02, 0x02, Statusub_buffer); \
+                    mCH##n##_imp.store(esrint); \
+                    emit CH##n##_impChanged(); \
+                } else{ \
+                    mCH##n##_activebattery.store(switchs); \
+                    mCH##n##_timerStarted.store(false); \
+                } \
+                \
+                setChannel_Output(channel,switchs); \
+                return; \
+            }
+        CHANNEL_1_TO_33
+        #undef CHANNEL
+        default:
+            qCWarning(uart_bridge) << "Invalid channel:" << channel;
+            return;
+    }
+}
+
 void SerialBridge::setChannel_InitSOC(int channel,const QString& val){
     float value = val.toFloat();
 
@@ -439,12 +477,12 @@ QString SerialBridge::setChannel_BatteryModel(int channel){
     if (channel == 0) {
         #define CHANNEL(n)  \
         currentIndex = (currentIndex + 1) % m_currentModelList.size(); \
-        mCH##n##_batteryMode =  m_currentModelList[currentIndex]; \
-        mCH##n##_activeModel = m_modelManager->getModel(mCH##n##_batteryMode); \
-        emit CH##n##_BatteryModeChanged();
+        mCH##n##_batteryModel =  m_currentModelList[currentIndex]; \
+        mCH##n##_activeModel = m_modelManager->getModel(mCH##n##_batteryModel); \
+        emit CH##n##_BatteryModelChanged();
         CHANNEL_1_TO_33
         #undef CHANNEL
-        return mCH1_batteryMode;
+        return mCH1_batteryModel;
     }
 
     // Single channel send
@@ -452,10 +490,10 @@ QString SerialBridge::setChannel_BatteryModel(int channel){
         #define CHANNEL(n) \
             case n:{ \
                 currentIndex = (currentIndex + 1) % m_currentModelList.size(); \
-                mCH##n##_batteryMode =  m_currentModelList[currentIndex]; \
-                mCH##n##_activeModel = m_modelManager->getModel(mCH##n##_batteryMode); \
-                emit CH##n##_BatteryModeChanged(); \
-                return mCH##n##_batteryMode; \
+                mCH##n##_batteryModel =  m_currentModelList[currentIndex]; \
+                mCH##n##_activeModel = m_modelManager->getModel(mCH##n##_batteryModel); \
+                emit CH##n##_BatteryModelChanged(); \
+                return mCH##n##_batteryModel; \
             }
         CHANNEL_1_TO_33
         #undef CHANNEL
@@ -463,8 +501,21 @@ QString SerialBridge::setChannel_BatteryModel(int channel){
             qCWarning(uart_bridge) << "Invalid channel:" << channel;
             return "";
     }
+}
 
-
+void SerialBridge::setChannel_Batterymode(int channel,bool staticmode){
+    switch(channel) {
+        #define CHANNEL(n) \
+            case n:{ \
+                mCH##n##_batterystaticmode.store(staticmode); \
+                return; \
+            }
+        CHANNEL_1_TO_33
+        #undef CHANNEL
+        default:
+            qCWarning(uart_bridge) << "Invalid channel:" << channel;
+            return;
+    }
 }
 
 void SerialBridge::to_Channel(int channel,quint8 cmd,quint8 func,const QByteArray& param){
@@ -507,9 +558,9 @@ void SerialBridge::load_BatteryModel(){
             if (!m_currentModelList.isEmpty()) {
                 QString activemodel = m_currentModelList[0];
                 #define CHANNEL(n) \
-                mCH##n##_batteryMode = activemodel; \
+                mCH##n##_batteryModel = activemodel; \
                 mCH##n##_activeModel = m_modelManager->getModel(activemodel); \
-                emit CH##n##_BatteryModeChanged();
+                emit CH##n##_BatteryModelChanged();
                 CHANNEL_1_TO_33
                 #undef CHANNEL
             }

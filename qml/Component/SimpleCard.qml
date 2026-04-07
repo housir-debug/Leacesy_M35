@@ -13,23 +13,25 @@ Item {
 
     property string channelName: "CH1"
     property real soc: 100
-    property real ocv: 0.0
-    property string ocveUnit: "V"
-    property real esr: 0.0
-    property string esrUnit: "Ω"
-    property string batteryModel: "model-1"
-    property real batteryCapacity: 50.0
+    property real voltage: 0.0
+    property string voltageUnit: "V"
+    property real current: 0.0
+    property string currentUnit: "A"
 
-    signal clicked
-    signal pressAndHold
+    signal batteryclicked
+    signal batterypressAndHold
+    signal digitalclicked
+    signal digitalpressAndHold
 
-    //property real scaleFactor: 1.0
-    property real scaleFactor: {
+    property real scaleFactor: 1.0
+
+
+    /*property real scaleFactor: {
         if (width > 0 && height > 0) {
             return Math.min(width / implicitWidth, height / implicitHeight)
         }
         return 1.0
-    }
+    }*/
     property bool pressed: false
     property bool longpressed: false
     readonly property color colorBackground: "#1E1E2E"
@@ -71,11 +73,10 @@ Item {
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 18 * root.scaleFactor
-            spacing: 9 * root.scaleFactor
+            spacing: 16 * root.scaleFactor
 
             Item {
                 Layout.fillWidth: true
-                Layout.fillHeight: true
                 Layout.preferredHeight: parent.height * 0.18
                 Layout.alignment: Qt.AlignTop
 
@@ -88,31 +89,6 @@ Item {
                     text: root.channelName
                     style: Text.Raised
                     styleColor: "#000000"
-                }
-
-                Rectangle {
-                    id: channelDot
-                    anchors {
-                        verticalCenter: parent.verticalCenter
-                        right: parent.right
-                    }
-                    width: 36 * root.scaleFactor
-                    height: 36 * root.scaleFactor
-                    radius: width / 2
-                    color: root.channelOutput ? "#1AF080" : "#3A3A4E"
-                    border.width: 1 * root.scaleFactor
-                    border.color: "#000000"
-
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: parent.width + 4 * root.scaleFactor
-                        height: parent.height + 4 * root.scaleFactor
-                        radius: width / 2
-                        color: "transparent"
-                        border.width: 1 * root.scaleFactor
-                        border.color: root.channelOutput ? root.colorGlow : "transparent"
-                        opacity: 0.6
-                    }
                 }
             }
 
@@ -232,119 +208,138 @@ Item {
                     styleColor: "#80000000"
                     z: 1
                 }
-            }
 
-            GridLayout {
-                id: infoGrid
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                Layout.preferredHeight: parent.height * 0.48
-                Layout.margins: 3.6
-                columns: 2
-                columnSpacing: 1.8 * root.scaleFactor
-                rowSpacing: 1.8 * root.scaleFactor
+                MouseArea {
+                    id: batterymouseArea
+                    anchors.fill: parent
+                    enabled: root.enclick
+                    pressAndHoldInterval: 1000
 
-                Repeater {
-                    model: [{
-                            "label": "OCV",
-                            "value": root.voltage.toFixed(3),
-                            "unit": root.voltageUnit
-                        }, {
-                            "label": "ESR",
-                            "value": root.esr.toFixed(3),
-                            "unit": root.esrUnit
-                        }, {
-                            "label": "Capacity",
-                            "value": root.batteryCapacity.toFixed(3),
-                            "unit": "Ah"
-                        }, {
-                            "label": "Model",
-                            "value": root.batteryModel,
-                            "unit": ""
-                        }]
+                    onPressed: {
+                        root.pressed = true
+                        root.longpressed = false
+                        pressAnimation.start()
+                    }
+                    onReleased: {
+                        if (root.pressed) {
+                            root.pressed = false
+                            releaseAnimation.start()
+                        }
+                    }
+                    onCanceled: {
+                        root.pressed = false
+                        root.longpressed = false
+                        releaseAnimation.start()
+                    }
 
-                    Rectangle {
-                        radius: 18 * root.scaleFactor
-                        color: root.channelOutput ? "#151E2C" : "#181824"
-                        border.color: "#2A3448"
-                        border.width: 1.2 * root.scaleFactor
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-
-                        Column {
-                            anchors.centerIn: parent
-                            spacing: 0.9 * root.scaleFactor
-
-                            Text {
-                                text: modelData.label
-                                font.pixelSize: 12 * root.scaleFactor
-                                font.family: "Microsoft YaHei"
-                                font.weight: Font.Medium
-                                color: "#8E9AFF"
-                                anchors.horizontalCenter: parent.horizontalCenter
-                            }
-
-                            Row {
-                                spacing: 3.6 * root.scaleFactor
-                                anchors.horizontalCenter: parent.horizontalCenter
-
-                                Text {
-                                    visible: modelData.value
-                                    text: modelData.value
-                                    font.pixelSize: 12 * root.scaleFactor
-                                    font.family: "Microsoft YaHei"
-                                    font.weight: Font.Bold
-                                    color: "#FFFFFF"
-                                }
-
-                                Text {
-                                    visible: modelData.unit
-                                    text: modelData.unit
-                                    font.pixelSize: 9 * root.scaleFactor
-                                    font.family: "Microsoft YaHei"
-                                    font.weight: Font.Medium
-                                    color: "#8E9AFF"
-                                    anchors.bottom: parent.bottom
-                                    anchors.bottomMargin: 1.2 * root.scaleFactor
-                                }
-                            }
+                    onPressAndHold: {
+                        root.longpressed = true
+                        root.batterypressAndHold()
+                    }
+                    onClicked: {
+                        if (!root.longpressed) {
+                            root.batteryclicked()
                         }
                     }
                 }
             }
-        }
 
-        MouseArea {
-            id: mouseArea
-            anchors.fill: parent
-            enabled: root.enclick
-            pressAndHoldInterval: 1000
+            Rectangle {
+                id: measurementCard
+                radius: 16 * root.scaleFactor
+                color: "#080810"
+                border.width: 1.2 * root.scaleFactor
+                border.color: "#3A3A4E"
+                Layout.fillWidth: true
+                Layout.preferredHeight: parent.height * 0.36
 
-            onPressed: {
-                root.pressed = true
-                root.longpressed = false
-                pressAnimation.start()
-            }
-            onReleased: {
-                if (root.pressed) {
-                    root.pressed = false
-                    releaseAnimation.start()
+                gradient: Gradient {
+                    orientation: Gradient.Vertical
+                    GradientStop {
+                        position: 0.0
+                        color: "#14141E"
+                    }
+                    GradientStop {
+                        position: 1.0
+                        color: "#0A0A12"
+                    }
+                }
+
+                ColumnLayout {
+                    anchors.centerIn: parent
+                    spacing: 12 * root.scaleFactor
+
+                    Text {
+                        id: voltageText
+                        color: root.colorCv
+                        font.bold: true
+                        font.pixelSize: 36 * root.scaleFactor
+                        Layout.alignment: Qt.AlignHCenter
+                        text: root.voltage.toFixed(4) + " " + root.voltageUnit
+                        style: Text.Raised
+                        styleColor: "#000000"
+                    }
+
+                    Text {
+                        id: currentText
+                        color: root.colorCc
+                        font.bold: true
+                        font.pixelSize: (root.currentUnit == "mA" ? 30 : 36) * root.scaleFactor
+                        Layout.alignment: Qt.AlignHCenter
+                        text: root.current.toFixed(4) + " " + root.currentUnit
+                        style: Text.Raised
+                        styleColor: "#000000"
+                    }
+                }
+
+                Rectangle {
+                    width: parent.width - 20 * root.scaleFactor
+                    height: 2 * root.scaleFactor
+                    color: root.colorGlow
+                    opacity: 0.3
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 5 * root.scaleFactor
+                    anchors.horizontalCenter: parent.horizontalCenter
+                }
+
+                MouseArea {
+                    id: digitalmouseArea
+                    anchors.fill: parent
+                    enabled: root.enclick
+                    pressAndHoldInterval: 1000
+
+                    onPressed: {
+                        root.pressed = true
+                        root.longpressed = false
+                        pressAnimation.start()
+                    }
+                    onReleased: {
+                        if (root.pressed) {
+                            root.pressed = false
+                            releaseAnimation.start()
+                        }
+                    }
+                    onCanceled: {
+                        root.pressed = false
+                        root.longpressed = false
+                        releaseAnimation.start()
+                    }
+
+                    onPressAndHold: {
+                        root.longpressed = true
+                        root.digitalpressAndHold()
+                    }
+                    onClicked: {
+                        if (!root.longpressed) {
+                            root.digitalclicked()
+                        }
+                    }
                 }
             }
-            onCanceled: {
-                root.pressed = false
-                root.longpressed = false
-                releaseAnimation.start()
-            }
 
-            onPressAndHold: {
-                root.longpressed = true
-                root.pressAndHold()
-            }
-            onClicked: {
-                if (!root.longpressed) {
-                    root.clicked()
-                }
+            Item {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
             }
         }
     }
@@ -374,7 +369,7 @@ Item {
 
 /*##^##
 Designer {
-    D{i:0;formeditorZoom:0.9}
+    D{i:0;autoSize:true;height:400;width:280}
 }
 ##^##*/
 

@@ -35,7 +35,7 @@ class SerialBridge : public QObject
         \
         Q_PROPERTY(float ch##n##_CurrentSOC MEMBER mCH##n##_currentSOC NOTIFY CH##n##_CurrentSOCChanged) \
         Q_PROPERTY(float ch##n##_CapacityAH MEMBER mCH##n##_capacityAH NOTIFY CH##n##_CapacityAHChanged) \
-        Q_PROPERTY(QString ch##n##_BatteryMode MEMBER mCH##n##_batteryMode NOTIFY CH##n##_BatteryModeChanged)
+        Q_PROPERTY(QString ch##n##_BatteryModel MEMBER mCH##n##_batteryModel NOTIFY CH##n##_BatteryModelChanged)
 
     CHANNEL_1_TO_33
     #undef CHANNEL
@@ -74,7 +74,7 @@ signals:
         \
         void CH##n##_CurrentSOCChanged(); \
         void CH##n##_CapacityAHChanged(); \
-        void CH##n##_BatteryModeChanged();
+        void CH##n##_BatteryModelChanged();
 
     CHANNEL_1_TO_33
     #undef CHANNEL
@@ -108,10 +108,11 @@ public:
         QString mCH##n##_sv{"0.0.0.0"}; \
         QString mCH##n##_hv{"0.0.0.0"}; \
         \
-        std::atomic<bool> mCH##n##_activebattery{false}; \
         std::atomic<float> mCH##n##_currentSOC{100}; \
         std::atomic<float> mCH##n##_capacityAH{1}; \
-        QString mCH##n##_batteryMode{"model-1"}; \
+        QString mCH##n##_batteryModel{"model-1"}; \
+        std::atomic<bool> mCH##n##_batterystaticmode{false}; \
+        std::atomic<bool> mCH##n##_activebattery{false}; \
         QSharedPointer<BatteryModel> mCH##n##_activeModel; \
         std::atomic<bool> mCH##n##_timerStarted{false}; \
         QElapsedTimer mCH##n##_integralTimer;
@@ -144,9 +145,11 @@ public:
     Q_INVOKABLE void setChannel_Output(int channel,bool switchs);
     Q_INVOKABLE void setChannel_Setstatus(int channel,int model,const QString& val);
     Q_INVOKABLE QString setChannel_CurrentUnit(int channel);
+    Q_INVOKABLE void setChannel_BatteryOutput(int channel,bool switchs);
     Q_INVOKABLE void setChannel_InitSOC(int channel,const QString& val);
     Q_INVOKABLE void setChannel_Capacity(int channel,const QString& val);
     Q_INVOKABLE QString setChannel_BatteryModel(int channel);
+    Q_INVOKABLE void setChannel_Batterymode(int channel,bool staticmode);
     void to_Channel(int channel,quint8 cmd,quint8 func,const QByteArray& param);
     Q_INVOKABLE void load_BatteryModel();
 };

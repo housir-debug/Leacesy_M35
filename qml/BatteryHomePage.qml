@@ -56,12 +56,12 @@ Item {
                     esr: Uart_bridge["ch" + existChannels[index] + "_imp"]
                     esrUnit: "Ω"
 
-                    batteryModel: Uart_bridge["ch" + existChannels[index] + "_BatteryMode"]
+                    batteryModel: Uart_bridge["ch" + existChannels[index] + "_BatteryModel"]
                     batteryCapacity: Uart_bridge["ch" + existChannels[index] + "_CapacityAH"]
 
                     onClicked: {
-                        Uart_bridge.setChannel_Output(existChannels[index],
-                                                      !channelOutput)
+                        Uart_bridge.setChannel_BatteryOutput(
+                                    existChannels[index], !channelOutput)
                     }
 
                     onPressAndHold: {

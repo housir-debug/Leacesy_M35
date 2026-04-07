@@ -4,16 +4,15 @@
         <file>qml/Component/qmldir</file>
         <file>qml/Component/DigitalCard.qml</file>
         <file>qml/Component/SetBox.qml</file>
-        <file>qml/Component/SetBoxGroup.qml</file>
         <file>qml/Component/KeyinputBox.qml</file>
         <file>qml/Component/test.qml</file>
         <file>qml/SettingPage.qml</file>
         <file>qml/DigitalHomePage.qml</file>
-        <file>qml/SystemPage.qml</file>
         <file>qml/FunctionPage.qml</file>
         <file>qml/Component/BatteryCard.qml</file>
         <file>qml/BatteryHomePage.qml</file>
         <file>qml/Component/Unlock.qml</file>
+        <file>qml/Component/SimpleCard.qml</file>
     </qresource>
     <qresource prefix="/web">
         <file>web/index.html</file>

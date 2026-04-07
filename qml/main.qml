@@ -84,7 +84,13 @@ ApplicationWindow {
         FunctionPage {
             id: function_page
             initialChannel: mainWindow.functionChannel
-            onBackRequested: stackLayout.currentIndex = 0
+            onBackRequested: {
+                if (homePageModel === 0) {
+                    stackLayout.currentIndex = 0
+                } else {
+                    stackLayout.currentIndex = 1
+                }
+            }
         }
     }
 
