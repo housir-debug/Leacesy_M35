@@ -7,7 +7,7 @@
 
 Q_DECLARE_LOGGING_CATEGORY(uart_bridge)
 
-class SerialBridge : public QObject
+class GuiBridge : public QObject
 {
     Q_OBJECT
 
@@ -37,7 +37,7 @@ class SerialBridge : public QObject
         Q_PROPERTY(float ch##n##_CapacityAH MEMBER mCH##n##_capacityAH NOTIFY CH##n##_CapacityAHChanged) \
         Q_PROPERTY(QString ch##n##_BatteryModel MEMBER mCH##n##_batteryModel NOTIFY CH##n##_BatteryModelChanged)
 
-    CHANNEL_1_TO_33
+    CHANNEL_COUNT
     #undef CHANNEL
 
 signals:
@@ -46,7 +46,7 @@ signals:
     void to_CANid(QString id);
     #define CHANNEL(n) void to_UartChannel##n(quint8 cmd, quint8 func, const QByteArray& param,bool isScpi);
 
-    CHANNEL_1_TO_33
+    CHANNEL_COUNT
     #undef CHANNEL
 
     // to qml property update
@@ -76,14 +76,14 @@ signals:
         void CH##n##_CapacityAHChanged(); \
         void CH##n##_BatteryModelChanged();
 
-    CHANNEL_1_TO_33
+    CHANNEL_COUNT
     #undef CHANNEL
 
 public:
-    explicit SerialBridge(const QString& parentPath,QObject *parent = nullptr);
-    ~SerialBridge() override = default;
+    explicit GuiBridge(QObject *parent = nullptr);
+    ~GuiBridge() override = default;
 
-    QSharedPointer<BatteryModelManager> m_modelManager;
+    std::shared_ptr<BatteryModelManager> m_modelManager{nullptr};
     QStringList m_currentModelList;
 
     // to qml engine property variate
@@ -117,7 +117,7 @@ public:
         std::atomic<bool> mCH##n##_timerStarted{false}; \
         QElapsedTimer mCH##n##_integralTimer;
 
-    CHANNEL_1_TO_33
+    CHANNEL_COUNT
     #undef CHANNEL
 
 public:

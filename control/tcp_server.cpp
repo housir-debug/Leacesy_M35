@@ -7,12 +7,10 @@
 
 Q_LOGGING_CATEGORY(tcp, "TCP:")
 
-TcpServerManager::TcpServerManager(ScpiManager* scpi,SerialBridge* qml,QObject *parent):
-    QObject(parent), m_scpiManager(scpi) , m_qmlbridge(qml){}
+TcpServerManager::TcpServerManager(QObject *parent):QObject(parent){}
 TcpServerManager::~TcpServerManager()
 {
     qCDebug(tcp)<<"TcpServerManager Destroyed!!!";
-    delete m_scpiManager;
     m_scpiManager = nullptr;
 
     m_cleanupTimer->stop();
@@ -39,7 +37,7 @@ TcpServerManager::~TcpServerManager()
     }
 }
 
-// ===================== 启动部分 =================================
+//---------------------------------------------------------------------------------
 
 bool TcpServerManager::startServer()
 {

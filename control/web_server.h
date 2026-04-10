@@ -13,14 +13,17 @@
 
 Q_DECLARE_LOGGING_CATEGORY(web)
 
-class WebServer : public QObject
+class WebServerManager : public QObject
 {
     Q_OBJECT
 public:
-    explicit WebServer(ScpiManager* scpi,SerialBridge* qml,QObject *parent = nullptr);
-    ~WebServer();
+    explicit WebServerManager(QObject *parent = nullptr);
+    ~WebServerManager();
 
-    bool start();
+    std::shared_ptr<ScpiManager> m_scpiManager;
+    std::shared_ptr<GuiBridge> m_qmlbridge;
+    std::shared_ptr<BatteryModelManager> m_BatteryManager;
+    bool startServer();
 
 private:
     void onHttpNewConnection();
@@ -50,8 +53,6 @@ private:
 
     };
     QThread* m_webThread{nullptr};
-    ScpiManager* m_scpiManager{nullptr};
-    SerialBridge* m_qmlbridge{nullptr};
     QMap<int, ChannelData> m_channelData;
     QByteArray m_responsebuffer;
 

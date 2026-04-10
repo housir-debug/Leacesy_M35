@@ -22,7 +22,7 @@ signals:
     // to C++ model control
     #define CHANNEL(n) void to_UartChannel##n(quint8 cmd, quint8 func, const QByteArray& param,bool isScpi);
 
-    CHANNEL_1_TO_33
+    CHANNEL_COUNT
     #undef CHANNEL
 
 public:

@@ -3,185 +3,159 @@
 #include <QQmlContext>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
-#include "auxiliary/battery_model.h"
 #include "auxiliary/simple_logger.h"
 #include "auxiliary/config_manager.h"
+#include "auxiliary/battery_model.h"
 #include "auxiliary/scpi_handle.h"
 #include "auxiliary/qml_agency.h"
 #include "channel/uart_channel.h"
 #include "channel/can_channel.h"
 #include "control/tcp_server.h"
 #include "control/web_server.h"
+#include "control/can_server.h"
 #include "control/uart_server.h"
 
+Q_LOGGING_CATEGORY(application, "APP")
 
-using Signal_Bridge = void (SerialBridge::*)(quint8 cmd, quint8 func, const QByteArray& param,bool isScpi);
-std::vector<Signal_Bridge> qml_signal = {
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel1),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel2),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel3),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel4),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel5),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel6),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel7),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel8),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel9),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel10),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel11),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel12),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel13),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel14),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel15),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel16),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel17),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel18),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel19),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel20),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel21),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel22),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel23),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel24),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel25),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel26),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel27),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel28),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel29),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel30),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel31),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel32),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel33),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel34),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel35),
-    static_cast<Signal_Bridge>(&SerialBridge::to_UartChannel36),
+using QmlSign_toUartCh = void (GuiBridge::*)(quint8 cmd, quint8 func, const QByteArray& param,bool isScpi);
+std::vector<QmlSign_toUartCh> qml_signal = {
+    #define CHANNEL(n) static_cast<QmlSign_toUartCh>(&GuiBridge::to_UartChannel##n),
+    CHANNEL_COUNT
+    #undef CHANNEL
 };
 
-using SignalType = void (ScpiManager::*)(quint8 cmd, quint8 func, const QByteArray& param,bool isScpi);
-std::vector<SignalType> scpi_signal = {
-    static_cast<SignalType>(&ScpiManager::to_UartChannel1),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel2),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel3),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel4),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel5),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel6),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel7),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel8),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel9),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel10),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel11),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel12),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel13),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel14),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel15),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel16),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel17),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel18),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel19),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel20),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel21),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel22),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel23),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel24),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel25),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel26),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel27),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel28),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel29),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel30),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel31),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel32),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel33),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel34),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel35),
-    static_cast<SignalType>(&ScpiManager::to_UartChannel36),
+using ScpiSign_toUartCh = void (ScpiManager::*)(quint8 cmd, quint8 func, const QByteArray& param,bool isScpi);
+std::vector<ScpiSign_toUartCh> scpi_signal = {
+    #define CHANNEL(n) static_cast<ScpiSign_toUartCh>(&ScpiManager::to_UartChannel##n),
+    CHANNEL_COUNT
+    #undef CHANNEL
 };
+
 
 int main(int argc, char *argv[])
 {
-    //qputenv("QT_IM_MODULE", QByteArray("qtvirtualkeyboard"));
-
+    // create APP-gui
+    // qputenv("QT_IM_MODULE", QByteArray("qtvirtualkeyboard"));
     QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-    QGuiApplication::setApplicationName("Leacesy Instrument");
+    QGuiApplication::setApplicationName("Leacesy_Instrument-hrx");
     QGuiApplication app(argc, argv);
 
+    // get App parentpath
     QString appPath = QGuiApplication::applicationDirPath();
     QDir appDir(appPath);
-    if (!appDir.cdUp()){return 1;}
-    QString parentPath = appDir.absolutePath();
-
-    loggermanage(ConfigManager::s_loglevel,parentPath);
-    QObject::connect(&app, &QGuiApplication::aboutToQuit, &shutdownLogger);
-    if (!ConfigManager::init(parentPath)) {return 1;}
-
-    std::unique_ptr<CanWorker> canWorker;
-    std::unique_ptr<QThread> canThread;
-    if (ConfigManager::s_enableCanMess){
-        canWorker = std::make_unique<CanWorker>();
-        canThread = std::make_unique<QThread>();
-
-        canWorker->moveToThread(canThread.get());
-        canThread->setObjectName("can_worker");
-        canThread->start();
-
-        QMetaObject::invokeMethod(canWorker.get(), [worker = canWorker.get()]() {
-            worker->initialize("all", 1000000);  // all
-            worker->testLoopback();
-        }, Qt::QueuedConnection);//Blocking
-        //QTimer::singleShot(300, &app, &QGuiApplication::quit);
+    if (!appDir.cdUp()){
+        qCWarning(application) << "app parentPath not exist!";
+        return 1;   // error
     }
 
-    std::unique_ptr<ScpiManager> Scpi_process;
-    std::unique_ptr<SerialBridge> Uart_bridge;
-    std::vector<std::unique_ptr<SerialWorker>> Uart_Channels;
-    if (ConfigManager::s_enableUartMess){
-        Uart_bridge = std::make_unique<SerialBridge>(parentPath);
-        Scpi_process = std::make_unique<ScpiManager>();
+    // config log Setting And global variable
+    QString parentPath = appDir.absolutePath();
+    loggermanage(ConfigManager::s_loglevel , parentPath);
+    QObject::connect(&app, &QGuiApplication::aboutToQuit, &shutdownLogger);
+    if (!ConfigManager::init(parentPath)) {
+        qCWarning(application) << "app get global config not exist!";
+        return 1;   // error
+    }
 
+    // share model pointer create
+    std::shared_ptr<ScpiManager> Scpi_share = std::make_shared<ScpiManager>();
+    std::shared_ptr<BatteryModelManager> BatteryModel_share = std::make_shared<BatteryModelManager>(parentPath);
+    std::shared_ptr<GuiBridge> GuiBridge_share = std::make_shared<GuiBridge>();
+    GuiBridge_share->m_modelManager = BatteryModel_share;
+
+    // lack of can channel
+
+    // uart channel create
+    std::vector<std::unique_ptr<UartChannelManager>> Uart_Channels;
+    if (ConfigManager::s_enableUartMess){
+        // config form config_manager
         for (const auto& config : configs) {
-            auto channel = std::make_unique<SerialWorker>(Scpi_process.get(),Uart_bridge.get());
-            if (!channel->initSerialPort(config.port, config.baudRate)) {return 1;}
+            auto channel = std::make_unique<UartChannelManager>();
+            channel->m_qmlbridge = GuiBridge_share;
+            channel->m_scpiManager = Scpi_share;
+            if (!channel->initSerialPort(config.port, config.baudRate)) {
+                qCWarning(application) << "uart channel "<< config.port <<" Initialization failed!";
+                return 1;
+            }
 
             // QmlUI -> Uart
-            QObject::connect(Uart_bridge.get(),qml_signal[config.channel-1],channel.get(),&SerialWorker::writeFrame,Qt::QueuedConnection);
+            QObject::connect(GuiBridge_share.get(),qml_signal[config.channel-1],channel.get(),&UartChannelManager::writeFrame,Qt::QueuedConnection);
             // Scpi -> uart
-            QObject::connect(Scpi_process.get(),scpi_signal[config.channel-1],channel.get(),&SerialWorker::writeFrame,Qt::QueuedConnection);
+            QObject::connect(Scpi_share.get(),scpi_signal[config.channel-1],channel.get(),&UartChannelManager::writeFrame,Qt::QueuedConnection);
 
             Uart_Channels.push_back(std::move(channel));
         }
 
-        //QObject::connect(Uart_Channels[0].get(),&SerialWorker::serialDataReceived,Uart_Channels[1].get(),&SerialWorker::writeSerialData);
-        //QObject::connect(Uart_Channels[1].get(),&SerialWorker::serialDataReceived,Uart_Channels[0].get(),&SerialWorker::writeSerialData);
+        //QObject::connect(Uart_Channels[0].get(),&UartChannelManager::serialDataReceived,Uart_Channels[1].get(),&UartChannelManager::writeSerialData);
+        //QObject::connect(Uart_Channels[1].get(),&UartChannelManager::serialDataReceived,Uart_Channels[0].get(),&UartChannelManager::writeSerialData);
         //QTimer::singleShot(300, &app, &QGuiApplication::quit);
     }
 
-    QQmlApplicationEngine engine;
+    // screen GUI engine create
     if (ConfigManager::s_enableDisplay){
+        QQmlApplicationEngine engine;
         engine.addImportPath(QStringLiteral("qrc:/qml"));
-        engine.rootContext()->setContextProperty("Uart_bridge", Uart_bridge.get());
+        engine.rootContext()->setContextProperty("Uart_bridge", GuiBridge_share.get());
 
         const QUrl url(QStringLiteral("qrc:/qml/Component/test.qml"));   //main.qml   Component/test.qml
-        QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,&app, [url](QObject *obj, const QUrl &objUrl) {
-            if (!obj && url == objUrl){QCoreApplication::exit(-1);}
+        QObject::connect(&engine, &QQmlApplicationEngine::objectCreated, &app, [url](QObject *obj, const QUrl &objUrl) {
+            if (!obj && url == objUrl){
+                qCWarning(application) << "Object not exist and the URL matches.!";
+                QCoreApplication::exit(-1);
+            }
         }, Qt::QueuedConnection);
+
         engine.load(url);
     }
 
-    std::unique_ptr<WebServer> webServer;
     if (ConfigManager::s_enableWEBServer){
-        webServer = std::make_unique<WebServer>(Scpi_process.get(),Uart_bridge.get());
-        if (!webServer->start()) {return 1;}
+        std::unique_ptr<WebServerManager> webServer = std::make_unique<WebServerManager>();
+        webServer->m_BatteryManager = BatteryModel_share;
+        webServer->m_qmlbridge = GuiBridge_share;
+        webServer->m_scpiManager = Scpi_share;
+        if (!webServer->startServer()) {
+            qCWarning(application) << "WebServerManager not Normal start!";
+            return 1;
+        }
     }
 
-    std::unique_ptr<TcpServerManager> vxiServer;
     if (ConfigManager::s_enableLANServer){
-        vxiServer = std::make_unique<TcpServerManager>(Scpi_process.get(),Uart_bridge.get());
-        if (!vxiServer->startServer()) {return 1;}
+        std::unique_ptr<TcpServerManager> vxiServer = std::make_unique<TcpServerManager>();
+        vxiServer->m_qmlbridge = GuiBridge_share;
+        vxiServer->m_scpiManager = Scpi_share;
+        if (!vxiServer->startServer()) {
+            qCWarning(application) << "TcpServer not Normal start!";
+            return 1;
+        }
     }
 
-    std::unique_ptr<UartServerManager> uartServer;
     if (ConfigManager::s_enableUARTServer){
-        uartServer = std::make_unique<UartServerManager>(Scpi_process.get(),Uart_bridge.get());
-        if (!uartServer->startServer("/dev/ttyWCH27",QSerialPort::Baud38400)) {return 1;}
+        std::unique_ptr<UartServerManager> uartServer = std::make_unique<UartServerManager>();
+        uartServer->m_qmlbridge = GuiBridge_share;
+        uartServer->m_scpiManager = Scpi_share;
+        if (!uartServer->startServer("/dev/ttyWCH27",QSerialPort::Baud38400)) {
+            qCWarning(application) << "UartServer not Normal start!";
+            return 1;
+        }
     }
+
+    // GPIB server create
+
+    /*
+    if (ConfigManager::s_enableCanMess){
+        std::unique_ptr<CanServerManager> canServer = std::make_unique<CanServerManager>();
+        std::unique_ptr<QThread> canThread = std::make_unique<QThread>();
+
+        canServer->moveToThread(canThread.get());
+        canThread->setObjectName("can_worker");
+        canThread->start();
+
+        QMetaObject::invokeMethod(canServer.get(), [worker = canServer.get()]() {
+            worker->initialize("all", 1000000);  // all
+            worker->testLoopback();
+        }, Qt::QueuedConnection);//Blocking
+        //QTimer::singleShot(300, &app, &QGuiApplication::quit);
+    }*/
 
     return app.exec();
 }

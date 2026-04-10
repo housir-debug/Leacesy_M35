@@ -1,6 +1,8 @@
 #include "config_manager.h"
 #include <QFile>
 
+QSettings* ConfigManager::s_settings = nullptr;
+
 std::vector<UartConfig> configs = {
     //{"/dev/ttyS3",    QSerialPort::Baud38400, 0x01}, // debug-Uart
     /*{"/dev/ttyS4",    QSerialPort::Baud38400, 0x01},
@@ -39,10 +41,9 @@ std::vector<UartConfig> configs = {
     {"/dev/ttyS4",    QSerialPort::Baud38400, 0x01},   // test
 };
 
-// ===================== 静态成员初始化 =====================
-
-QString ConfigManager::s_configFile = "instrument_config.ini";
-QSettings* ConfigManager::s_settings = nullptr;
+// log config
+QString ConfigManager::s_loglevel = "release";
+bool ConfigManager::s_enablelogfile = false;
 
 // global variable
 QString ConfigManager::s_manufacturer = "Leacesy";
@@ -55,9 +56,6 @@ QString ConfigManager::s_SM = "255.255.255.0";
 QString ConfigManager::s_GPIBid = "0";
 QString ConfigManager::s_CANid = "0";
 
-QString ConfigManager::s_loglevel = "release";
-bool ConfigManager::s_enablelogfile = false;
-
 // channel switch
 bool ConfigManager::s_enableUartMess = true;
 bool ConfigManager::s_enableCanMess = true;
@@ -68,16 +66,18 @@ bool ConfigManager::s_enableWEBServer = false;
 bool ConfigManager::s_enableUARTServer = true;
 bool ConfigManager::s_enableDisplay = true;
 
-// ===================== 初始化方法 =====================
+//-------------------------------------------------------------
 
 bool ConfigManager::init(const QString &configDir)
 {
-    QString fullPath = configDir + "/" + s_configFile;
-    if (!QFile::exists(fullPath)) {return false;}
-
-    if (!s_settings) {
-        s_settings = new QSettings(fullPath, QSettings::IniFormat);
+    QString fullPath = configDir + "/instrument_config.ini";
+    if (!QFile::exists(fullPath) || s_settings) {
+        return false;
     }
+
+    s_settings = new QSettings(fullPath, QSettings::IniFormat);
+    s_loglevel = s_settings->value("Logger/logLevel").toString();
+    s_enablelogfile = s_settings->value("Logger/EnablelogFile").toBool();
 
     // global variable
     s_model = s_settings->value("Device/Model").toString();
@@ -86,9 +86,6 @@ bool ConfigManager::init(const QString &configDir)
     s_SM = s_settings->value("Device/SM").toString();
     s_GPIBid = s_settings->value("Device/GPIBID").toString();
     s_CANid = s_settings->value("Device/CANID").toString();
-
-    s_loglevel = s_settings->value("Logger/logLevel").toString();
-    s_enablelogfile = s_settings->value("Logger/EnablelogFile").toBool();
 
     // channel switch
     s_enableUartMess = s_settings->value("Channel/EnableUartMess").toBool();
@@ -105,12 +102,18 @@ bool ConfigManager::init(const QString &configDir)
 
 bool ConfigManager::setConfigValue(const QString &key, const QVariant &value)
 {
-    if (!s_settings) {return false;}
+    if (s_settings) {
+        QVariant oldValue = s_settings->value(key);
+        if (oldValue != value && !value.isNull()) {
+            // Automatically written at the end
+            s_settings->setValue(key, value);
+            // s_settings->sync(); // Write immediately to the file
+            return true;
+        }
+    }
 
-    QVariant oldValue = s_settings->value(key);
-    if (oldValue == value && !value.isNull()) {return true;}
-
-    s_settings->setValue(key, value); // 暂时写入内存
-    //s_settings->sync(); // 立即写入文件，可选
-    return true;
+    return false;
 }
+
+
+

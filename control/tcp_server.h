@@ -13,10 +13,13 @@ class TcpServerManager : public QObject
     Q_OBJECT
 
 public:
-    explicit TcpServerManager(ScpiManager* scpi,SerialBridge* qml,QObject *parent = nullptr);
+    explicit TcpServerManager(QObject *parent = nullptr);
     ~TcpServerManager();
 
     bool startServer();
+
+    std::shared_ptr<ScpiManager> m_scpiManager{nullptr};
+    std::shared_ptr<GuiBridge> m_qmlbridge{nullptr};
 
 private:
     bool registerWithRpcbind();
@@ -63,8 +66,6 @@ private:
     QByteArray m_readbuffer;
     QByteArray m_responsebuffer;
 
-    ScpiManager* m_scpiManager{nullptr};
-    SerialBridge* m_qmlbridge{nullptr};
     QTcpServer *m_tcpServer{nullptr};
     QTimer *m_cleanupTimer{nullptr};
     QThread *m_serverThread{nullptr};
@@ -103,8 +104,8 @@ namespace Vxi11 {
         DEVICE_READSTB        = 13,   // 读取设备状态字节（Status Byte）
         DEVICE_TRIGGER        = 14,   // 向设备发送触发信号
         DEVICE_CLEAR          = 15,   // 发送设备清除命令
-        DEVICE_REMOTE         = 16,   // 将设备设置为远程模式（禁用前面板）
-        DEVICE_LOCAL          = 17,   // 将设备设置为本地模式（启用前面板）
+        DEVICE_REMOTE         = 16,   // 将设备设置为远程模式
+        DEVICE_LOCAL          = 17,   // 将设备设置为本地模式
         DEVICE_LOCK           = 18,   // 锁定设备（独占访问）
         DEVICE_UNLOCK         = 19,   // 解锁设备
         DEVICE_ENABLE_SRQ     = 20,   // 启用/禁用服务请求（SRQ）中断

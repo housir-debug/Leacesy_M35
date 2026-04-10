@@ -5,8 +5,8 @@
 
 Q_LOGGING_CATEGORY(uart_channel, "UART_CHANNEL:")
 
-SerialWorker::SerialWorker(ScpiManager* scpi,SerialBridge* qml,QObject *parent):
-    QObject(parent), m_scpiManager(scpi), m_qmlbridge(qml){
+UartChannelManager::UartChannelManager(QObject *parent):
+    QObject(parent){
     m_initCommands = {
         {0x01, 0x00, "", false},// Turnoff output
         {0x04, 0x0e, QByteArray::fromHex("00"), false},//set A Unit
@@ -23,7 +23,7 @@ SerialWorker::SerialWorker(ScpiManager* scpi,SerialBridge* qml,QObject *parent):
         {0x05, 0x85, "", false},//query Hardware
     };
 }
-SerialWorker::~SerialWorker()
+UartChannelManager::~UartChannelManager()
 {
     qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Serial~Destruct Finished.";
     m_isTesting = false;
@@ -46,7 +46,7 @@ SerialWorker::~SerialWorker()
     }
 }
 
-bool SerialWorker::initSerialPort(const QString &portName,
+bool UartChannelManager::initSerialPort(const QString &portName,
                                  qint32 baudRate,
                                  QSerialPort::DataBits dataBits,
                                  QSerialPort::Parity parity,
@@ -91,7 +91,7 @@ bool SerialWorker::initSerialPort(const QString &portName,
     if (!m_serialThread->isRunning()) {
         m_serialThread->start();
 
-        connect(m_serialPort, &QSerialPort::readyRead, this, &SerialWorker::handleReadyRead, Qt::DirectConnection);
+        connect(m_serialPort, &QSerialPort::readyRead, this, &UartChannelManager::handleReadyRead, Qt::DirectConnection);
         connect(m_serialPort, &QSerialPort::errorOccurred, this, [this](QSerialPort::SerialPortError error) {
             if (error == QSerialPort::NoError) {return;}
             qCWarning(uart_channel) <<"Channel_"<<m_channel<<" Occur Error: "<<m_serialPort->errorString();
@@ -118,7 +118,7 @@ bool SerialWorker::initSerialPort(const QString &portName,
     return false;
 }
 
-void SerialWorker::sendInitCommand()
+void UartChannelManager::sendInitCommand()
 {
     if (m_currentInitIndex >= m_initCommands.size()) {
         qCDebug(uart_channel)<<"Channel_"<< m_channel<< "All init commands sent, starting refresh timer";
@@ -133,12 +133,12 @@ void SerialWorker::sendInitCommand()
     m_currentInitIndex++;
 
     // 60ms
-    QTimer::singleShot(60, this, &SerialWorker::sendInitCommand);
+    QTimer::singleShot(60, this, &UartChannelManager::sendInitCommand);
 }
 
 // ========================== 信息处理部分 ===================================
 
-void SerialWorker::writeFrame(quint8 cmd, quint8 func, const QByteArray& param,bool isScpi) {
+void UartChannelManager::writeFrame(quint8 cmd, quint8 func, const QByteArray& param,bool isScpi) {
     quint8 length = 4 + param.size();  //  Command+Function+Channel+CheckSum  + Parameter
     quint8 checksum = length + cmd + func + m_channel; // The check code is taken from the lowest 8 bits.
     for (char byte : param) {checksum += static_cast<quint8>(byte);}
@@ -160,7 +160,7 @@ void SerialWorker::writeFrame(quint8 cmd, quint8 func, const QByteArray& param,b
     m_isSCPIrequest = isScpi;
 }
 
-void SerialWorker::writeSerialData(const QByteArray& data,bool isforce)
+void UartChannelManager::writeSerialData(const QByteArray& data,bool isforce)
 {
     qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Send: " << data.toHex(' ');
 
@@ -173,7 +173,7 @@ void SerialWorker::writeSerialData(const QByteArray& data,bool isforce)
     }
 }
 
-void SerialWorker::handleReadyRead()
+void UartChannelManager::handleReadyRead()
 {
     m_readbuffer.append(m_serialPort->readAll());
     if (m_readbuffer.isEmpty()){return;}
@@ -220,7 +220,7 @@ void SerialWorker::handleReadyRead()
     }
 }
 
-void SerialWorker::handleuartrequest(quint8 length){
+void UartChannelManager::handleuartrequest(quint8 length){
     quint8 cmd = static_cast<quint8>(m_readbuffer[3]);
     quint8 func = static_cast<quint8>(m_readbuffer[4]);
     quint8 ch = static_cast<quint8>(m_readbuffer[5]);
@@ -257,7 +257,7 @@ void SerialWorker::handleuartrequest(quint8 length){
 
 // ========================== 协议处理部分 ===================================
 
-void SerialWorker::handleOutputcmd(quint8 func){
+void UartChannelManager::handleOutputcmd(quint8 func){
     quint8 raw = -1;
     bool status = false;
     if (!m_readparam.isEmpty()){
@@ -296,7 +296,7 @@ void SerialWorker::handleOutputcmd(quint8 func){
     }
 }
 
-void SerialWorker::handleSettingcmd(quint8 func){
+void UartChannelManager::handleSettingcmd(quint8 func){
     float shf{0.0f};
     if (m_readparam.size()==4){
         quint32 raw = qFromBigEndian<quint32>(reinterpret_cast<const uchar*>(m_readparam.constData()));
@@ -366,7 +366,7 @@ void SerialWorker::handleSettingcmd(quint8 func){
     }
 }
 
-void SerialWorker::handleControlcmd(quint8 func){
+void UartChannelManager::handleControlcmd(quint8 func){
     quint8 raw = -1;
     if (!m_readparam.isEmpty()){
         raw = static_cast<quint8>(m_readparam[0]);
@@ -420,7 +420,7 @@ void SerialWorker::handleControlcmd(quint8 func){
     }
 }
 
-void SerialWorker::handleMeasurementcmd(quint8 func){
+void UartChannelManager::handleMeasurementcmd(quint8 func){
     float shf{0.0f};
     quint16 sht{0};
     quint8 shts{0};
@@ -600,7 +600,7 @@ void SerialWorker::handleMeasurementcmd(quint8 func){
     }
 }
 
-void SerialWorker::handleRegistercmd(quint8 func){
+void UartChannelManager::handleRegistercmd(quint8 func){
     QString verString;
     quint16 sht{0};
     quint8 shts{0};
@@ -648,7 +648,7 @@ void SerialWorker::handleRegistercmd(quint8 func){
     }
 }
 
-void SerialWorker::handleCalibratecmd(quint8 func){
+void UartChannelManager::handleCalibratecmd(quint8 func){
     quint8 raw = -1;
     if (!m_readparam.isEmpty()){
         raw = static_cast<quint8>(m_readparam[0]);
@@ -673,7 +673,7 @@ void SerialWorker::handleCalibratecmd(quint8 func){
     }
 }
 
-void SerialWorker::handleCalibrationcmd(quint8 func){
+void UartChannelManager::handleCalibrationcmd(quint8 func){
     float shf{0.0f};
     if (m_readparam.size()==4){
         quint32 raw = qFromBigEndian<quint32>(reinterpret_cast<const uchar*>(m_readparam.constData()));
@@ -684,7 +684,7 @@ void SerialWorker::handleCalibrationcmd(quint8 func){
     qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Calibration step:"<<func<<" Cail:"<<shf;
 }
 
-void SerialWorker::handleTriggercmd(quint8 func){
+void UartChannelManager::handleTriggercmd(quint8 func){
     float shf{0.0f};
     quint16 sht{0};
     quint8 shts{0};
@@ -748,7 +748,7 @@ void SerialWorker::handleTriggercmd(quint8 func){
     }
 }
 
-void SerialWorker::handleISPcmd(quint8 func){
+void UartChannelManager::handleISPcmd(quint8 func){
     switch (func){
         case 0x80:break;
         case 0x00:break;
@@ -757,7 +757,7 @@ void SerialWorker::handleISPcmd(quint8 func){
     }
 }
 
-void SerialWorker::handleSNcmd(quint8 func){
+void UartChannelManager::handleSNcmd(quint8 func){
     switch (func){
         case 0x80:break;
         case 0x00:break;
@@ -772,7 +772,7 @@ void SerialWorker::handleSNcmd(quint8 func){
     }
 }
 
-void SerialWorker::handleIDcmd(quint8 func){
+void UartChannelManager::handleIDcmd(quint8 func){
     switch (func){
         case 0x81:break;
         case 0x82:break;
@@ -781,7 +781,7 @@ void SerialWorker::handleIDcmd(quint8 func){
     }
 }
 
-void SerialWorker::handleErrorcmd(quint8 func){
+void UartChannelManager::handleErrorcmd(quint8 func){
     switch (func){
         case 0x00:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Error Response: CheckSum Error";      break;
         case 0x01:qCDebug(uart_channel)<<"Channel_"<<m_channel<<" Error Response: Unknow Command";      break;
@@ -795,7 +795,7 @@ void SerialWorker::handleErrorcmd(quint8 func){
 
 // ========================== 模块性能自测 ===================================
 
-void SerialWorker::startLoopbackTest()
+void UartChannelManager::startLoopbackTest()
 {
     if (m_isTesting) {return;}
     m_isTesting=true;

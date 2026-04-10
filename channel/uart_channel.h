@@ -8,7 +8,7 @@
 
 Q_DECLARE_LOGGING_CATEGORY(uart_channel)
 
-class SerialWorker : public QObject
+class UartChannelManager : public QObject
 {
     Q_OBJECT
 
@@ -17,8 +17,11 @@ signals:
     void serialDataReceived(const QByteArray& data,bool isforce);
 
 public:
-    explicit SerialWorker(ScpiManager* scpi,SerialBridge* qml,QObject *parent = nullptr);
-    ~SerialWorker();
+    explicit UartChannelManager(QObject *parent = nullptr);
+    ~UartChannelManager();
+
+    std::shared_ptr<ScpiManager> m_scpiManager{nullptr};
+    std::shared_ptr<GuiBridge> m_qmlbridge{nullptr};
 
     bool initSerialPort(const QString &portName,
                         qint32 baudRate = QSerialPort::Baud115200,
@@ -59,9 +62,6 @@ private:
     QSerialPort *m_serialPort{nullptr};
     QThread *m_serialThread{nullptr};
     QTimer *m_refreshtimer{nullptr};
-
-    ScpiManager* m_scpiManager{nullptr};
-    SerialBridge* m_qmlbridge{nullptr};
 
     quint8 m_channel{0};
     QVector<Command> m_initCommands;

@@ -13,8 +13,10 @@ struct BatteryDataPoint {
     float imp;      // Equivalent Series Resistance (Ω)
 };
 
-class BatteryModel : public QObject {
+class BatteryModel : public QObject
+{
     Q_OBJECT
+
 public:
     explicit BatteryModel(QObject *parent = nullptr);
 
@@ -29,8 +31,10 @@ public:
     bool isOver(float soc) const;
 };
 
-class BatteryModelManager : public QObject {
+class BatteryModelManager : public QObject
+{
     Q_OBJECT
+
 public:
     BatteryModelManager(const QString& parentPath, QObject *parent = nullptr);
     ~BatteryModelManager() override = default;

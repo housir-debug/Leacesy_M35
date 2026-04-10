@@ -3,28 +3,27 @@
 #include <QSettings>
 #include <QString>
 
-#define CHANNEL_1_TO_33 \
-    CHANNEL(1) CHANNEL(2) CHANNEL(3) CHANNEL(4) CHANNEL(5) CHANNEL(6) CHANNEL(7) CHANNEL(8) \
-    CHANNEL(9) CHANNEL(10) CHANNEL(11) CHANNEL(12) CHANNEL(13) CHANNEL(14) CHANNEL(15) CHANNEL(16) \
-    CHANNEL(17) CHANNEL(18) CHANNEL(19) CHANNEL(20) CHANNEL(21) CHANNEL(22) CHANNEL(23) CHANNEL(24) \
-    CHANNEL(25) CHANNEL(26) CHANNEL(27) CHANNEL(28) CHANNEL(29) CHANNEL(30) CHANNEL(31) CHANNEL(32) \
-    CHANNEL(33) CHANNEL(34) CHANNEL(35) CHANNEL(36)
-
 struct UartConfig {
     QString port;
     QSerialPort::BaudRate baudRate;
     quint8 channel;
 };
-
 extern std::vector<UartConfig> configs;
 
-class ConfigManager
-{
+#define CHANNEL_COUNT \
+    CHANNEL(1)  CHANNEL(2)  CHANNEL(3)  CHANNEL(4)  CHANNEL(5)  CHANNEL(6)  \
+    CHANNEL(7)  CHANNEL(8)  CHANNEL(9)  CHANNEL(10) CHANNEL(11) CHANNEL(12) \
+    CHANNEL(13) CHANNEL(14) CHANNEL(15) CHANNEL(16) CHANNEL(17) CHANNEL(18) \
+    CHANNEL(19) CHANNEL(20) CHANNEL(21) CHANNEL(22) CHANNEL(23) CHANNEL(24) \
+    CHANNEL(25) CHANNEL(26) CHANNEL(27) CHANNEL(28) CHANNEL(29) CHANNEL(30) \
+    CHANNEL(31) CHANNEL(32) CHANNEL(33) CHANNEL(34) CHANNEL(35) CHANNEL(36)
+
+
+class ConfigManager {
 public:
     static bool init(const QString &configDir);
     static bool setConfigValue(const QString &key, const QVariant &value);
     static QSettings* s_settings;
-    static QString s_configFile;
 
     static QString s_manufacturer;
     static QString s_model;
@@ -48,7 +47,7 @@ public:
     static bool s_enableDisplay;
 
 private:
-    ConfigManager() = delete;
-    ~ConfigManager() = delete;
-    Q_DISABLE_COPY(ConfigManager)
+    ConfigManager() = delete;       // Prohibition of construction
+    ~ConfigManager() = delete;      // Prohibit destruction
+    Q_DISABLE_COPY(ConfigManager)   // Prohibition of copying
 };

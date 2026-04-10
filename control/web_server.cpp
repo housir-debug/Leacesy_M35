@@ -14,9 +14,8 @@
 
 Q_LOGGING_CATEGORY(web, "WEB:")
 
-WebServer::WebServer(ScpiManager* scpi,SerialBridge* qml,QObject *parent):
-    QObject(parent),m_scpiManager(scpi), m_qmlbridge(qml){}
-WebServer::~WebServer(){
+WebServerManager::WebServerManager(QObject *parent) : QObject(parent){}
+WebServerManager::~WebServerManager(){
     if (m_httpServer) {
         m_httpServer->close();
         delete m_httpServer;
@@ -33,7 +32,7 @@ WebServer::~WebServer(){
     m_wsClients.clear();
 }
 
-bool WebServer::start(){
+bool WebServerManager::startServer(){
     if (!m_webThread){
         m_httpServer = new QTcpServer(this);
         m_wsServer = new QWebSocketServer("Leacesy_Instrument",QWebSocketServer::NonSecureMode, this);
@@ -51,8 +50,8 @@ bool WebServer::start(){
     if (!m_webThread->isRunning()) {
         m_webThread->start();
 
-        connect(m_httpServer, &QTcpServer::newConnection,this, &WebServer::onHttpNewConnection,Qt::DirectConnection);
-        connect(m_wsServer, &QWebSocketServer::newConnection,this, &WebServer::onWsNewConnection,Qt::DirectConnection);
+        connect(m_httpServer, &QTcpServer::newConnection,this, &WebServerManager::onHttpNewConnection,Qt::DirectConnection);
+        connect(m_wsServer, &QWebSocketServer::newConnection,this, &WebServerManager::onWsNewConnection,Qt::DirectConnection);
 
         QMetaObject::invokeMethod(this, [this]() {
             if (!m_httpServer->listen(QHostAddress::Any, httpPort)) {
@@ -75,7 +74,7 @@ bool WebServer::start(){
 
 // ===================== HTTP处理 =====================
 
-void WebServer::onHttpNewConnection(){
+void WebServerManager::onHttpNewConnection(){
     QTcpSocket *client = m_httpServer->nextPendingConnection();
     if (!client) return;
 
@@ -94,14 +93,14 @@ void WebServer::onHttpNewConnection(){
     m_httpBuffers[client] = QByteArray();
 }
 
-void WebServer::handleHttpRequest(QTcpSocket *client){
+void WebServerManager::handleHttpRequest(QTcpSocket *client){
     QMutexLocker locker(&m_httpmutex);
 
     m_httpBuffers[client].append(client->readAll());
     if (m_httpBuffers[client].isEmpty()){return;}
 
     if (!m_httpBuffers[client].contains("\r\n\r\n")) {
-        sendHttpResponse(client, "WebServer is running", "text/plain");
+        sendHttpResponse(client, "WebServerManager is running", "text/plain");
         m_httpBuffers.remove(client);
         return;
     }
@@ -131,7 +130,7 @@ void WebServer::handleHttpRequest(QTcpSocket *client){
     return;
 }
 
-void WebServer::handleApiRequest(QTcpSocket *client, const QString &path)
+void WebServerManager::handleApiRequest(QTcpSocket *client, const QString &path)
 {
     QJsonObject response;
     if (path == "/api/device/info") {
@@ -172,7 +171,7 @@ void WebServer::handleApiRequest(QTcpSocket *client, const QString &path)
     sendHttpResponse(client, jsonData, "application/json");
 }
 
-void WebServer::serveResourceFile(QTcpSocket *client, const QString &path)
+void WebServerManager::serveResourceFile(QTcpSocket *client, const QString &path)
 {
     QString resourcePath;
     // html
@@ -237,7 +236,7 @@ void WebServer::serveResourceFile(QTcpSocket *client, const QString &path)
     sendHttpResponse(client, content, contentType);
 }
 
-QString WebServer::getMimeType(const QString &suffix){
+QString WebServerManager::getMimeType(const QString &suffix){
     static QMap<QString, QString> mimeTypes = {
         {"html", "text/html"},
         {"htm", "text/html"},
@@ -258,7 +257,7 @@ QString WebServer::getMimeType(const QString &suffix){
     return mimeTypes.value(suffix.toLower(), "application/octet-stream");
 }
 
-void WebServer::sendHttpResponse(QTcpSocket *client, const QByteArray &content,const QString &contentType, int statusCode){
+void WebServerManager::sendHttpResponse(QTcpSocket *client, const QByteArray &content,const QString &contentType, int statusCode){
     QString statusText;
     switch (statusCode) {
         case 200: statusText = "OK"; break;
@@ -287,7 +286,7 @@ void WebServer::sendHttpResponse(QTcpSocket *client, const QByteArray &content,c
 
 // ===================== WebSocket处理 =====================
 
-void WebServer::onWsNewConnection()
+void WebServerManager::onWsNewConnection()
 {
     QWebSocket *socket = m_wsServer->nextPendingConnection();
     if (!socket) return;
@@ -319,7 +318,7 @@ void WebServer::onWsNewConnection()
     }
 }
 
-void WebServer::onWsTextMessageReceived(QWebSocket *socket,const QString &message)
+void WebServerManager::onWsTextMessageReceived(QWebSocket *socket,const QString &message)
 {
     QMutexLocker locker(&m_webmutex);
 
@@ -389,7 +388,7 @@ void WebServer::onWsTextMessageReceived(QWebSocket *socket,const QString &messag
     }
 }
 
-bool WebServer::addModelFromNetwork(const QString &modelName, const QJsonArray &modelData) {
+bool WebServerManager::addModelFromNetwork(const QString &modelName, const QJsonArray &modelData) {
     if (modelName.isEmpty()) {
         qWarning() << "addModelFromNetwork: 模型名称不能为空";
         return false;
@@ -437,7 +436,7 @@ bool WebServer::addModelFromNetwork(const QString &modelName, const QJsonArray &
 }
 
 
-QJsonObject  WebServer::getModelsInfo() const {
+QJsonObject  WebServerManager::getModelsInfo() const {
     QJsonObject result;
     QJsonArray modelsArray;
 

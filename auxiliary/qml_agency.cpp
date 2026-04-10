@@ -3,8 +3,7 @@
 
 Q_LOGGING_CATEGORY(uart_bridge, "UART_BRIDGE:")
 
-SerialBridge::SerialBridge(const QString& parentPath,QObject *parent) : QObject(parent) {
-    m_modelManager = QSharedPointer<BatteryModelManager>::create(parentPath);
+GuiBridge::GuiBridge(QObject *parent) : QObject(parent) {
     m_IPaddress = ConfigManager::s_IP;
     m_SM = ConfigManager::s_SM;
     m_GPIBid = ConfigManager::s_GPIBid;
@@ -13,7 +12,7 @@ SerialBridge::SerialBridge(const QString& parentPath,QObject *parent) : QObject(
     m_HardVer = ConfigManager::s_hardwareVersion;
 }
 
-QJsonArray SerialBridge::getAllChannelsData() {
+QJsonArray GuiBridge::getAllChannelsData() {
     QJsonArray channels;
     qCDebug(uart_bridge) << "update Web channels data.";
 
@@ -32,7 +31,7 @@ QJsonArray SerialBridge::getAllChannelsData() {
             channels.append(channel); \
         } while(0);
 
-    CHANNEL_1_TO_33
+    CHANNEL_COUNT
     #undef CHANNEL
 
     return channels;
@@ -40,7 +39,7 @@ QJsonArray SerialBridge::getAllChannelsData() {
 
 // ============================  C++for qml engine =============================
 
-void SerialBridge::update_Voltage(int ch,float voltage){
+void GuiBridge::update_Voltage(int ch,float voltage){
     switch(ch) {
         #define CHANNEL(n) \
             case n: \
@@ -73,13 +72,13 @@ void SerialBridge::update_Voltage(int ch,float voltage){
                     } \
                 } \
                 return;
-        CHANNEL_1_TO_33
+        CHANNEL_COUNT
         #undef CHANNEL
         default: return;
     }
 }
 
-void SerialBridge::update_CurrentAndUnit(int ch,float current){
+void GuiBridge::update_CurrentAndUnit(int ch,float current){
     QString newUnit = (qAbs(current) < 1e-4) ? "mA" : "A"; // true: mA   false: A
 
     switch(ch) {
@@ -122,13 +121,13 @@ void SerialBridge::update_CurrentAndUnit(int ch,float current){
                 }\
                 return; \
             }
-        CHANNEL_1_TO_33
+        CHANNEL_COUNT
         #undef CHANNEL
         default: return;
     }
 }
 
-void SerialBridge::update_Status(int ch,quint16 status){
+void GuiBridge::update_Status(int ch,quint16 status){
     QString binaryStr = QString("%1").arg(status, 16, 2, QLatin1Char('0'));
 
     switch(ch) {
@@ -141,13 +140,13 @@ void SerialBridge::update_Status(int ch,quint16 status){
                 emit CH##n##_StatusChanged(); \
                 return; \
             }
-        CHANNEL_1_TO_33
+        CHANNEL_COUNT
         #undef CHANNEL
         default: return;
     }
 }
 
-void SerialBridge::update_Cv(int ch,float cv){
+void GuiBridge::update_Cv(int ch,float cv){
     switch(ch) {
         #define CHANNEL(n) \
             case n: \
@@ -155,13 +154,13 @@ void SerialBridge::update_Cv(int ch,float cv){
                 emit CH##n##_cvChanged(); \
                 qCDebug(uart_bridge) << "Channel" << n << "CV updated to:" << cv; \
                 return;
-        CHANNEL_1_TO_33
+        CHANNEL_COUNT
         #undef CHANNEL
         default: return;
     }
 }
 
-void SerialBridge::update_Cc(int ch,float cc){
+void GuiBridge::update_Cc(int ch,float cc){
     switch(ch) {
         #define CHANNEL(n) \
             case n: \
@@ -169,13 +168,13 @@ void SerialBridge::update_Cc(int ch,float cc){
                 emit CH##n##_ccChanged(); \
                 qCDebug(uart_bridge) << "Channel" << n << "CC updated to:" << cc; \
                 return;
-        CHANNEL_1_TO_33
+        CHANNEL_COUNT
         #undef CHANNEL
         default: return;
     }
 }
 
-void SerialBridge::update_Imp(int ch,float imp){
+void GuiBridge::update_Imp(int ch,float imp){
     switch(ch) {
         #define CHANNEL(n) \
             case n: \
@@ -183,13 +182,13 @@ void SerialBridge::update_Imp(int ch,float imp){
                 emit CH##n##_impChanged(); \
                 qCDebug(uart_bridge) << "Channel" << n << "IMP updated to:" << imp; \
                 return;
-        CHANNEL_1_TO_33
+        CHANNEL_COUNT
         #undef CHANNEL
         default: return;
     }
 }
 
-void SerialBridge::update_Ovp(int ch,float ovp){
+void GuiBridge::update_Ovp(int ch,float ovp){
     switch(ch) {
         #define CHANNEL(n) \
             case n: \
@@ -197,13 +196,13 @@ void SerialBridge::update_Ovp(int ch,float ovp){
                 emit CH##n##_ovpChanged(); \
                 qCDebug(uart_bridge) << "Channel" << n << "OVP updated to:" << ovp; \
                 return;
-        CHANNEL_1_TO_33
+        CHANNEL_COUNT
         #undef CHANNEL
         default: return;
     }
 }
 
-void SerialBridge::update_IsOutput(int ch,bool status){
+void GuiBridge::update_IsOutput(int ch,bool status){
     switch(ch) {
         #define CHANNEL(n) \
             case n: \
@@ -211,13 +210,13 @@ void SerialBridge::update_IsOutput(int ch,bool status){
                 emit CH##n##_isOutputChanged(); \
                 qCDebug(uart_bridge) << "Channel" << n << "IsOutput updated to:" << status; \
                 return;
-        CHANNEL_1_TO_33
+        CHANNEL_COUNT
         #undef CHANNEL
         default: return;
     }
 }
 
-void SerialBridge::update_SoftVer(int ch,const QString &ver){
+void GuiBridge::update_SoftVer(int ch,const QString &ver){
     switch(ch) {
         #define CHANNEL(n) \
             case n: \
@@ -225,13 +224,13 @@ void SerialBridge::update_SoftVer(int ch,const QString &ver){
                 emit CH##n##_svChanged(); \
                 qCDebug(uart_bridge) << "Channel" << n << "SV updated to:" << ver; \
                 return;
-        CHANNEL_1_TO_33
+        CHANNEL_COUNT
         #undef CHANNEL
         default: return;
     }
 }
 
-void SerialBridge::update_HardVer(int ch,const QString &ver){
+void GuiBridge::update_HardVer(int ch,const QString &ver){
     switch(ch) {
         #define CHANNEL(n) \
             case n: \
@@ -239,7 +238,7 @@ void SerialBridge::update_HardVer(int ch,const QString &ver){
                 emit CH##n##_hvChanged(); \
                 qCDebug(uart_bridge) << "Channel" << n << "HV updated to:" << ver; \
                 return;
-        CHANNEL_1_TO_33
+        CHANNEL_COUNT
         #undef CHANNEL
         default: return;
     }
@@ -248,12 +247,12 @@ void SerialBridge::update_HardVer(int ch,const QString &ver){
 
 // =========================== Q_INVOKABLE And C++ ===========================
 
-void SerialBridge::update_remotemodel(bool isRemote){
+void GuiBridge::update_remotemodel(bool isRemote){
     m_isRemote.store(isRemote);
     emit isRemote_Changed();
 }
 
-void SerialBridge::update_Configuration(int model,const QString& val){
+void GuiBridge::update_Configuration(int model,const QString& val){
     switch(model){
         case 0:{
             // IP
@@ -290,7 +289,7 @@ void SerialBridge::update_Configuration(int model,const QString& val){
     }
 }
 
-void SerialBridge::refresh_interfaces(const QString& ip, const QString& netmask){
+void GuiBridge::refresh_interfaces(const QString& ip, const QString& netmask){
     QString configContent =
         "# interface file auto-generated by buildroot\n\n"
         "auto lo\n"
@@ -333,13 +332,13 @@ void SerialBridge::refresh_interfaces(const QString& ip, const QString& netmask)
 
 // =========================== Q_INVOKABLE ===========================
 
-void SerialBridge::setChannel_Output(int channel,bool switchs){
+void GuiBridge::setChannel_Output(int channel,bool switchs){
     quint8 func = switchs ? 0x01 : 0x00;
     qCDebug(uart_bridge) << "setChannel_Output - channel:" << channel << "switch:" << switchs;
     return to_Channel(channel,0x01, func, "");
 }
 
-void SerialBridge::setChannel_Setstatus(int channel,int model,const QString& val){
+void GuiBridge::setChannel_Setstatus(int channel,int model,const QString& val){
     // model: 0 - CV ; 1 - CC ; 3 - OVP;
     quint32 intValue;
     float value = val.toFloat();
@@ -350,7 +349,7 @@ void SerialBridge::setChannel_Setstatus(int channel,int model,const QString& val
     return to_Channel(channel,0x02, model, Status_buffer);
 }
 
-QString SerialBridge::setChannel_CurrentUnit(int channel){
+QString GuiBridge::setChannel_CurrentUnit(int channel){
     static int step = 0;
     QString unit;
     quint8 unitCode;
@@ -371,7 +370,7 @@ QString SerialBridge::setChannel_CurrentUnit(int channel){
     return unit;
 }
 
-void SerialBridge::setChannel_BatteryOutput(int channel,bool switchs){
+void GuiBridge::setChannel_BatteryOutput(int channel,bool switchs){
     switch(channel) {
         #define CHANNEL(n) \
             case n:{ \
@@ -401,7 +400,7 @@ void SerialBridge::setChannel_BatteryOutput(int channel,bool switchs){
                 setChannel_Output(channel,switchs); \
                 return; \
             }
-        CHANNEL_1_TO_33
+        CHANNEL_COUNT
         #undef CHANNEL
         default:
             qCWarning(uart_bridge) << "Invalid channel:" << channel;
@@ -409,7 +408,7 @@ void SerialBridge::setChannel_BatteryOutput(int channel,bool switchs){
     }
 }
 
-void SerialBridge::setChannel_InitSOC(int channel,const QString& val){
+void GuiBridge::setChannel_InitSOC(int channel,const QString& val){
     float value = val.toFloat();
 
     // All channel
@@ -417,7 +416,7 @@ void SerialBridge::setChannel_InitSOC(int channel,const QString& val){
         #define CHANNEL(n)  \
         mCH##n##_currentSOC.store(value); \
         emit CH##n##_CurrentSOCChanged();
-        CHANNEL_1_TO_33
+        CHANNEL_COUNT
         #undef CHANNEL
         return;
     }
@@ -429,7 +428,7 @@ void SerialBridge::setChannel_InitSOC(int channel,const QString& val){
                 mCH##n##_currentSOC.store(value); \
                 emit CH##n##_CurrentSOCChanged(); \
                 return;
-        CHANNEL_1_TO_33
+        CHANNEL_COUNT
         #undef CHANNEL
         default:
             qCWarning(uart_bridge) << "Invalid channel:" << channel;
@@ -438,7 +437,7 @@ void SerialBridge::setChannel_InitSOC(int channel,const QString& val){
 
 }
 
-void SerialBridge::setChannel_Capacity(int channel,const QString& val){
+void GuiBridge::setChannel_Capacity(int channel,const QString& val){
     float value = val.toFloat();
 
     // All channel
@@ -446,7 +445,7 @@ void SerialBridge::setChannel_Capacity(int channel,const QString& val){
         #define CHANNEL(n)  \
         mCH##n##_capacityAH.store(value); \
         emit CH##n##_CapacityAHChanged();
-        CHANNEL_1_TO_33
+        CHANNEL_COUNT
         #undef CHANNEL
         return;
     }
@@ -458,7 +457,7 @@ void SerialBridge::setChannel_Capacity(int channel,const QString& val){
                 mCH##n##_capacityAH.store(value); \
                 emit CH##n##_CapacityAHChanged(); \
                 return;
-        CHANNEL_1_TO_33
+        CHANNEL_COUNT
         #undef CHANNEL
         default:
             qCWarning(uart_bridge) << "Invalid channel:" << channel;
@@ -467,7 +466,7 @@ void SerialBridge::setChannel_Capacity(int channel,const QString& val){
 
 }
 
-QString SerialBridge::setChannel_BatteryModel(int channel){
+QString GuiBridge::setChannel_BatteryModel(int channel){
     if (m_currentModelList.isEmpty()) return "";
     static int currentIndex = 0;
     //int mCH##n##currentIndex = m_currentModelList.indexOf(mCH##n##_batteryMode);
@@ -480,7 +479,7 @@ QString SerialBridge::setChannel_BatteryModel(int channel){
         mCH##n##_batteryModel =  m_currentModelList[currentIndex]; \
         mCH##n##_activeModel = m_modelManager->getModel(mCH##n##_batteryModel); \
         emit CH##n##_BatteryModelChanged();
-        CHANNEL_1_TO_33
+        CHANNEL_COUNT
         #undef CHANNEL
         return mCH1_batteryModel;
     }
@@ -495,7 +494,7 @@ QString SerialBridge::setChannel_BatteryModel(int channel){
                 emit CH##n##_BatteryModelChanged(); \
                 return mCH##n##_batteryModel; \
             }
-        CHANNEL_1_TO_33
+        CHANNEL_COUNT
         #undef CHANNEL
         default:
             qCWarning(uart_bridge) << "Invalid channel:" << channel;
@@ -503,14 +502,14 @@ QString SerialBridge::setChannel_BatteryModel(int channel){
     }
 }
 
-void SerialBridge::setChannel_Batterymode(int channel,bool staticmode){
+void GuiBridge::setChannel_Batterymode(int channel,bool staticmode){
     switch(channel) {
         #define CHANNEL(n) \
             case n:{ \
                 mCH##n##_batterystaticmode.store(staticmode); \
                 return; \
             }
-        CHANNEL_1_TO_33
+        CHANNEL_COUNT
         #undef CHANNEL
         default:
             qCWarning(uart_bridge) << "Invalid channel:" << channel;
@@ -518,11 +517,11 @@ void SerialBridge::setChannel_Batterymode(int channel,bool staticmode){
     }
 }
 
-void SerialBridge::to_Channel(int channel,quint8 cmd,quint8 func,const QByteArray& param){
+void GuiBridge::to_Channel(int channel,quint8 cmd,quint8 func,const QByteArray& param){
     // All channel send
     if (channel == 0) {
         #define CHANNEL(n) emit to_UartChannel##n(cmd, func, param,false);
-        CHANNEL_1_TO_33
+        CHANNEL_COUNT
         #undef CHANNEL
         return;
     }
@@ -530,7 +529,7 @@ void SerialBridge::to_Channel(int channel,quint8 cmd,quint8 func,const QByteArra
     // Single channel send
     switch(channel) {
         #define CHANNEL(n) case n: return emit to_UartChannel##n(cmd, func, param,false);
-        CHANNEL_1_TO_33
+        CHANNEL_COUNT
         #undef CHANNEL
         default:
             qCWarning(uart_bridge) << "Invalid channel:" << channel;
@@ -538,8 +537,8 @@ void SerialBridge::to_Channel(int channel,quint8 cmd,quint8 func,const QByteArra
     }
 }
 
-void SerialBridge::load_BatteryModel(){
-    if (m_modelManager.isNull()) {
+void GuiBridge::load_BatteryModel(){
+    if (!m_modelManager) {
         qDebug() << "m_modelManager 为空，无法加载模型";
         return;
     }
@@ -561,7 +560,7 @@ void SerialBridge::load_BatteryModel(){
                 mCH##n##_batteryModel = activemodel; \
                 mCH##n##_activeModel = m_modelManager->getModel(activemodel); \
                 emit CH##n##_BatteryModelChanged();
-                CHANNEL_1_TO_33
+                CHANNEL_COUNT
                 #undef CHANNEL
             }
         } else {
