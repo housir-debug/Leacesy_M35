@@ -17,10 +17,17 @@
     <qresource prefix="/web">
         <file>web/index.html</file>
         <file>web/channels.html</file>
+        <file>web/import.html</file>
         <file>web/css/style.css</file>
-        <file>web/icon/icon.png</file>
-        <file>web/icon/Leacesy.png</file>
-        <file>web/js/app.js</file>
+        <file>web/css/index.css</file>
+        <file>web/css/channels.css</file>
+        <file>web/css/global.css</file>
+        <file>web/css/import.css</file>
+        <file>web/icon/leacesyicon.png</file>
+        <file>web/icon/leacesylogo.png</file>
+        <file>web/js/index.js</file>
         <file>web/js/channels.js</file>
+        <file>web/js/import.js</file>
+        <file>web/js/header.js</file>
     </qresource>
 </RCC>

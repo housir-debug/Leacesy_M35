@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leacesy-领图</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="icon" type="image/png" href="/icon/leacesylogo.png">
+</head>
+<body>
+    <div class="container">
+        <div id="header-container"></div>
+
+        <main>
+            <div class="import-page">
+                <!-- Left Sidebar - Models List -->
+                <aside class="models-sidebar">
+                    <h2>
+                        <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                            <polyline points="10 9 9 9 8 9"/>
+                        </svg>
+                        Saved Models
+                    </h2>
+                    <div class="models-list" id="models-list">
+                        <div class="empty-models">
+                            <div class="empty-models-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                </svg>
+                            </div>
+                            <p>No saved models</p>
+                        </div>
+                    </div>
+                    <div class="sidebar-footer">
+                        <button id="export-all-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                            Export All
+                        </button>
+                    </div>
+                </aside>
+
+                <!-- Right Content Area -->
+                <div class="content-area">
+                    <!-- Upload Section -->
+                    <section class="upload-card">
+                        <h3>
+                            <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                            Import CSV
+                        </h3>
+                        <div class="upload-zone" id="upload-zone">
+                            <div class="upload-zone-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                    <line x1="12" y1="18" x2="12" y2="12"/>
+                                    <line x1="9" y1="15" x2="15" y2="15"/>
+                                </svg>
+                            </div>
+                            <h4>Drop CSV file here</h4>
+                            <p>or click to select</p>
+                            <input type="file" id="file-input" accept=".csv">
+                        </div>
+                    </section>
+
+                    <!-- Preview Section -->
+                    <section class="preview-card" id="preview-card">
+                        <div class="preview-header">
+                            <h3>
+                                <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="20" x2="18" y2="10"/>
+                                    <line x1="12" y1="20" x2="12" y2="4"/>
+                                    <line x1="6" y1="20" x2="6" y2="14"/>
+                                </svg>
+                                Preview
+                            </h3>
+                            <span class="file-info" id="file-info"></span>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="data-table">
+                                <thead id="table-header"></thead>
+                                <tbody id="table-body"></tbody>
+                            </table>
+                        </div>
+                        <div class="action-bar">
+                            <button id="send-button" class="btn-primary">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                                    <polyline points="17 21 17 13 7 13 7 21"/>
+                                    <polyline points="7 3 7 8 15 8"/>
+                                </svg>
+                                Uploading Device
+                            </button>
+                            <button id="clear-button" class="btn-danger">Clear</button>
+                        </div>
+                    </section>
+                    
+                    <div class="status-message" id="status-message"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/header.js"></script>
+    <script src="/js/import.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            sharedComponents.loadHeader('header-container', 'import');
+        });
+    </script>
+</body>
+</html>

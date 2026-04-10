@@ -1,0 +1,479 @@
+/* ===================== Section Icons ===================== */
+h2, h3 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.section-icon {
+    width: 20px;
+    height: 20px;
+    color: #4ade80;
+    opacity: 0.8;
+}
+
+/* ===================== Main Layout ===================== */
+.import-page {
+    display: grid;/*网格布局*/
+    grid-template-columns: 280px 1fr;/*第一列固定280px，第二列占满剩余空间*/
+    gap: 24px;
+    min-height: calc(100vh - 200px);
+}
+
+/* ===================== Left Sidebar ===================== */
+.models-sidebar {
+    background: rgba(18, 18, 18, 0.95);
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+}
+
+.models-sidebar h2 {
+    font-size: 1rem;
+    margin-bottom: 16px;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.models-list {
+    flex: 1;
+    overflow-y: auto;
+    margin: 0 -20px;
+    padding: 0 20px;
+    scrollbar-width: thin;
+    scrollbar-color: #404040 #1a1a1a;
+}
+
+.models-list::-webkit-scrollbar { width: 6px; }
+.models-list::-webkit-scrollbar-track { background: #1a1a1a; border-radius: 3px; }
+.models-list::-webkit-scrollbar-thumb { background: #404040; border-radius: 3px; }
+
+.model-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.model-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.model-card.selected {
+    border-color: #60a5fa;
+    background: rgba(96, 165, 250, 0.1);
+}
+
+.model-name {
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 4px;
+}
+
+.model-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.model-actions button {
+    flex: 1;
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.model-actions .export-btn {
+    background: rgba(74, 222, 128, 0.15);
+    color: #4ade80;
+}
+
+.model-actions .export-btn:hover {
+    background: rgba(74, 222, 128, 0.25);
+}
+
+.model-actions .delete-btn {
+    background: rgba(248, 113, 113, 0.15);
+    color: #f87171;
+}
+
+.model-actions .delete-btn:hover {
+    background: rgba(248, 113, 113, 0.25);
+}
+
+.sidebar-footer {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-footer button {
+    width: 100%;
+    padding: 10px;
+    font-size: 0.85rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    color: #a0a0a0;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.sidebar-footer button:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+.empty-models {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+}
+
+.empty-models-icon {
+    margin-bottom: 12px;
+    opacity: 0.4;
+}
+
+/* ===================== Right Content ===================== */
+.content-area {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* ===================== Upload Section ===================== */
+.upload-card {
+    background: rgba(18, 18, 18, 0.95);
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.upload-card h3 {
+    color: #ffffff;
+    margin-bottom: 16px;
+}
+
+.upload-zone {
+    border: 2px dashed rgba(255, 255, 255, 0.2);/*虚线边框*/
+    border-radius: 12px;
+    padding: 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.upload-zone:hover,
+.upload-zone.dragover {
+    border-color: #60a5fa;
+    background: rgba(96, 165, 250, 0.05);
+}
+
+.upload-zone-icon {
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+
+.upload-zone h4 {
+    color: #ffffff;
+    margin-bottom: 4px;
+}
+
+.upload-zone p {
+    color: #a0a0a0;
+    font-size: 0.9rem;
+}
+
+.upload-zone input[type="file"] {
+    display: none;
+}
+
+/* ===================== Preview Section ===================== */
+.preview-card {
+    background: rgba(18, 18, 18, 0.95);
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    flex: 1;
+    display: none;
+    min-height: 300px;
+}
+
+.preview-card.visible {
+    display: flex;
+    flex-direction: column;
+}
+
+.preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.preview-header h3 {
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.preview-header .file-info {
+    color: #a0a0a0;
+    font-size: 0.85rem;
+}
+
+.table-wrapper {
+    flex: 1;
+    overflow: auto;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+}
+
+.data-table th {
+    background: rgba(0, 0, 0, 0.3);
+    color: #ffffff;
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    position: sticky;
+    top: 0;
+}
+
+.data-table td {
+    padding: 10px 16px;
+    color: #c0c0c0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.data-table tr:hover td {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+/* ===================== Action Bar ===================== */
+.action-bar {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.action-bar button {
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.action-bar .btn-primary {
+    background: #ffffff;
+    color: #0a0a0a;
+}
+
+.action-bar .btn-primary:hover {
+    background: #c0c0c0;
+}
+
+.action-bar .btn-secondary {
+    background: rgba(96, 165, 250, 0.15);
+    color: #60a5fa;
+    border: 1px solid rgba(96, 165, 250, 0.3);
+}
+
+.action-bar .btn-secondary:hover {
+    background: rgba(96, 165, 250, 0.25);
+}
+
+.action-bar .btn-danger {
+    background: rgba(248, 113, 113, 0.15);
+    color: #f87171;
+    border: 1px solid rgba(248, 113, 113, 0.3);
+}
+
+.action-bar .btn-danger:hover {
+    background: rgba(248, 113, 113, 0.25);
+}
+
+/* ===================== Status Message ===================== */
+.status-message {
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-top: 16px;
+    font-size: 0.9rem;
+    display: block;
+    /*display: none;*/
+}
+
+.status-message.success {
+    display: block;
+    background: rgba(74, 222, 128, 0.15);
+    color: #4ade80;
+}
+
+.status-message.error {
+    display: block;
+    background: rgba(248, 113, 113, 0.15);
+    color: #f87171;
+}
+
+.status-message.info {
+    display: block;
+    background: rgba(96, 165, 250, 0.15);
+    color: #60a5fa;
+}
+
+/* ===================== Modal ===================== */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    display: none;
+}
+
+.modal-overlay.visible {
+    display: flex;
+}
+
+.modal-box {
+    background: rgba(18, 18, 18, 0.98);
+    border-radius: 16px;
+    padding: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    min-width: 400px;
+}
+
+.modal-box h3 {
+    color: #ffffff;
+    margin-bottom: 20px;
+}
+
+.modal-box input {
+    width: 100%;
+    padding: 12px 16px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: #ffffff;
+    margin-bottom: 20px;
+}
+
+.modal-box input:focus {
+    outline: none;
+    border-color: #60a5fa;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+.modal-buttons button {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+/* ===================== Responsive ===================== */
+@media (max-width: 992px) {
+    .import-page {
+        grid-template-columns: 1fr;
+    }
+
+    .models-sidebar {
+        max-height: 300px;
+    }
+
+    .models-list {
+        display: flex;
+        overflow-x: auto;
+        gap: 12px;
+        padding: 0;
+        margin: 0 -20px;
+        padding: 0 20px;
+    }
+
+    .model-card {
+        min-width: 200px;
+        margin-bottom: 0;
+    }
+
+    .sidebar-footer {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .options-row {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .models-actions {
+        flex-direction: column;
+    }
+
+    .model-item .model-actions {
+        opacity: 1;
+    }
+
+    .table-wrapper {
+        overflow-x: auto;
+    }
+
+    .data-table {
+        min-width: 600px;
+    }
+
+    .action-bar {
+        flex-wrap: wrap;
+    }
+
+    .action-bar button {
+        flex: 1 1 45%;
+    }
+
+    .modal-box {
+        min-width: auto;
+        margin: 20px;
+    }
+}

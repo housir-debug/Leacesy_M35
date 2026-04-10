@@ -3,24 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leacesy领图</title>
+    <title>Leacesy-领图</title>
     <link rel="stylesheet" href="/css/style.css">
-    <link rel="icon" type="image/png" href="/logo.png">
+    <link rel="icon" type="image/png" href="/icon/leacesylogo.png">
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>🔬 Channel Monitor</h1>
-            <nav>
-                <a href="/">Console</a>
-                <a href="/channels.html" class="active">Dashboard</a>
-            </nav>
-        </header>
-
-        <div class="status-bar">
-            <span class="online">Online</span>
-            <span id="connection-status">Device: Connecting...</span>
-        </div>
+        <div id="header-container"></div>
 
         <main>
             <div class="controls">
@@ -31,10 +20,15 @@
             </div>
 
             <div id="channels-container" class="channels-detailed"></div>
-            
         </main>
     </div>
 
+    <script src="/js/header.js"></script>
     <script src="/js/channels.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            sharedComponents.loadHeader('header-container', 'channels');
+        });
+    </script>
 </body>
 </html>

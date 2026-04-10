@@ -260,7 +260,7 @@ const scpi_command_t ScpiManager::m_scpiCommands[] = {
     { ":SOURce#:CURRent:TRIG?",                       ScpiManager::SCPI_TriggerCurrQ,         0 },
     { ":SOURce#:RES:TRIG?",                           ScpiManager::SCPI_TriggerResQ,          0 },
 
-    SCPI_CMD_LIST_END
+    SCPI_CMD_LIST_END // Empty sentry post
 };
 
 // --- 执行 -command function ---

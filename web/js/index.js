@@ -2,20 +2,20 @@ class InstrumentApp {
     constructor() {
         this.ws = null;
         this.commands = [];
-        this.initWebSocket();
         this.loadDeviceInfo();
         this.loadCommands();
+        this.initWebSocket();
         this.setupEventListeners();
     }
 
     async loadDeviceInfo() {
         try {
-            const response = await fetch('/api/device/info');
-            const data = await response.json();
-            document.getElementById('Brand').textContent = data.Brand || 'N/A';
+            const info = await fetch('/api/device/info');
+            const data = await info.json();
             document.getElementById('model').textContent = data.model || 'N/A';
-            document.getElementById('serial').textContent = data.serialNumber || 'N/A';
-            document.getElementById('firmware').textContent = data.firmwareVersion || 'N/A';
+            document.getElementById('serial').textContent = data.serial || 'N/A';
+            document.getElementById('software').textContent = data.software || 'N/A';
+            document.getElementById('hardware').textContent = data.hardware || 'N/A';
         } catch (error) {
             console.error('Failed to load device info:', error);
         }
@@ -25,7 +25,6 @@ class InstrumentApp {
         try {
             const list = document.getElementById('command-list');
             if (!list) return;
-
             const response = await fetch('/api/scpi_commands');
             const data = await response.json();
             this.commands = data.commands;
@@ -36,13 +35,34 @@ class InstrumentApp {
                 div.textContent = cmd;
                 div.ondblclick = () => {
                     document.getElementById('command-input').value = cmd;
-                    //this.sendCommand();//需要添加通道号等等
                 };
                 list.appendChild(div);
             });
         } catch (error) {
-            console.error('Failed to load commands:', error);
+            console.error('Failed to load SCPIcommands:', error);
         }
+    }
+
+    initWebSocket() {
+        const wsUrl = `ws://${window.location.hostname}:8080`;
+        this.ws = new WebSocket(wsUrl);
+
+        this.ws.onopen = () => {
+            console.log('Connecting to Leacesy Instrument WebSocket:', wsUrl);
+        };
+
+        this.ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            // handle Back-end information
+            if (data.type === 'scpi_response') {
+                this.addToOutput(`> ${data.result}`, 'response');
+            }
+        };
+
+        this.ws.onclose = () => {
+            console.log('WebSocket disconnected, reconnecting...');
+            //setTimeout(() => this.initWebSocket(), 3000);// try reconnect every 3 seconds
+        };
     }
 
     setupEventListeners() {
@@ -58,7 +78,7 @@ class InstrumentApp {
         const sendBtn = document.getElementById('send-button');
         if (sendBtn) {
             sendBtn.onclick = () => {
-                window.app.sendCommand();
+                this.sendCommand();
             };
         }
 
@@ -73,43 +93,20 @@ class InstrumentApp {
         }
     }
     
-    initWebSocket() {
-        const wsUrl = `ws://${window.location.hostname}:8080`;
-        console.log('Connecting to WebSocket:', wsUrl);
-        this.ws = new WebSocket(wsUrl);
-
-        this.ws.onopen = () => {
-            console.log('WebSocket connected');
-            document.getElementById('connection-status').textContent = 'Device: Connected';
-        };
-
-        this.ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.type === 'scpi_response') {
-                this.addToOutput(`Response: ${data.result}`, 'response');
-            }
-        };
-
-        this.ws.onclose = () => {
-            console.log('WebSocket disconnected, reconnecting...');
-            document.getElementById('connection-status').textContent = 'Device: Reconnecting...';
-            //setTimeout(() => this.initWebSocket(), 3000);
-        };
-    }
-
     sendCommand() {
         const cmd  = document.getElementById('command-input').value;
         if (!cmd) return;
-
         this.addToOutput(`> ${cmd}`, 'command');
+        document.getElementById('command-input').value = '';
+
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             this.ws.send(JSON.stringify({
                 type: 'scpi_command',
                 command: cmd
             }));
+        }else{
+            this.addToOutput('WebSocket is not connected. Please refresh the page and try again.', 'error');
         }
-
-        document.getElementById('command-input').value = '';
     }
     
     addToOutput(text, type) {
@@ -118,7 +115,7 @@ class InstrumentApp {
         div.className = `output-line ${type}`;
         div.textContent = text;
         output.appendChild(div);
-        output.scrollTop = output.scrollHeight;
+        output.scrollTop = output.scrollHeight; // 自动滚动到底部
     }
 
     destroy() {

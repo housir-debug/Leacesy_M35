@@ -22,8 +22,8 @@ float BatteryModel::getESR(float soc) const {
     if (data_points.isEmpty()) {return 0.0;}
 
     // // From top to bottom, from small to large,Beyond the scope of the model
-    if (soc <= data_points.first().soc){ return data_points.first().esr;}
-    if (soc >= data_points.last().soc){ return data_points.last().esr;}
+    if (soc <= data_points.first().soc){ return data_points.first().imp;}
+    if (soc >= data_points.last().soc){ return data_points.last().imp;}
 
     return interpolate(soc,false);
 }
@@ -45,8 +45,8 @@ float BatteryModel::interpolate(float soc,bool isocv) const {
     const auto& p1 = data_points[left];
     const auto& p2 = data_points[left + 1];
 
-    float y1 = isocv ? p1.ocv : p1.esr;
-    float y2 = isocv ? p2.ocv : p2.esr;
+    float y1 = isocv ? p1.ocv : p1.imp;
+    float y2 = isocv ? p2.ocv : p2.imp;
 
     if (p2.soc - p1.soc < 1e-6) {return y1;}  // Avoid division by 0
     return y1 + (y2 - y1) * (soc - p1.soc) / (p2.soc - p1.soc);
@@ -75,8 +75,8 @@ bool BatteryModel::isValid() const {
             return false;
         }
 
-        if (point.esr < 0.0 || point.esr > 1.0) {
-            qWarning() << "BatteryModel::isValid: ESR超出合理范围 [0,1]" << point.esr;
+        if (point.imp < 0.0 || point.imp > 1.0) {
+            qWarning() << "BatteryModel::isValid: ESR超出合理范围 [0,1]" << point.imp;
             return false;
         }
 
@@ -237,7 +237,7 @@ QSharedPointer<BatteryModel> BatteryModelManager::parseCSV(const QString &filePa
         BatteryDataPoint point;
 
         point.soc = columns[socCol].toFloat(&ok);
-        if (!ok || point.soc<0 || point.soc>1) {
+        if (!ok || point.soc<0 || point.soc>100) {
             qWarning() << "解析CSV行" << lineNumber << "SOC失败:" << columns[socCol];
             return nullptr;
         }
@@ -248,8 +248,8 @@ QSharedPointer<BatteryModel> BatteryModelManager::parseCSV(const QString &filePa
             return nullptr;
         }
 
-        point.esr = columns[esrCol].toFloat(&ok);
-        if (!ok || point.esr<0 || point.esr>1) {
+        point.imp = columns[esrCol].toFloat(&ok);
+        if (!ok || point.imp<0 || point.imp>1) {
             qWarning() << "解析CSV行" << lineNumber << "ESR失败:" << columns[esrCol];
             return nullptr;
         }
@@ -265,3 +265,63 @@ QSharedPointer<BatteryModel> BatteryModelManager::parseCSV(const QString &filePa
 
     return model;
 }
+
+bool BatteryModelManager::saveModel(QSharedPointer<BatteryModel> model,const QString &modelName) {
+    if (!model) {
+        qWarning() << "saveModelToCSV: 模型指针丢失";
+        return false;
+    }
+
+    m_models[model->name] = model;
+    QString filePath = QDir(m_modelDirectory).filePath(modelName + ".csv");
+    if(QFile::exists(filePath)){
+        qWarning() << "saveModelToCSV: 模型文件已存在";
+        return false;
+    }
+
+    QFile file(filePath);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        qWarning() << "saveModelToCSV: 无法创建文件:" << filePath;
+        return false;
+    }
+
+    QTextStream stream(&file);
+    stream << "SOC_%,OCV_V,IMP_ohm\n";
+    const auto &points = model->data_points;
+    for (const auto &point : points) {
+        stream << QString::number(point.soc, 'f', 3) << ","
+               << QString::number(point.ocv, 'f', 3) << ","
+               << QString::number(point.imp, 'f', 3) << "\n";
+    }
+
+    file.close();
+    qDebug() << "成功保存模型到文件:" << filePath << ", 数据点数量:" << model->data_points.size();
+    return true;
+}
+
+bool BatteryModelManager::removeModel(const QString &modelName) {
+    if (!m_models.contains(modelName)) {
+        qWarning() << "removeModel: 找不到指定模型:" << modelName;
+        return false;
+    }
+
+    QString filePath = QDir(m_modelDirectory).filePath(modelName + ".csv");
+    QFile file(filePath);
+
+    if (file.exists()) {
+        if (file.remove()) {
+            m_models.remove(modelName);
+            qDebug() << "成功删除电池模型文件:" << filePath;
+            return true;
+        }
+
+        qWarning() << "removeModel: 删除文件失败:" << filePath << ", 错误:" << file.errorString();
+        return false;
+
+    } else {
+        qWarning() << "removeModel: 模型文件不存在:" << filePath;
+        return false;
+    }
+}
+
+

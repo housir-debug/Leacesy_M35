@@ -10,7 +10,7 @@
 struct BatteryDataPoint {
     float soc;      // State of Charge (0-100%)
     float ocv;      // Open Circuit Voltage (V)
-    float esr;      // Equivalent Series Resistance (Ω)
+    float imp;      // Equivalent Series Resistance (Ω)
 };
 
 class BatteryModel : public QObject {
@@ -39,10 +39,12 @@ public:
     bool loadModel(const QString &modelName);
     static QSharedPointer<BatteryModel> parseCSV(const QString &filePath);
 
+    bool removeModel(const QString &modelName);
+    bool saveModel(QSharedPointer<BatteryModel> model, const QString &modelName);
+
     QStringList getAvailableModels() const{return m_models.keys();};
     QSharedPointer<BatteryModel> getModel(const QString &modelName) const{return m_models.value(modelName);};
 
-private:
     QString m_modelDirectory;
     QMap<QString, QSharedPointer<BatteryModel>> m_models;
 };

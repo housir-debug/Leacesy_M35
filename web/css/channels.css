@@ -1,0 +1,256 @@
+/* ===================== Controls ===================== */
+.controls {
+    margin: 20px 0;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.controls label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #a0a0a0;
+    cursor: pointer;
+}
+
+#auto-refresh {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;/*指针变成手型，提示用户可以点击*/
+}
+
+/* ===================== Channels Grid ===================== */
+.channels-detailed {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 16px;
+}
+
+/* ===================== Channel Card ===================== */
+.channel-detailed-card {
+    background: linear-gradient(145deg, #1a1a1a, #0f0f0f);
+    border-radius: 16px;
+    padding: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow: hidden;
+    position: relative;
+}
+
+.channel-detailed-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 14px;
+    padding: 2px;
+    background: linear-gradient(135deg, transparent 0%, transparent 100%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.channel-detailed-card.enabled::before {
+    background: linear-gradient(135deg, #4ade80 0%, #22c55e 50%, #4ade80 100%);
+    opacity: 1;
+}
+
+.channel-detailed-card.enabled {
+    box-shadow: 0 0 20px rgba(74, 222, 128, 0.15), inset 0 0 30px rgba(74, 222, 128, 0.05);
+    animation: channelGlow 3s ease-in-out infinite;
+}
+
+.channel-detailed-card.disabled {
+    border-color: rgba(255, 255, 255, 0.05);
+    background: linear-gradient(145deg, #1a1a1a, #0d0d0d);
+    opacity: 0.7;
+}
+
+.channel-detailed-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 30px rgba(74, 222, 128, 0.2);
+}
+
+.channel-detailed-card:active {
+    transform: translateY(-2px);
+}
+
+/* ===================== Channel Header ===================== */
+.channel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 28px;
+}
+
+.channel-header h3 {
+    color: #4ecdc4;
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0;
+    text-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
+    letter-spacing: 0.5px;
+}
+
+.channel-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    transition: all 0.3s;
+}
+
+.channel-dot.enabled {
+    background: #4ade80;
+    box-shadow: 0 0 10px rgba(74, 222, 128, 0.8), 0 0 20px rgba(74, 222, 128, 0.4);
+    animation: dotPulse 2s ease-in-out infinite;
+}
+
+.channel-dot.disabled {
+    background: #4a4a4a;
+}
+
+@keyframes dotPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(0.9); }
+}
+
+/* ===================== Measurement Card ===================== */
+.measurement-card {
+    background: linear-gradient(180deg, rgba(18, 18, 24, 0.8), rgba(10, 10, 15, 0.9));
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 10px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.measurement-row {
+    display: flex;
+    justify-content: center;
+    align-items: baseline;
+    text-align: center;
+}
+
+/*label未使用
+.measurement-label {
+    color: #6b7280;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+*/
+
+.measurement-value {
+    font-weight: 700;
+    font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: -0.5px;
+}
+
+.measurement-value.voltage {
+    color: #4ade80;
+    text-shadow: 0 0 8px rgba(74, 222, 128, 0.4);
+}
+
+.measurement-value.current {
+    color: #f87171;
+    text-shadow: 0 0 8px rgba(248, 113, 113, 0.4);
+}
+
+/* ===================== Setpoints ===================== */
+.setpoints-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.setpoint-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 8px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.setpoint-row.active {
+    background: rgba(248, 113, 113, 0.15);
+    border-left: 3px solid #f87171;
+    box-shadow: 0 0 10px rgba(248, 113, 113, 0.2);
+}
+
+.setpoint-label {
+    color: #9ca3af;
+    font-weight: 500;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.setpoint-value {
+    color: #e5e7eb;
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.mode-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: transparent;
+    transition: all 0.3s ease;
+    display: inline-block;
+    margin-left: 4px;
+}
+
+.mode-indicator.active {
+    background: #f87171;
+    border-color: #f87171;
+    box-shadow: 0 0 8px rgba(248, 113, 113, 0.8);
+    animation: indicatorPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes indicatorPulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(248, 113, 113, 0.8); }
+    50% { box-shadow: 0 0 15px rgba(248, 113, 113, 1); }
+}
+
+/* ===================== Responsive ===================== */
+@media (max-width: 1400px) {
+    .channels-detailed { grid-template-columns: repeat(5, 1fr); }
+}
+
+@media (max-width: 1200px) {
+    .channels-detailed { grid-template-columns: repeat(4, 1fr); }
+}
+
+@media (max-width: 992px) {
+    .channels-detailed { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 768px) {
+    .channels-detailed { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .channel-detailed-card { padding: 12px; }
+    .channel-header h3 { font-size: 16px; }
+    .measurement-value { font-size: 14px; }
+}
+
+@media (max-width: 480px) {
+    .channels-detailed { grid-template-columns: 1fr; }
+}

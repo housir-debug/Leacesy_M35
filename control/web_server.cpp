@@ -135,26 +135,23 @@ void WebServer::handleApiRequest(QTcpSocket *client, const QString &path)
 {
     QJsonObject response;
     if (path == "/api/device/info") {
-        response["Brand"] = ConfigManager::s_manufacturer;
         response["model"] = ConfigManager::s_model;
-        response["serialNumber"] = ConfigManager::s_serialNumber;
-        response["firmwareVersion"] = ConfigManager::s_firmwareVersion;
+        response["serial"] = ConfigManager::s_serialNumber;
+        response["software"] = ConfigManager::s_firmwareVersion;
+        response["hardware"] = ConfigManager::s_hardwareVersion;
     }
     else if (path == "/api/scpi_commands") {
-        QJsonArray commands;
         int i = 0;
+        QJsonArray commands;
 
         while (true) {
             const char* pattern = ScpiManager::m_scpiCommands[i].pattern;
             if (pattern == nullptr || strlen(pattern) == 0) {
-                break;
+                break; // End loop
             }
 
             QString cmd = QString::fromLatin1(pattern);
-            if (!cmd.isEmpty()) {
-                commands.append(cmd);
-            }
-
+            commands.append(cmd);
             i++;
         }
 
@@ -162,6 +159,9 @@ void WebServer::handleApiRequest(QTcpSocket *client, const QString &path)
     }
     else if(path == "/api/channels") {
         response["channels"] = m_qmlbridge->getAllChannelsData();
+    }
+    else if(path == "/api/models") {
+        response["models"] = getModelsInfo();
     }
     else {
         response["error"] = "API endpoint not found";
@@ -175,18 +175,39 @@ void WebServer::handleApiRequest(QTcpSocket *client, const QString &path)
 void WebServer::serveResourceFile(QTcpSocket *client, const QString &path)
 {
     QString resourcePath;
+    // html
     if (path == "/" || path == "/index.html") {
         resourcePath = ":/web/web/index.html";
     } else if (path == "/channels.html") {
         resourcePath = ":/web/web/channels.html";
-    } else if (path == "/js/app.js") {
-        resourcePath = ":/web/web/js/app.js";
+    } else if (path == "/import.html") {
+        resourcePath = ":/web/web/import.html";
+    // js
+    } else if (path == "/js/index.js") {
+        resourcePath = ":/web/web/js/index.js";
     } else if (path == "/js/channels.js") {
         resourcePath = ":/web/web/js/channels.js";
+    } else if (path == "/js/import.js") {
+        resourcePath = ":/web/web/js/import.js";
+    } else if (path == "/js/header.js") {
+        resourcePath = ":/web/web/js/header.js";
+    // css
     } else if (path == "/css/style.css") {
         resourcePath = ":/web/web/css/style.css";
-    } else if (path == "/logo.png") {
-        resourcePath = ":/web/web/icon/icon.png";
+    } else if (path == "/css/index.css") {
+        resourcePath = ":/web/web/css/index.css";
+    } else if (path == "/css/channels.css") {
+        resourcePath = ":/web/web/css/channels.css";
+    } else if (path == "/css/import.css") {
+        resourcePath = ":/web/web/css/import.css";
+    } else if (path == "/css/global.css") {
+        resourcePath = ":/web/web/css/global.css";
+    // icon
+    } else if (path == "/icon/leacesylogo.png") {
+        resourcePath = ":/web/web/icon/leacesylogo.png";
+    } else if (path == "/icon/leacesyicon.png") {
+        resourcePath = ":/web/web/icon/leacesyicon.png";
+    // error
     } else {
         sendHttpResponse(client, "404 Not Found", "text/plain", 404);
         return;
@@ -319,14 +340,11 @@ void WebServer::onWsTextMessageReceived(QWebSocket *socket,const QString &messag
 
         m_qmlbridge->update_remotemodel(true);
         m_responsebuffer = m_scpiManager->processCommand(cmd);
-        m_qmlbridge->update_remotemodel(false);
         if (m_responsebuffer.isEmpty()){return;}
 
         QJsonObject response;
         response["type"] = "scpi_response";
         response["result"] = QString::fromUtf8(m_responsebuffer);
-        response["status"] = "success";
-
         socket->sendTextMessage(QJsonDocument(response).toJson());
     }
     else if (type == "channels_update") {
@@ -335,5 +353,117 @@ void WebServer::onWsTextMessageReceived(QWebSocket *socket,const QString &messag
         channelData["channels"] = m_qmlbridge->getAllChannelsData();
         socket->sendTextMessage(QJsonDocument(channelData).toJson());
     }
+    else if (type == "model_upload") {
+        QJsonObject content = obj["content"].toObject();
+        QString modelName = content["name"].toString();
+        QJsonArray modelData = content["data"].toArray();
+        bool success = addModelFromNetwork(modelName,modelData);
+
+        if (success) {
+            QJsonObject syncMessage;
+            syncMessage["type"] = "model_sync";
+            syncMessage["models"] = getModelsInfo();
+            socket->sendTextMessage(QJsonDocument(syncMessage).toJson());
+        } else {
+            QJsonObject response;
+            response["type"] = "error";
+            response["message"] = QString("Failed to save model \"%1\"").arg(modelName);
+            socket->sendTextMessage(QJsonDocument(response).toJson());
+        }
+    }
+    else if (type == "model_delete") {
+        QString modelName = obj["name"].toString();
+        bool success = m_qmlbridge->m_modelManager->removeModel(modelName);
+
+        if (success) {
+            QJsonObject syncMessage;
+            syncMessage["type"] = "model_sync";
+            syncMessage["models"] = getModelsInfo();
+            socket->sendTextMessage(QJsonDocument(syncMessage).toJson());
+        } else {
+            QJsonObject response;
+            response["type"] = "error";
+            response["message"] = QString("Failed to delete model \"%1\"").arg(modelName);
+            socket->sendTextMessage(QJsonDocument(response).toJson());
+        }
+    }
 }
 
+bool WebServer::addModelFromNetwork(const QString &modelName, const QJsonArray &modelData) {
+    if (modelName.isEmpty()) {
+        qWarning() << "addModelFromNetwork: 模型名称不能为空";
+        return false;
+    }
+
+    if (m_qmlbridge->m_modelManager->m_models.contains(modelName)) {
+        qWarning() << "addModelFromNetwork: 模型已存在";
+        return false;
+    }
+
+    auto model = QSharedPointer<BatteryModel>::create();
+    model->name = modelName;
+
+    for (const auto &item : modelData) {
+        if (!item.isObject() || item.isNull()) {
+            qWarning() << "createModelFromJson: 数据项不是JSON对象,或者有一行为空";
+            return false;
+        }
+
+        QJsonObject pointObj = item.toObject();
+        if (!pointObj.contains("soc") || !pointObj.contains("ocv") || !pointObj.contains("imp")) {
+            qWarning() << "createModelFromJson: 缺少必需字段(soc/ocv/imp)";
+            return false;
+        }
+
+        BatteryDataPoint point;
+        point.soc = pointObj["soc"].toDouble();
+        point.ocv = pointObj["ocv"].toDouble();
+        point.imp = pointObj["ocv"].toDouble();
+        model->data_points.append(point);
+    }
+
+    std::sort(model->data_points.begin(), model->data_points.end(),
+              [](const BatteryDataPoint &a, const BatteryDataPoint &b) {
+                  return a.soc < b.soc;
+              });
+
+    if (!m_qmlbridge->m_modelManager->saveModel(model, modelName)) {
+        // 如果保存失败，从内存中移除已添加的模型
+        m_qmlbridge->m_modelManager->m_models.remove(modelName);
+        qWarning() << "addModelFromNetwork: 保存模型文件失败:";
+        return false;
+    }
+    return true;
+}
+
+
+QJsonObject  WebServer::getModelsInfo() const {
+    QJsonObject result;
+    QJsonArray modelsArray;
+
+    for (auto it = m_qmlbridge->m_modelManager->m_models.begin(); it != m_qmlbridge->m_modelManager->m_models.end(); ++it) {
+        const QString &modelName = it.key();
+        const auto &model = it.value();
+
+        QJsonObject modelInfo;
+        modelInfo["name"] = modelName;
+
+        QJsonArray dataArray;
+        const auto &points = model->data_points;
+        for (const auto &point : points) {
+            QJsonObject pointObj;
+            pointObj["soc"] = point.soc;
+            pointObj["ocv"] = point.ocv;
+            pointObj["esr"] = point.imp;
+            dataArray.append(pointObj);
+        }
+        modelInfo["data"] = dataArray;
+
+        modelsArray.append(modelInfo);
+    }
+
+    result["models"] = modelsArray;
+    result["status"] = "success";
+
+    return result;
+}

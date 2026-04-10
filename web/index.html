@@ -3,53 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leacesy领图</title>
+    <title>Leacesy-领图</title>
     <link rel="stylesheet" href="/css/style.css">
-    <link rel="icon" type="image/png" href="/logo.png">
+    <link rel="icon" type="image/png" href="/icon/leacesylogo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>📡 Instrument Control</h1>
-            <nav>
-                <a href="/" class="active">Console</a>
-                <a href="/channels.html">Dashboard</a>
-            </nav>
-        </header>
-
-        <div class="status-bar">
-            <span class="online">Online</span>
-            <span id="connection-status">Device: Connecting...</span>
-        </div>
+        <div id="header-container"></div>
 
         <main>
             <section class="device-info">
-                <h2>Device Information</h2>
+                <h2>
+                    <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                        <line x1="8" y1="21" x2="16" y2="21"/>
+                        <line x1="12" y1="17" x2="12" y2="21"/>
+                    </svg>
+                    Device Information
+                </h2>
                 <div class="info-grid">
-                    <div class="info-item">
-                        <label>Brand</label>
-                        <span id="Brand">Loading...</span>
-                    </div>
                     <div class="info-item">
                         <label>Model</label>
                         <span id="model">Loading...</span>
                     </div>
                     <div class="info-item">
-                        <label>Serial Number</label>
+                        <label>Serial-Number</label>
                         <span id="serial">Loading...</span>
                     </div>
                     <div class="info-item">
-                        <label>Firmware Version</label>
-                        <span id="firmware">Loading...</span>
+                        <label>Software-Version</label>
+                        <span id="software">Loading...</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Hardware-Version</label>
+                        <span id="hardware">Loading...</span>
                     </div>
                 </div>
             </section>
 
             <section class="scpi-control">
-                <h2>SCPI Command Control</h2>
+                <h2>
+                    <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="4 17 10 11 4 5"/>
+                        <line x1="12" y1="19" x2="20" y2="19"/>
+                    </svg>
+                    SCPI Command Control
+                </h2>
                 <div class="scpi-layout">
                     <aside class="command-sidebar">
-                        <h2>Commands</h2>
+                        <h3>
+                            <svg class="section-icon small" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="8" y1="6" x2="21" y2="6"/>
+                                <line x1="8" y1="12" x2="21" y2="12"/>
+                                <line x1="8" y1="18" x2="21" y2="18"/>
+                                <line x1="3" y1="6" x2="3.01" y2="6"/>
+                                <line x1="3" y1="12" x2="3.01" y2="12"/>
+                                <line x1="3" y1="18" x2="3.01" y2="18"/>
+                            </svg>
+                            Commands List
+                        </h3>
                         <div id="command-list" class="command-list"></div>
                     </aside>
 
@@ -60,7 +75,7 @@
                                     placeholder="Enter SCPI command...">
                             </div>
                             <button id="send-button" class="primary">Send</button>
-                            <button id="clear-button">Clear</button>
+                            <button id="clear-button" class="secondary">Clear</button>
                         </div>
 
                         <div class="output-area" id="output">
@@ -72,6 +87,12 @@
         </main>
     </div>
 
-    <script src="/js/app.js"></script>
+    <script src="/js/header.js"></script>
+    <script src="/js/index.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            sharedComponents.loadHeader('header-container', 'console');
+        });
+    </script>
 </body>
 </html>

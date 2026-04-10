@@ -1,6 +1,7 @@
 #pragma once
 #include "auxiliary/scpi_handle.h"
 #include "auxiliary/qml_agency.h"
+#include "auxiliary/battery_model.h"
 #include <QLoggingCategory>
 #include <QTcpServer>
 #include <QWebSocket>
@@ -32,6 +33,10 @@ private:
 
     void onWsNewConnection();
     void onWsTextMessageReceived(QWebSocket *socket,const QString &message);
+
+    bool addModelFromNetwork(const QString &modelName, const QJsonArray &modelData);
+    bool removeModel(const QString &modelName);
+    QJsonObject getModelsInfo() const;
 
 private:
     struct ChannelData {
