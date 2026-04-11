@@ -64,6 +64,7 @@ int main(int argc, char *argv[])
     GuiBridge_share->m_modelManager = BatteryModel_share;
 
     // lack of can channel
+    /* Can channel and Uart channel .There can only be one.*/
 
     // uart channel create
     std::vector<std::unique_ptr<UartChannelManager>> Uart_Channels;

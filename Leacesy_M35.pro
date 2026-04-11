@@ -15,6 +15,7 @@ HEADERS += \
     auxiliary/scpi_handle.h \
     auxiliary/simple_logger.h \
     auxiliary/config_manager.h \
+    auxiliary/vxinamespace.h \
     channel/can_channel.h \
     channel/uart_channel.h \
     control/can_server.h \
