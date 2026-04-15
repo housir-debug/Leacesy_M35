@@ -1,11 +1,7 @@
 #pragma once
-#include <QObject>
-#include <QVector>
-#include <QString>
-#include <QMap>
-#include <QSharedPointer>
-#include <QDir>
-#include <QDebug>
+#include <QLoggingCategory>
+
+Q_DECLARE_LOGGING_CATEGORY(battery)
 
 struct BatteryDataPoint {
     float soc;      // State of Charge (0-100%)
@@ -23,12 +19,12 @@ public:
     QString name;
     QVector<BatteryDataPoint> data_points;
 
+    bool isOver(float soc) const;
+
     float getOCV(float soc) const;
     float getESR(float soc) const;
-    float interpolate(float soc,bool isocv) const;
 
-    bool isValid() const;
-    bool isOver(float soc) const;
+    float interpolate(float soc,bool isocv) const;
 };
 
 class BatteryModelManager : public QObject
@@ -46,9 +42,9 @@ public:
     bool removeModel(const QString &modelName);
     bool saveModel(QSharedPointer<BatteryModel> model, const QString &modelName);
 
-    QStringList getAvailableModels() const{return m_models.keys();};
-    QSharedPointer<BatteryModel> getModel(const QString &modelName) const{return m_models.value(modelName);};
-
     QString m_modelDirectory;
     QMap<QString, QSharedPointer<BatteryModel>> m_models;
+
+    QStringList getAvailableModels() const{return m_models.keys();};
+    QSharedPointer<BatteryModel> getModel(const QString &modelName) const{return m_models.value(modelName);};
 };

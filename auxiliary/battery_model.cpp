@@ -6,322 +6,263 @@
 #include <QDir>
 #include <algorithm>
 
+Q_LOGGING_CATEGORY(battery, "BATTERY:")
+
 BatteryModel::BatteryModel(QObject *parent) : QObject(parent) {}
 
+bool BatteryModel::isOver(float soc) const{
+    if (!data_points.isEmpty()) {
+        // From top to bottom, from small to large,Beyond the scope of the model
+        if (soc >= data_points.first().soc && soc <= data_points.last().soc){
+            return false;
+        }
+    }
+    return true;
+}
+
 float BatteryModel::getOCV(float soc) const {
-    if (data_points.isEmpty()) {return 0.0;}
+    if (!data_points.isEmpty()) {
+        // // From top to bottom, from small to large,Beyond the scope of the model
+        if (soc <= data_points.first().soc){
+            return data_points.first().ocv;
+        }
 
-    // // From top to bottom, from small to large,Beyond the scope of the model
-    if (soc <= data_points.first().soc){ return data_points.first().ocv;}
-    if (soc >= data_points.last().soc){ return data_points.last().ocv;}
+        if (soc >= data_points.last().soc){
+            return data_points.last().ocv;
+        }
 
-    return interpolate(soc,true);
+        return interpolate(soc,true);
+    }
+
+    qCWarning(battery)<<"[getOCV]:data point is empty";
+    return 0.0;
 }
 
 float BatteryModel::getESR(float soc) const {
-    if (data_points.isEmpty()) {return 0.0;}
+    if (!data_points.isEmpty()) {
+        // // From top to bottom, from small to large,Beyond the scope of the model
+        if (soc <= data_points.first().soc){
+            return data_points.first().imp;
+        }
 
-    // // From top to bottom, from small to large,Beyond the scope of the model
-    if (soc <= data_points.first().soc){ return data_points.first().imp;}
-    if (soc >= data_points.last().soc){ return data_points.last().imp;}
+        if (soc >= data_points.last().soc){
+            return data_points.last().imp;
+        }
 
-    return interpolate(soc,false);
+        return interpolate(soc,false);
+    }
+
+    qCWarning(battery)<<"[getESR]:data point is empty";
+    return 0.0;
 }
 
 float BatteryModel::interpolate(float soc,bool isocv) const {
-    int left = 0;
-    int right = data_points.size() - 1;
+    int left = 0; int right = data_points.size() - 1;
 
     // From top to bottom, from small to large
     while (right - left > 1) {
         int mid = (left + right) / 2;
-        if (data_points[mid].soc <= soc) {
-            left = mid;
-        } else {
-            right = mid;
-        }
+        (data_points[mid].soc <= soc) ? (left = mid) : (right = mid);
     }
 
     const auto& p1 = data_points[left];
-    const auto& p2 = data_points[left + 1];
-
     float y1 = isocv ? p1.ocv : p1.imp;
+    const auto& p2 = data_points[left + 1];
     float y2 = isocv ? p2.ocv : p2.imp;
 
-    if (p2.soc - p1.soc < 1e-6) {return y1;}  // Avoid division by 0
-    return y1 + (y2 - y1) * (soc - p1.soc) / (p2.soc - p1.soc);
+    float ad = (y2 - y1) * (soc - p1.soc) / (p2.soc - p1.soc);
+    return y1 + ad;
 }
 
-bool BatteryModel::isValid() const {
-    if (name.isEmpty() || data_points.isEmpty()) {
-        qWarning() << "BatteryModel::isValid: 模型名称空或数据点空";
-        return false;
-    }
+// -------------------------------------------------------------------------------------------------
 
-    double last_soc = -1.0;
-    for (const auto& point : data_points) {
-        if (point.soc <= last_soc) {
-            qWarning() << "BatteryModel::isValid: SOC不是严格递增" << point.soc << "<=" << last_soc;
-            return false;
-        }
-
-        if (point.soc < 0.0 || point.soc > 100.0) {
-            qWarning() << "BatteryModel::isValid: SOC超出范围 [0,100]" << point.soc;
-            return false;
-        }
-
-        if (point.ocv < 0.0 || point.ocv > 10.0) {
-            qWarning() << "BatteryModel::isValid: OCV超出合理范围 [0,10]" << point.ocv;
-            return false;
-        }
-
-        if (point.imp < 0.0 || point.imp > 1.0) {
-            qWarning() << "BatteryModel::isValid: ESR超出合理范围 [0,1]" << point.imp;
-            return false;
-        }
-
-        last_soc = point.soc;
-    }
-
-    if (data_points.first().soc > 0.001 || data_points.last().soc < 99.999) {
-        qWarning() << "BatteryModel::isValid: SOC范围["<< data_points.first().soc << "% - " << data_points.last().soc << "%]";
-        //return false;
-    }
-
-    return true;
-}
-
-bool BatteryModel::isOver(float soc) const{
-    if (data_points.isEmpty()) {return true;}
-
-    // From top to bottom, from small to large,Beyond the scope of the model
-    if (soc <= data_points.first().soc){ return true;}
-    if (soc >= data_points.last().soc){ return true;}
-
-    return false;
-}
-
-// ---------------------------------------BatteryModelManager
-
-BatteryModelManager::BatteryModelManager(const QString &parentPath, QObject *parent)
-    : QObject(parent)
+BatteryModelManager::BatteryModelManager(const QString &parentPath, QObject *parent): QObject(parent)
     , m_modelDirectory(parentPath + "/battery_models"){}
 
 bool BatteryModelManager::loadAllModels() {
-    m_models.clear();
-
     QDir modelDir(m_modelDirectory);
     if (!modelDir.exists()) {
-        qWarning() << "模型目录不存在,尝试创建目录并结束加载:" << m_modelDirectory;
+        qCDebug(battery) <<"[loadAllModels]:The model folder does not exist. Create this folder.";
         modelDir.mkpath(".");
-        return false;
     }
 
-    QStringList filters;
-    filters << "*.csv" << "*.CSV";
+    m_models.clear();
+    QStringList filters = {"*.csv", "*.CSV"};
     QFileInfoList fileList = modelDir.entryInfoList(filters, QDir::Files);
 
-    int loadedCount = 0;
     for (const auto &fileInfo : qAsConst(fileList)) {
         auto model = parseCSV(fileInfo.absoluteFilePath());
-
-        if (model && model->isValid()) {
-            m_models[model->name] = model;
-            loadedCount++;
-            qDebug() << "成功加载电池模型:" << model->name;
-        } else {
-            qWarning() << "警告: 跳过无效的电池模型文件:" << fileInfo.fileName();
+        if (!model) {
+            qCWarning(battery)<<"[loadAllModels]:Interrupted loading, failed load the file: "<< fileInfo.fileName();
+            m_models.clear();
+            return false;
         }
+
+        m_models[model->name] = model;
     }
 
-    qDebug() << "共加载" << loadedCount << "个电池模型";
-    return loadedCount > 0;
+    return true;
 }
 
 bool BatteryModelManager::loadModel(const QString &modelName) {
     QString filePath = QDir(m_modelDirectory).filePath(modelName + ".csv");
     QFileInfo fileInfo(filePath);
 
-    if (!fileInfo.exists()) {
-        qWarning() << "模型不存在,结束加载:" << m_modelDirectory;
-        return false;
+    if (fileInfo.exists()) {
+        auto model = parseCSV(filePath);
+        if (model) {
+            m_models[model->name] = model;
+            return true;
+        }
     }
 
-    auto model = parseCSV(filePath);
-    if (model && model->isValid()) {
-        m_models[model->name] = model;
-        qDebug() << "成功加载电池模型:" << model->name;
-        return true;
-    }
-
-    qWarning() << "警告: 跳过无效的电池模型文件:" << fileInfo.fileName();
+    qCWarning(battery) <<"[loadModel]: Not exist or Failure processing. The model file" << fileInfo.fileName();
     return false;
 }
 
 QSharedPointer<BatteryModel> BatteryModelManager::parseCSV(const QString &filePath) {
-    auto model = QSharedPointer<BatteryModel>::create();
     QFileInfo fileInfo(filePath);
+
+    auto model = QSharedPointer<BatteryModel>::create();
     model->name = fileInfo.baseName();  // The file name not include extension.
 
     QFile file(filePath);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qWarning() << "无法打开文件:" << filePath;
-        return nullptr;
-    }
+    if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QString line;
+        QTextStream stream(&file);
 
-    QTextStream stream(&file);
-    QString line;
-    int lineNumber = 0;
-    bool isFirstLine = true;
-    int socCol = -1, ocvCol = -1, esrCol = -1;
+        int socCol = -1, ocvCol = -1, esrCol = -1;
+        //bool isFirstLine = true;
+        int lineNumber = 0;
 
-    while (stream.readLineInto(&line)) {
-        lineNumber++;
-        if (line.trimmed().isEmpty()) {continue;}
+        // Read each line of the file sequentially
+        while (stream.readLineInto(&line)) { // line ? /n
+            lineNumber++;
 
-        // read line and column
-        QStringList columns;
-        bool inQuotes = false;
-        QString cell;
+            // read line and column
+            bool inQuotes = false;
+            QStringList columns;
+            QString cell;
 
-        for (int i = 0; i < line.length(); ++i) {
-            QChar ch = line[i];
-            if (ch == '"') {
-                inQuotes = !inQuotes;
-                // The commas not within the quotation marks are the separators.
-            } else if (ch == ',' && !inQuotes) {
-                cell = cell.trimmed();
-                columns.append(cell);
-                cell.clear();
-            } else {
-                cell += ch;
-            }
-        }
-        columns.append(cell);
-
-        // process line information
-        if (columns.size() != 3) {
-            qWarning() << "CSV行" << lineNumber << "列数错误";
-            return nullptr;
-        }
-
-        if (isFirstLine) {
-            for (int i = 0; i < columns.size(); ++i) {
-                QString normalized = columns[i].toLower().trimmed();
-
-                if (normalized=="soc" && socCol == -1) {
-                    socCol = i;
-                }
-                else if (normalized=="ocv" && ocvCol == -1) {
-                    ocvCol = i;
-                }
-                else if (normalized=="esr" && esrCol == -1) {
-                    esrCol = i;
-                }
-                else{
-                    qWarning() << "出现未知列名！";
-                    return nullptr;
+            for (int i = 0; i < line.length(); ++i) {
+                if (line[i] == '"') {
+                    inQuotes = !inQuotes;
+                    // The commas not within the quotation marks are the separators.
+                } else if (line[i] == ',' && !inQuotes) {
+                    cell = cell.trimmed();
+                    columns.append(cell);
+                    cell.clear();
+                } else {
+                    cell += line[i];
                 }
             }
+            // add last baecase not have ,
+            columns.append(cell);
 
-            if (socCol == -1 || ocvCol == -1 || esrCol == -1) {
-                qWarning() << "CSV文件缺少必需列:"<< filePath<< "socCol=" << socCol<< "ocvCol=" << ocvCol<< "esrCol=" << esrCol;
+            // process line information
+            if (columns.size() == 3) {
+                // first line
+                if (socCol == -1 || ocvCol == -1 || esrCol == -1) {
+                    for (int i = 0; i < columns.size(); ++i) {
+                        QString normalized = columns[i].trimmed();
+                        if (normalized=="SOC_%")        {socCol = i;}
+                        else if (normalized=="OCV_V")   {ocvCol = i;}
+                        else if (normalized=="IMP_ohm") {esrCol = i;}
+                    }
+
+                    continue; // access next line
+                }
+
+                // Other line
+                BatteryDataPoint point;
+
+                point.soc = columns[socCol].toFloat();
+                if (0.0f <= point.soc <= 100.0f) {
+                    point.ocv = columns[ocvCol].toFloat();
+                    if (0.0f <= point.ocv <= 6.0f) {
+                        point.imp = columns[esrCol].toFloat();
+                        if (0.0f <= point.imp <= 1.0f) {
+                            model->data_points.append(point);
+                            continue; // access next line
+                        }
+                    }
+                }
+
+                qCWarning(battery)<<"[parseCSV]: line failed: "<<lineNumber;
                 return nullptr;
             }
 
-            isFirstLine = false;
-            continue;
-        }
-
-        bool ok = true;
-        BatteryDataPoint point;
-
-        point.soc = columns[socCol].toFloat(&ok);
-        if (!ok || point.soc<0 || point.soc>100) {
-            qWarning() << "解析CSV行" << lineNumber << "SOC失败:" << columns[socCol];
+            qCWarning(battery)<<"[parseCSV]: format failed!";
             return nullptr;
         }
 
-        point.ocv = columns[ocvCol].toFloat(&ok);
-        if (!ok || point.ocv<0 || point.ocv>6) {
-            qWarning() << "解析CSV行" << lineNumber << "OCV失败:" << columns[ocvCol];
-            return nullptr;
-        }
+        std::sort(model->data_points.begin(), model->data_points.end(),[]
+              (const BatteryDataPoint &a, const BatteryDataPoint &b) {
+                  // Ascending (from smallest to largest)
+                  return a.soc < b.soc;
+              });
 
-        point.imp = columns[esrCol].toFloat(&ok);
-        if (!ok || point.imp<0 || point.imp>1) {
-            qWarning() << "解析CSV行" << lineNumber << "ESR失败:" << columns[esrCol];
-            return nullptr;
-        }
-
-        model->data_points.append(point);
+        return model;
     }
 
+    qCWarning(battery)<<"[parseCSV]:failed open file!" << filePath;
+    return nullptr;
+}
+
+bool BatteryModelManager::removeModel(const QString &modelName) {
+    if (m_models.contains(modelName)) {
+        QString filePath = QDir(m_modelDirectory).filePath(modelName + ".csv");
+        QFile file(filePath);
+
+        if (file.exists()) {
+            if (file.remove()) {
+                m_models.remove(modelName);
+                return true;
+            }
+
+            qCWarning(battery)<<"[removeModel]: failed delete file: "<<filePath<<" | error:" << file.errorString();
+            return false;
+        }
+    }
+
+    qCWarning(battery) <<"[removeModel]: model not exist: "<<modelName;
+    return false;
+}
+
+bool BatteryModelManager::saveModel(QSharedPointer<BatteryModel> model,const QString &modelName) {
     std::sort(model->data_points.begin(), model->data_points.end(),[]
-          (const BatteryDataPoint &a, const BatteryDataPoint &b) {
+          (const BatteryDataPoint &a, const BatteryDataPoint &b){
               // Ascending (from smallest to largest)
               return a.soc < b.soc;
           });
 
-    return model;
-}
-
-bool BatteryModelManager::saveModel(QSharedPointer<BatteryModel> model,const QString &modelName) {
-    if (!model) {
-        qWarning() << "saveModelToCSV: 模型指针丢失";
-        return false;
-    }
-
-    m_models[model->name] = model;
     QString filePath = QDir(m_modelDirectory).filePath(modelName + ".csv");
-    if(QFile::exists(filePath)){
-        qWarning() << "saveModelToCSV: 模型文件已存在";
-        return false;
-    }
+    if(!QFile::exists(filePath)){
+        QFile file(filePath);
+        if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            QTextStream stream(&file);
+            stream << "SOC_%,OCV_V,IMP_ohm\n";
 
-    QFile file(filePath);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        qWarning() << "saveModelToCSV: 无法创建文件:" << filePath;
-        return false;
-    }
+            const auto &points = model->data_points;
+            for (const auto &point : points) {
+                stream << QString::number(point.soc, 'f', 3) << ","
+                       << QString::number(point.ocv, 'f', 3) << ","
+                       << QString::number(point.imp, 'f', 3) << "\n";
+            }
 
-    QTextStream stream(&file);
-    stream << "SOC_%,OCV_V,IMP_ohm\n";
-    const auto &points = model->data_points;
-    for (const auto &point : points) {
-        stream << QString::number(point.soc, 'f', 3) << ","
-               << QString::number(point.ocv, 'f', 3) << ","
-               << QString::number(point.imp, 'f', 3) << "\n";
-    }
-
-    file.close();
-    qDebug() << "成功保存模型到文件:" << filePath << ", 数据点数量:" << model->data_points.size();
-    return true;
-}
-
-bool BatteryModelManager::removeModel(const QString &modelName) {
-    if (!m_models.contains(modelName)) {
-        qWarning() << "removeModel: 找不到指定模型:" << modelName;
-        return false;
-    }
-
-    QString filePath = QDir(m_modelDirectory).filePath(modelName + ".csv");
-    QFile file(filePath);
-
-    if (file.exists()) {
-        if (file.remove()) {
-            m_models.remove(modelName);
-            qDebug() << "成功删除电池模型文件:" << filePath;
+            m_models[model->name] = model;
+            file.close();
             return true;
         }
 
-        qWarning() << "removeModel: 删除文件失败:" << filePath << ", 错误:" << file.errorString();
-        return false;
-
-    } else {
-        qWarning() << "removeModel: 模型文件不存在:" << filePath;
+        qCWarning(battery)<<"[saveModel]: not create model file: "<<filePath;
         return false;
     }
+
+    qCWarning(battery)<<"[saveModel]: model file already exist!";
+    return false;
 }
+
+
 
 

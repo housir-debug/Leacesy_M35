@@ -2,6 +2,9 @@
 #include <QtCore>
 
 namespace Vxi11 {
+    constexpr int HTTP_PORT = 80;
+    constexpr int WEB_PORT = 8080;
+
     constexpr int VXI_PORT = 5025;
     constexpr quint8  HEADER = 0x80;
     constexpr quint32 DEVICE_CORE  = 395183;

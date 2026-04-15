@@ -1,260 +1,291 @@
 #include "web_server.h"
 #include "auxiliary/config_manager.h"
-#include <QtCore>
+#include "auxiliary/vxinamespace.h"
 #include <QTcpSocket>
-#include <QDateTime>
-#include <QJsonObject>
-#include <QJsonDocument>
-#include <QJsonArray>
-#include <QUrl>
-#include <QFile>
-#include <QFileInfo>
-#include <QDir>
-#include <QRegularExpression>
+#include <QWebSocket>
 
 Q_LOGGING_CATEGORY(web, "WEB:")
 
-WebServerManager::WebServerManager(QObject *parent) : QObject(parent){}
-WebServerManager::~WebServerManager(){
-    if (m_httpServer) {
+WebServerManager::WebServerManager(QObject *parent) : QObject(parent){
+    m_staticFiles = {
+        {"/",                     ":/web/web/index.html"},
+        {"/index.html",           ":/web/web/index.html"},
+        {"/channels.html",        ":/web/web/channels.html"},
+        {"/import.html",          ":/web/web/import.html"},
+        {"/js/index.js",          ":/web/web/js/index.js"},
+        {"/js/channels.js",       ":/web/web/js/channels.js"},
+        {"/js/import.js",         ":/web/web/js/import.js"},
+        {"/js/header.js",         ":/web/web/js/header.js"},
+        {"/css/style.css",        ":/web/web/css/style.css"},
+        {"/css/index.css",        ":/web/web/css/index.css"},
+        {"/css/channels.css",     ":/web/web/css/channels.css"},
+        {"/css/import.css",       ":/web/web/css/import.css"},
+        {"/css/global.css",       ":/web/web/css/global.css"},
+        {"/icon/leacesylogo.png", ":/web/web/icon/leacesylogo.png"},
+        {"/icon/leacesyicon.png", ":/web/web/icon/leacesyicon.png"}
+    };
+
+    m_mimeTypes = {
+        {"html",                  "text/html"},
+        {"css",                   "text/css"},
+        {"js",                    "application/javascript"},
+        {"json",                  "application/json"},
+        {"png",                   "image/png"},
+        {"jpg",                   "image/jpeg"},
+        {"svg",                   "image/svg+xml"},
+        {"ico",                   "image/x-icon"},
+        {"txt",                   "text/plain"},
+        {"xml",                   "application/xml"},
+        {"pdf",                   "application/pdf"}
+    };
+}
+WebServerManager::~WebServerManager()
+{
+    if (m_httpServer && m_wsServer && m_webThread) {
+        qCDebug(web)<<"[WebServerManager]:TcpServerManager Destroyed!!!";
+        for (QTcpSocket *client : qAsConst(m_clients)) {
+            client->disconnectFromHost();
+            client->waitForDisconnected(600);
+        }
+        m_clients.clear();
         m_httpServer->close();
         delete m_httpServer;
-    }
+        m_httpServer = nullptr;
 
-    if (m_wsServer) {
+        m_sockets.clear();
         m_wsServer->close();
         delete m_wsServer;
-    }
+        m_wsServer = nullptr;
 
-    for (auto it = m_wsClients.begin(); it != m_wsClients.end(); ++it) {
-        delete it.key();
+        m_webThread->quit();
+        m_webThread->wait(1000); // wait 1s
+        m_webThread->deleteLater();
+        delete m_webThread;
+        m_webThread = nullptr;
     }
-    m_wsClients.clear();
 }
 
 bool WebServerManager::startServer(){
-    if (!m_webThread){
-        m_httpServer = new QTcpServer(this);
-        m_wsServer = new QWebSocketServer("Leacesy_Instrument",QWebSocketServer::NonSecureMode, this);
-
+    if (!m_webThread && !m_httpServer && !m_wsServer){
         m_webThread = new QThread(this);
-        m_webThread->setObjectName("TcpServer");
-    }
+        m_httpServer = new QTcpServer(this);
+        m_wsServer = new QWebSocketServer("Leacesy",QWebSocketServer::NonSecureMode, this);
+        m_webThread->setObjectName("WebServer");
 
-    if (thread() != m_webThread) {
         this->moveToThread(m_webThread);
-        m_httpServer->moveToThread(m_webThread);
         m_wsServer->moveToThread(m_webThread);
-    }
-
-    if (!m_webThread->isRunning()) {
+        m_httpServer->moveToThread(m_webThread);
         m_webThread->start();
 
-        connect(m_httpServer, &QTcpServer::newConnection,this, &WebServerManager::onHttpNewConnection,Qt::DirectConnection);
-        connect(m_wsServer, &QWebSocketServer::newConnection,this, &WebServerManager::onWsNewConnection,Qt::DirectConnection);
+        connect(m_httpServer, &QTcpServer::newConnection,this,[this](){
+            QTcpSocket* client = m_httpServer->nextPendingConnection();
+            if (m_clients.size() <= 9) {
+                client->setObjectName(QString("%1:%2").arg(client->peerAddress().toString()).arg(client->peerPort()));
+                qCDebug(web) <<"[startServer]:New HTTP client: "<< client->objectName();
+
+                connect(client, &QTcpSocket::disconnected,this, [this, client](){
+                    qCDebug(web)<<"[startServer]:Disconnected "<<client->objectName();
+                    m_clients.removeOne(client);
+                    client->deleteLater();
+                }, Qt::DirectConnection);
+                connect(client, &QTcpSocket::errorOccurred,this, [client](QAbstractSocket::SocketError error){
+                    qCWarning(web)<<"[startServer]:ERROR Socket: ["<< client->objectName()<<"]"<< error <<client->errorString();
+                }, Qt::DirectConnection);
+                connect(client, &QTcpSocket::readyRead,this, [this, client](){
+                    handleHttpRequest(client);
+                }, Qt::DirectConnection);
+
+                m_clients.append(client);
+                return;
+            }
+
+            qCWarning(web)<<"[startServer]:Connected Clients Exceeds 9. Refused Clients:"<<client->peerAddress().toString();
+            client->disconnectFromHost();
+            client->deleteLater();
+        },Qt::DirectConnection);
+
+        connect(m_wsServer, &QWebSocketServer::newConnection,this, [this](){
+            QWebSocket* socket = m_wsServer->nextPendingConnection();
+            if (m_sockets.size() <= 9) {
+                socket->setObjectName(QString("%1:%2").arg(socket->peerAddress().toString()).arg(socket->peerPort()));
+                qCDebug(web) <<"[startServer]:New WebSocket client: "<< socket->objectName();
+
+                connect(socket, &QWebSocket::disconnected,this, [this, socket](){
+                    qCDebug(web)<<"[startServer]:Disconnected "<<socket->objectName();
+                    m_sockets.removeOne(socket);
+                    socket->deleteLater();
+                }, Qt::DirectConnection);
+                connect(socket,QOverload<QAbstractSocket::SocketError>::of(&QWebSocket::error),this, [socket](QAbstractSocket::SocketError error){
+                    qCWarning(web)<<"[startServer]:ERROR WebSocket: ["<<socket->objectName()<<"]"<< error <<socket->errorString();
+                }, Qt::DirectConnection);
+
+                connect(socket, &QWebSocket::textMessageReceived,this, [this, socket](const QString &message){
+                    onWsTextMessageReceived(socket,message);
+                }, Qt::DirectConnection);
+
+                m_sockets.append(socket);
+                return;
+            }
+
+            qCWarning(web)<<"[startServer]:Connected Clients Exceeds 9. Refused Clients:"<<socket->peerAddress().toString();
+            socket->disconnect();
+            socket->deleteLater();
+        },Qt::DirectConnection);
 
         QMetaObject::invokeMethod(this, [this]() {
-            if (!m_httpServer->listen(QHostAddress::Any, httpPort)) {
-                qCWarning(web) << "Failed to start HTTP server:" << m_httpServer->errorString();
-                delete m_httpServer;
-                m_httpServer = nullptr;
-            }
-
-            if (!m_wsServer->listen(QHostAddress::Any, wsPort)) {
-                qCWarning(web) << "Failed to start WebSocket server:" << m_wsServer->errorString();
-                delete m_wsServer;
-                m_wsServer = nullptr;
-            }
-        }, Qt::QueuedConnection);
+            if (m_httpServer->listen(QHostAddress::Any, Vxi11::HTTP_PORT)) {
+                if (m_wsServer->listen(QHostAddress::Any, Vxi11::WEB_PORT)) {
+                    setupRoutes(); // init route API and Web route
+                }}}, Qt::QueuedConnection);
 
         return true;
     }
+
     return false;
 }
 
-// ===================== HTTP处理 =====================
-
-void WebServerManager::onHttpNewConnection(){
-    QTcpSocket *client = m_httpServer->nextPendingConnection();
-    if (!client) return;
-
-    qCDebug(web) << "New HTTP client:" << client->peerAddress().toString()<< ":" << client->peerPort();
-
-    connect(client, &QTcpSocket::errorOccurred,this, [client](QAbstractSocket::SocketError error){
-        qCWarning(web)<<client->objectName()<<"HTTP  Socket Error: ["<<error<<"]"<<client->errorString();
-    }, Qt::DirectConnection);
-    connect(client, &QTcpSocket::disconnected,this, [this, client](){
-        qCDebug(web)<<client->objectName()<<"HTTP  Disconnected, Remain Connect Clients: "<<m_httpBuffers.size();
-        m_httpBuffers.remove(client);
-        client->deleteLater();
-    }, Qt::DirectConnection);
-    connect(client, &QTcpSocket::readyRead,this, [this, client](){ handleHttpRequest(client);}, Qt::DirectConnection);
-
-    m_httpBuffers[client] = QByteArray();
-}
-
-void WebServerManager::handleHttpRequest(QTcpSocket *client){
-    QMutexLocker locker(&m_httpmutex);
-
-    m_httpBuffers[client].append(client->readAll());
-    if (m_httpBuffers[client].isEmpty()){return;}
-
-    if (!m_httpBuffers[client].contains("\r\n\r\n")) {
-        sendHttpResponse(client, "WebServerManager is running", "text/plain");
-        m_httpBuffers.remove(client);
-        return;
-    }
-
-    QString requestStr = QString::fromUtf8(m_httpBuffers[client]);
-    QStringList lines = requestStr.split("\r\n");
-    QString requestLine = lines[0];
-    QStringList parts = requestLine.split(" ");
-    if (lines.isEmpty() || parts.size() < 3) {
-        sendHttpResponse(client, "Bad Request", "text/plain", 400);
-        m_httpBuffers.remove(client);
-        return;
-    }
-
-    QString method = parts[0];
-    QString path = QUrl::fromPercentEncoding(parts[1].toUtf8());
-
-    qCDebug(web) << "HTTP request:" << method << path;
-    if (path.startsWith("/api/")) {
-        handleApiRequest(client, path);
-        m_httpBuffers.remove(client);
-        return;
-    }
-
-    serveResourceFile(client, path);
-    m_httpBuffers.remove(client);
-    return;
-}
-
-void WebServerManager::handleApiRequest(QTcpSocket *client, const QString &path)
+void WebServerManager::setupRoutes()
 {
-    QJsonObject response;
-    if (path == "/api/device/info") {
+    m_apiRoutes["/api/device/info"] = [this](QTcpSocket* client) {
+        QJsonObject response;
         response["model"] = ConfigManager::s_model;
         response["serial"] = ConfigManager::s_serialNumber;
         response["software"] = ConfigManager::s_firmwareVersion;
         response["hardware"] = ConfigManager::s_hardwareVersion;
-    }
-    else if (path == "/api/scpi_commands") {
-        int i = 0;
-        QJsonArray commands;
 
-        while (true) {
-            const char* pattern = ScpiManager::m_scpiCommands[i].pattern;
-            if (pattern == nullptr || strlen(pattern) == 0) {
-                break; // End loop
-            }
-
-            QString cmd = QString::fromLatin1(pattern);
-            commands.append(cmd);
-            i++;
-        }
-
-        response["commands"] = commands;
-    }
-    else if(path == "/api/channels") {
-        response["channels"] = m_qmlbridge->getAllChannelsData();
-    }
-    else if(path == "/api/models") {
-        response["models"] = getModelsInfo();
-    }
-    else {
-        response["error"] = "API endpoint not found";
-        response["code"] = 404;
-    }
-
-    QByteArray jsonData = QJsonDocument(response).toJson();
-    sendHttpResponse(client, jsonData, "application/json");
-}
-
-void WebServerManager::serveResourceFile(QTcpSocket *client, const QString &path)
-{
-    QString resourcePath;
-    // html
-    if (path == "/" || path == "/index.html") {
-        resourcePath = ":/web/web/index.html";
-    } else if (path == "/channels.html") {
-        resourcePath = ":/web/web/channels.html";
-    } else if (path == "/import.html") {
-        resourcePath = ":/web/web/import.html";
-    // js
-    } else if (path == "/js/index.js") {
-        resourcePath = ":/web/web/js/index.js";
-    } else if (path == "/js/channels.js") {
-        resourcePath = ":/web/web/js/channels.js";
-    } else if (path == "/js/import.js") {
-        resourcePath = ":/web/web/js/import.js";
-    } else if (path == "/js/header.js") {
-        resourcePath = ":/web/web/js/header.js";
-    // css
-    } else if (path == "/css/style.css") {
-        resourcePath = ":/web/web/css/style.css";
-    } else if (path == "/css/index.css") {
-        resourcePath = ":/web/web/css/index.css";
-    } else if (path == "/css/channels.css") {
-        resourcePath = ":/web/web/css/channels.css";
-    } else if (path == "/css/import.css") {
-        resourcePath = ":/web/web/css/import.css";
-    } else if (path == "/css/global.css") {
-        resourcePath = ":/web/web/css/global.css";
-    // icon
-    } else if (path == "/icon/leacesylogo.png") {
-        resourcePath = ":/web/web/icon/leacesylogo.png";
-    } else if (path == "/icon/leacesyicon.png") {
-        resourcePath = ":/web/web/icon/leacesyicon.png";
-    // error
-    } else {
-        sendHttpResponse(client, "404 Not Found", "text/plain", 404);
-        return;
-    }
-
-    QByteArray content;
-    if (m_fileCache.contains(path)) {
-        content = m_fileCache[path];
-    }else{
-        QFile file(resourcePath);
-        if (!file.open(QIODevice::ReadOnly)) {
-            content = QByteArray();
-        }
-
-        content = file.readAll();
-        file.close();
-        m_fileCache[path] = content;
-    }
-
-    if (content.isEmpty()) {
-        sendHttpResponse(client, "500 Internal Server Error", "text/plain", 500);
-        return;
-    }
-
-    QString suffix = QFileInfo(resourcePath).suffix();
-    QString contentType = getMimeType(suffix);
-    sendHttpResponse(client, content, contentType);
-}
-
-QString WebServerManager::getMimeType(const QString &suffix){
-    static QMap<QString, QString> mimeTypes = {
-        {"html", "text/html"},
-        {"htm", "text/html"},
-        {"css", "text/css"},
-        {"js", "application/javascript"},
-        {"json", "application/json"},
-        {"png", "image/png"},
-        {"jpg", "image/jpeg"},
-        {"jpeg", "image/jpeg"},
-        {"gif", "image/gif"},
-        {"svg", "image/svg+xml"},
-        {"ico", "image/x-icon"},
-        {"txt", "text/plain"},
-        {"xml", "application/xml"},
-        {"pdf", "application/pdf"}
+        QByteArray jsonData = QJsonDocument(response).toJson();
+        sendHttpResponse(client, jsonData, "application/json");
     };
 
-    return mimeTypes.value(suffix.toLower(), "application/octet-stream");
+    m_apiRoutes["/api/scpi_commands"] = [this](QTcpSocket* client) {
+        QJsonObject response;
+        QJsonArray commands;
+        for (int i = 0; ScpiManager::m_scpiCommands[i].pattern != nullptr; ++i) {
+            if (strlen(ScpiManager::m_scpiCommands[i].pattern) > 0) {
+                commands.append(QString::fromLatin1(ScpiManager::m_scpiCommands[i].pattern));
+            }
+        }
+        response["commands"] = commands;
+
+        QByteArray jsonData = QJsonDocument(response).toJson();
+        sendHttpResponse(client, jsonData, "application/json");
+    };
+
+    m_apiRoutes["/api/channels"] = [this](QTcpSocket* client) {
+        QJsonObject response;
+        response["channels"] = m_qmlbridge->getAllChannelsData();
+
+        QByteArray jsonData = QJsonDocument(response).toJson();
+        sendHttpResponse(client, jsonData, "application/json");
+    };
+
+    m_apiRoutes["/api/models"] = [this](QTcpSocket* client) {
+        QJsonObject response;
+        response["models"] = getModelsInfo();
+
+        QByteArray jsonData = QJsonDocument(response).toJson();
+        sendHttpResponse(client, jsonData, "application/json");
+    };
+
+    // -----------------------------------------------------------------------
+
+    m_webRoutes["scpi_command"] = [this](QWebSocket* socket, const QJsonObject& obj) {
+        QByteArray cmd = (obj["command"].toString()+"\n").toUtf8();
+        qCDebug(web) << "SCPI command received:" << cmd;
+
+        m_qmlbridge->update_remotemodel(true);
+        QByteArray res = m_scpiManager->processCommand(cmd);
+
+        if (!res.isEmpty()){
+            QJsonObject response;
+            response["type"] = "scpi_response";
+            response["result"] = QString::fromUtf8(res);
+            socket->sendTextMessage(QJsonDocument(response).toJson());
+        }
+    };
+
+    m_webRoutes["channels_update"] = [this](QWebSocket* socket, const QJsonObject&) {
+        QJsonObject channelData;
+        channelData["type"] = "channels_response";
+        channelData["channels"] = m_qmlbridge->getAllChannelsData();
+        socket->sendTextMessage(QJsonDocument(channelData).toJson());
+    };
+
+    m_webRoutes["model_upload"] = [this](QWebSocket* socket, const QJsonObject& obj) {
+        QJsonObject content = obj["content"].toObject();
+        QString modelName = content["name"].toString();
+        QJsonArray modelData = content["data"].toArray();
+
+        QJsonObject response;
+        if (addModelFromNetwork(modelName,modelData)) {
+            response["type"] = "model_sync";
+            response["models"] = getModelsInfo();
+            socket->sendTextMessage(QJsonDocument(response).toJson());
+        } else {
+            response["type"] = "error";
+            response["message"] = QString("Failed to save model \"%1\"").arg(modelName);
+            socket->sendTextMessage(QJsonDocument(response).toJson());
+        }
+    };
+
+    m_webRoutes["model_delete"] = [this](QWebSocket* socket, const QJsonObject& obj) {
+        QJsonObject response;
+        QString modelName = obj["name"].toString();
+
+        if (m_BatteryManager->removeModel(modelName)) {
+            response["type"] = "model_sync";
+            response["models"] = getModelsInfo();
+            socket->sendTextMessage(QJsonDocument(response).toJson());
+        } else {
+            response["type"] = "error";
+            response["message"] = QString("Failed to delete model \"%1\"").arg(modelName);
+            socket->sendTextMessage(QJsonDocument(response).toJson());
+        }
+    };
+}
+
+//---------------------------------------------------------------------------------
+
+void WebServerManager::handleHttpRequest(QTcpSocket *client){
+    QMutexLocker locker(&m_httpmutex);
+
+    QByteArray data = client->readAll();
+    if (data.contains("\r\n\r\n")) {
+        QString requestLine = QString::fromUtf8(data).split("\r\n").first();
+        QStringList parts = requestLine.split(" ");
+
+        if (parts.size() >= 3) {
+            QString path = QUrl::fromPercentEncoding(parts[1].toUtf8());
+            qCDebug(web) <<"[handleHttpRequest]:HTTP request: "<< parts[0] << path;
+
+            if (m_apiRoutes.contains(path)) {
+                m_apiRoutes[path](client);
+                return;
+            }
+            else if (m_staticFiles.contains(path)) {
+                QString resourcePath = m_staticFiles[path];
+                if (!m_fileCache.contains(path)) {
+                    QFile file(resourcePath);
+                    if (!file.open(QIODevice::ReadOnly)) {
+                        sendHttpResponse(client, "500 Internal Server Error", "text/plain", 500);
+                        return;
+                    }
+
+                    m_fileCache[path] = file.readAll();
+                }
+
+                QString contentType = m_mimeTypes[QFileInfo(resourcePath).suffix()];
+                sendHttpResponse(client, m_fileCache[path], contentType);
+                return;
+            }
+
+            sendHttpResponse(client, "404 Not Found", "text/plain", 404);
+            return;
+        }
+    }
+
+    sendHttpResponse(client, "Please access using a web browser.", "text/plain");
+    return;
 }
 
 void WebServerManager::sendHttpResponse(QTcpSocket *client, const QByteArray &content,const QString &contentType, int statusCode){
@@ -276,7 +307,7 @@ void WebServerManager::sendHttpResponse(QTcpSocket *client, const QByteArray &co
         "Connection: close\r\n"
         "Access-Control-Allow-Origin: *\r\n"
         "\r\n"
-    ).arg(QString::number(statusCode),statusText,contentType,QString::number(content.size()));
+    ).arg(QString::number(statusCode), statusText, contentType, QString::number(content.size()));
 
     client->write(header.toUtf8());
     client->write(content);
@@ -284,170 +315,66 @@ void WebServerManager::sendHttpResponse(QTcpSocket *client, const QByteArray &co
     client->close();
 }
 
-// ===================== WebSocket处理 =====================
-
-void WebServerManager::onWsNewConnection()
-{
-    QWebSocket *socket = m_wsServer->nextPendingConnection();
-    if (!socket) return;
-
-    qCDebug(web) << "WebSocket client connected:" << socket->peerAddress().toString();
-
-    connect(socket,QOverload<QAbstractSocket::SocketError>::of(&QWebSocket::error),this, [socket](QAbstractSocket::SocketError error){
-        qCWarning(web)<<socket->objectName()<<"HTTP  Socket Error: ["<<error<<"]"<<socket->errorString();
-    }, Qt::DirectConnection);
-    connect(socket, &QWebSocket::disconnected,this, [this, socket](){
-        qCDebug(web)<<socket->objectName()<<"HTTP  Disconnected, Remain Connect Clients: "<<m_httpBuffers.size();
-        m_wsClients.remove(socket);
-        socket->deleteLater();
-    }, Qt::DirectConnection);
-    connect(socket, &QWebSocket::textMessageReceived,this, [this, socket](const QString &message){ onWsTextMessageReceived(socket,message);}, Qt::DirectConnection);
-
-    m_wsClients[socket] = socket->peerAddress().toString();
-
-    if (m_wsClients.size() > 1) {
-        qCDebug(web) << "Maximum clients reached, disconnecting oldest connection";
-
-        QWebSocket *oldestSocket = m_wsClients.firstKey();
-        if (oldestSocket) {
-            oldestSocket->sendTextMessage("{\"type\":\"system\",\"message\":\"Connection limit reached, disconnecting\"}");
-            oldestSocket->close(QWebSocketProtocol::CloseCodeGoingAway, "Maximum clients limit reached");
-            m_wsClients.remove(oldestSocket);
-            oldestSocket->deleteLater();
-        }
-    }
-}
+//---------------------------------------------------------------------------------
 
 void WebServerManager::onWsTextMessageReceived(QWebSocket *socket,const QString &message)
 {
     QMutexLocker locker(&m_webmutex);
 
     QJsonDocument doc = QJsonDocument::fromJson(message.toUtf8());
-    if (doc.isNull() || !doc.isObject()) {
-        qCWarning(web) << "Invalid JSON message received";
-        return;
-    }
-
-    QJsonObject obj = doc.object();
-    QString type = obj["type"].toString();
-    m_responsebuffer.clear();
-
-    if (type == "scpi_command") {
-        QString cmdString = obj["command"].toString();
-        QByteArray cmd = (cmdString+"\n").toUtf8();
-        qCDebug(web) << "SCPI command received:" << cmd;
-
-        m_qmlbridge->update_remotemodel(true);
-        m_responsebuffer = m_scpiManager->processCommand(cmd);
-        if (m_responsebuffer.isEmpty()){return;}
-
-        QJsonObject response;
-        response["type"] = "scpi_response";
-        response["result"] = QString::fromUtf8(m_responsebuffer);
-        socket->sendTextMessage(QJsonDocument(response).toJson());
-    }
-    else if (type == "channels_update") {
-        QJsonObject channelData;
-        channelData["type"] = "channels_response";
-        channelData["channels"] = m_qmlbridge->getAllChannelsData();
-        socket->sendTextMessage(QJsonDocument(channelData).toJson());
-    }
-    else if (type == "model_upload") {
-        QJsonObject content = obj["content"].toObject();
-        QString modelName = content["name"].toString();
-        QJsonArray modelData = content["data"].toArray();
-        bool success = addModelFromNetwork(modelName,modelData);
-
-        if (success) {
-            QJsonObject syncMessage;
-            syncMessage["type"] = "model_sync";
-            syncMessage["models"] = getModelsInfo();
-            socket->sendTextMessage(QJsonDocument(syncMessage).toJson());
-        } else {
-            QJsonObject response;
-            response["type"] = "error";
-            response["message"] = QString("Failed to save model \"%1\"").arg(modelName);
-            socket->sendTextMessage(QJsonDocument(response).toJson());
-        }
-    }
-    else if (type == "model_delete") {
-        QString modelName = obj["name"].toString();
-        bool success = m_qmlbridge->m_modelManager->removeModel(modelName);
-
-        if (success) {
-            QJsonObject syncMessage;
-            syncMessage["type"] = "model_sync";
-            syncMessage["models"] = getModelsInfo();
-            socket->sendTextMessage(QJsonDocument(syncMessage).toJson());
-        } else {
-            QJsonObject response;
-            response["type"] = "error";
-            response["message"] = QString("Failed to delete model \"%1\"").arg(modelName);
-            socket->sendTextMessage(QJsonDocument(response).toJson());
+    qCDebug(web) <<"[onWsTextMessageReceived]:WEB request: "<<message;
+    if (!doc.isNull() && doc.isObject()) {
+        QJsonObject obj = doc.object();
+        QString type = obj["type"].toString();
+        if (m_webRoutes.contains(type)) {
+            m_webRoutes[type](socket,obj);
         }
     }
 }
 
 bool WebServerManager::addModelFromNetwork(const QString &modelName, const QJsonArray &modelData) {
-    if (modelName.isEmpty()) {
-        qWarning() << "addModelFromNetwork: 模型名称不能为空";
-        return false;
-    }
+    if (!modelName.isEmpty() && !m_BatteryManager->m_models.contains(modelName)) {
+        auto model = QSharedPointer<BatteryModel>::create();
+        model->name = modelName;
 
-    if (m_qmlbridge->m_modelManager->m_models.contains(modelName)) {
-        qWarning() << "addModelFromNetwork: 模型已存在";
-        return false;
-    }
+        for (const auto &item : modelData) {
+            if (!item.isNull() && item.isObject()) {
+                QJsonObject pointObj = item.toObject();
 
-    auto model = QSharedPointer<BatteryModel>::create();
-    model->name = modelName;
-
-    for (const auto &item : modelData) {
-        if (!item.isObject() || item.isNull()) {
-            qWarning() << "createModelFromJson: 数据项不是JSON对象,或者有一行为空";
-            return false;
+                if (pointObj.contains("soc") && pointObj.contains("ocv") && pointObj.contains("imp")) {
+                    BatteryDataPoint point;
+                    point.soc = pointObj["soc"].toDouble();
+                    point.ocv = pointObj["ocv"].toDouble();
+                    point.imp = pointObj["ocv"].toDouble();
+                    model->data_points.append(point);
+                }else{
+                    qCWarning(web) << "[addModelFromNetwork]:Parameter lack error!";
+                    return false;
+                }
+            }else{
+                qCWarning(web) << "[addModelFromNetwork]:Parameter model format error!";
+                return false;
+            }
         }
 
-        QJsonObject pointObj = item.toObject();
-        if (!pointObj.contains("soc") || !pointObj.contains("ocv") || !pointObj.contains("imp")) {
-            qWarning() << "createModelFromJson: 缺少必需字段(soc/ocv/imp)";
-            return false;
-        }
-
-        BatteryDataPoint point;
-        point.soc = pointObj["soc"].toDouble();
-        point.ocv = pointObj["ocv"].toDouble();
-        point.imp = pointObj["ocv"].toDouble();
-        model->data_points.append(point);
+        m_BatteryManager->saveModel(model, modelName);
+        return true;
     }
 
-    std::sort(model->data_points.begin(), model->data_points.end(),
-              [](const BatteryDataPoint &a, const BatteryDataPoint &b) {
-                  return a.soc < b.soc;
-              });
-
-    if (!m_qmlbridge->m_modelManager->saveModel(model, modelName)) {
-        // 如果保存失败，从内存中移除已添加的模型
-        m_qmlbridge->m_modelManager->m_models.remove(modelName);
-        qWarning() << "addModelFromNetwork: 保存模型文件失败:";
-        return false;
-    }
-    return true;
+    qCWarning(web) << "[addModelFromNetwork]:Parameter error or model incorrect!";
+    return false;
 }
-
 
 QJsonObject  WebServerManager::getModelsInfo() const {
     QJsonObject result;
     QJsonArray modelsArray;
 
-    for (auto it = m_qmlbridge->m_modelManager->m_models.begin(); it != m_qmlbridge->m_modelManager->m_models.end(); ++it) {
-        const QString &modelName = it.key();
-        const auto &model = it.value();
-
+    for (auto it = m_BatteryManager->m_models.begin(); it != m_BatteryManager->m_models.end(); ++it) {
         QJsonObject modelInfo;
-        modelInfo["name"] = modelName;
+        modelInfo["name"] = it.key();
 
         QJsonArray dataArray;
+        const auto &model = it.value();
         const auto &points = model->data_points;
         for (const auto &point : points) {
             QJsonObject pointObj;
@@ -456,13 +383,12 @@ QJsonObject  WebServerManager::getModelsInfo() const {
             pointObj["esr"] = point.imp;
             dataArray.append(pointObj);
         }
-        modelInfo["data"] = dataArray;
 
+        modelInfo["data"] = dataArray;
         modelsArray.append(modelInfo);
     }
 
     result["models"] = modelsArray;
     result["status"] = "success";
-
     return result;
 }
