@@ -38,10 +38,11 @@ public:
     QByteArray processCommand(const QByteArray& command);
 
     // Channel -> this
-    void processCHVoidResponse();              // 0
-    void processCHStateResponse(bool state);   // 1
-    void processCHFloatResponse(float value);  // 2
-    void processCHIntResponse(int value);      // 3
+    void processCHVoidResponse();                  // 0
+    void processCHStateResponse(bool state);       // 1
+    void processCHFloatResponse(float value);      // 2
+    void processCHIntResponse(int value);          // 3
+    void processCHStringResponse(QString value);   // 4
 
 private:
     // --- Output -------------------------------------------------------------------------------
@@ -194,6 +195,7 @@ private:
     int m_CHIntReturn{0};
     bool m_CHStateReturn{false};
     float m_CHFloatReturn{0.0f};
+    QString m_CHStringReturn;
 
     int32_t m_channel{0};
     quint8 m_ReturnType{0};

@@ -58,16 +58,15 @@ int main(int argc, char *argv[])
     }
 
     // share model pointer create
-    std::shared_ptr<ScpiManager> Scpi_share = std::make_shared<ScpiManager>();
     std::shared_ptr<BatteryModelManager> BatteryModel_share = std::make_shared<BatteryModelManager>(parentPath);
     std::shared_ptr<GuiBridge> GuiBridge_share = std::make_shared<GuiBridge>();
+    std::shared_ptr<ScpiManager> Scpi_share = std::make_shared<ScpiManager>();
     GuiBridge_share->m_modelManager = BatteryModel_share;
 
     // lack of can channel
     /* Can channel and Uart channel .There can only be one.*/
 
     // uart channel create
-    std::vector<std::unique_ptr<UartChannelManager>> Uart_Channels;
     if (ConfigManager::s_enableUartMess){
         // config form config_manager
         for (const auto& config : configs) {
@@ -79,12 +78,8 @@ int main(int argc, char *argv[])
                 return 1;
             }
 
-            // QmlUI -> Uart
             QObject::connect(GuiBridge_share.get(),qml_signal[config.channel-1],channel.get(),&UartChannelManager::writeFrame,Qt::QueuedConnection);
-            // Scpi -> uart
             QObject::connect(Scpi_share.get(),scpi_signal[config.channel-1],channel.get(),&UartChannelManager::writeFrame,Qt::QueuedConnection);
-
-            Uart_Channels.push_back(std::move(channel));
         }
 
         //QObject::connect(Uart_Channels[0].get(),&UartChannelManager::serialDataReceived,Uart_Channels[1].get(),&UartChannelManager::writeSerialData);

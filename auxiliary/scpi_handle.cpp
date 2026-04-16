@@ -547,9 +547,10 @@ scpi_result_t ScpiManager::SCPI_ReadQ(scpi_t* context) {
     auto* self = static_cast<ScpiManager*>(context->user_context);
     switch (self->m_ReturnType){
         case 0: return SCPI_RES_OK; // emtry response
-        case 1: SCPI_ResultBool(context, self->m_CHStateReturn); return SCPI_RES_OK;
-        case 2: SCPI_ResultFloat(context, self->m_CHFloatReturn);return SCPI_RES_OK;
-        case 3: SCPI_ResultInt(context, self->m_CHIntReturn);    return SCPI_RES_OK;
+        case 1: SCPI_ResultBool(context, self->m_CHStateReturn);                        return SCPI_RES_OK;
+        case 2: SCPI_ResultFloat(context, self->m_CHFloatReturn);                       return SCPI_RES_OK;
+        case 3: SCPI_ResultInt(context, self->m_CHIntReturn);                           return SCPI_RES_OK;
+        case 4: SCPI_ResultText(context, self->m_CHStringReturn.toUtf8().constData());  return SCPI_RES_OK;
         default:break;
     }
 
@@ -629,6 +630,14 @@ void ScpiManager::processCHIntResponse(int cht) {
     m_syncMutex.lock();
     m_ReturnType = 3;
     m_CHIntReturn = cht;
+    m_syncMutex.unlock();
+    m_syncCondition.wakeAll();
+}
+
+void ScpiManager::processCHStringResponse(QString str) {
+    m_syncMutex.lock();
+    m_ReturnType = 4;
+    m_CHStringReturn = str;
     m_syncMutex.unlock();
     m_syncCondition.wakeAll();
 }
