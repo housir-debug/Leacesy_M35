@@ -23,7 +23,9 @@ Item {
                 channels.push(i)
             }
         }
+
         existChannels = channels
+        Uart_bridge.load_BatteryModel()
     }
 
     Rectangle {
@@ -52,7 +54,7 @@ Item {
                     channelName: "CH" + existChannels[index]
                     soc: Uart_bridge["ch" + existChannels[index] + "_CurrentSOC"]
                     ocv: Uart_bridge["ch" + existChannels[index] + "_cv"]
-                    ocveUnit: "V"
+                    ocvUnit: "V"
                     esr: Uart_bridge["ch" + existChannels[index] + "_imp"]
                     esrUnit: "Ω"
 
@@ -71,10 +73,11 @@ Item {
             }
 
             path: Path {
-                startX: -cardWidth / 2 // Left outer edge of the screen
+                startX: -cardPathView.cardWidth / 2 // Left outer edge of the screen
                 startY: cardPathView.height / 2
                 PathLine {
-                    x: cardPathView.width + cardWidth / 2 // The outer right side of the screen
+                    x: cardPathView.width + cardPathView.cardWidth
+                       / 2 // The outer right side of the screen
                     y: cardPathView.height / 2
                 }
 

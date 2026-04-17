@@ -204,7 +204,7 @@ Item {
                         text: root.cvSetpoint.toFixed(3) + " V"
                         color: root.textSecondary
                         font.pixelSize: 15 * root.scaleFactor
-                        font.bold: root.cvModel
+                        font.bold: root.cvModel ? true : false
                         anchors.centerIn: parent
                         anchors.verticalCenter: parent.verticalCenter
                     }
@@ -242,7 +242,7 @@ Item {
                         text: root.ccSetpoint.toFixed(3) + " A"
                         color: root.textSecondary
                         font.pixelSize: 15 * root.scaleFactor
-                        font.bold: root.ccModel
+                        font.bold: root.ccModel ? true : false
                         anchors.centerIn: parent
                         anchors.verticalCenter: parent.verticalCenter
                     }
@@ -280,7 +280,7 @@ Item {
                         text: root.ovpSetpoint.toFixed(3) + " V"
                         color: root.textSecondary
                         font.pixelSize: 15 * root.scaleFactor
-                        font.bold: root.ovpModel
+                        font.bold: root.ovpModel ? true : false
                         anchors.centerIn: parent
                         anchors.verticalCenter: parent.verticalCenter
                     }

@@ -14,7 +14,7 @@ Item {
     property string channelName: "CH1"
     property real soc: 100
     property real ocv: 0.0
-    property string ocveUnit: "V"
+    property string ocvUnit: "V"
     property real esr: 0.0
     property string esrUnit: "Ω"
     property string batteryModel: "model-1"
@@ -247,8 +247,8 @@ Item {
                 Repeater {
                     model: [{
                             "label": "OCV",
-                            "value": root.voltage.toFixed(3),
-                            "unit": root.voltageUnit
+                            "value": root.ocv.toFixed(3),
+                            "unit": root.ocvUnit
                         }, {
                             "label": "ESR",
                             "value": root.esr.toFixed(3),

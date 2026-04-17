@@ -98,7 +98,8 @@ Item {
                         color: "#1E3A5F"
 
                         Text {
-                            text: "V: " + Uart_bridge["ch" + (index + 1) + "_sv"]
+                            text: "V: " + Uart_bridge["ch"
+                                + (functionPage.initialChannel + 1) + "_sv"]
                             font.pixelSize: 18
                             color: "#e0e0e0"
                             anchors.centerIn: parent
@@ -123,7 +124,8 @@ Item {
                         color: "#1E3A5F"
 
                         Text {
-                            text: "V: " + Uart_bridge["ch" + (index + 1) + "_hv"]
+                            text: "V: " + Uart_bridge["ch"
+                                + (functionPage.initialChannel + 1) + "_hv"]
                             font.pixelSize: 18
                             color: "#e0e0e0"
                             anchors.centerIn: parent
@@ -289,7 +291,7 @@ Item {
                     Layout.fillWidth: true
 
                     mainText: "CV"
-                    subText: Uart_bridge["ch" + functionPage.initialChannel + "_cv"]
+                    subText: Uart_bridge["ch" + functionPage.initialChannel + "_cv"] + ""
                     pressed: functionPage.currentsetmodel === 1
 
                     enclick: !Uart_bridge.isRemote
@@ -304,7 +306,7 @@ Item {
                     Layout.fillWidth: true
 
                     mainText: "InitSOC"
-                    subText: Uart_bridge["ch" + functionPage.initialChannel + "_currentSOC"]
+                    subText: Uart_bridge["ch" + functionPage.initialChannel + "_currentSOC"] + ""
                     pressed: functionPage.currentsetmodel === 2
 
                     enclick: !Uart_bridge.isRemote
@@ -319,7 +321,7 @@ Item {
                     Layout.fillWidth: true
 
                     mainText: "CC"
-                    subText: Uart_bridge["ch" + functionPage.initialChannel + "_cc"]
+                    subText: Uart_bridge["ch" + functionPage.initialChannel + "_cc"] + ""
                     pressed: functionPage.currentsetmodel === 3
 
                     enclick: !Uart_bridge.isRemote
@@ -334,7 +336,7 @@ Item {
                     Layout.fillWidth: true
 
                     mainText: "Capacity"
-                    subText: Uart_bridge["ch" + functionPage.initialChannel + "_CapacityAH"]
+                    subText: Uart_bridge["ch" + functionPage.initialChannel + "_CapacityAH"] + ""
                     pressed: functionPage.currentsetmodel === 4
 
                     enclick: !Uart_bridge.isRemote
@@ -349,7 +351,7 @@ Item {
                     Layout.fillWidth: true
 
                     mainText: "OVP"
-                    subText: Uart_bridge["ch" + functionPage.initialChannel + "_ovp"]
+                    subText: Uart_bridge["ch" + functionPage.initialChannel + "_ovp"] + ""
                     pressed: functionPage.currentsetmodel === 5
 
                     enclick: !Uart_bridge.isRemote

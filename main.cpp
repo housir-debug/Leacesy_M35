@@ -1,5 +1,8 @@
 #include <QDir>
 #include <QThread>
+#include <QScreen>
+#include <QWindow>
+#include <QQuickView>
 #include <QQmlContext>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
@@ -9,7 +12,7 @@
 #include "auxiliary/scpi_handle.h"
 #include "auxiliary/qml_agency.h"
 #include "channel/uart_channel.h"
-#include "channel/can_channel.h"
+//#include "channel/can_channel.h"
 #include "control/tcp_server.h"
 #include "control/web_server.h"
 #include "control/can_server.h"
@@ -50,12 +53,13 @@ int main(int argc, char *argv[])
 
     // config log Setting And global variable
     QString parentPath = appDir.absolutePath();
-    loggermanage(ConfigManager::s_loglevel , parentPath);
-    QObject::connect(&app, &QGuiApplication::aboutToQuit, &shutdownLogger);
     if (!ConfigManager::init(parentPath)) {
         qCWarning(application) << "app get global config not exist!";
         return 1;   // error
     }
+
+    loggermanage(ConfigManager::s_loglevel , parentPath);
+    QObject::connect(&app, &QGuiApplication::aboutToQuit, &shutdownLogger);
 
     // share model pointer create
     std::shared_ptr<BatteryModelManager> BatteryModel_share = std::make_shared<BatteryModelManager>(parentPath);
@@ -67,12 +71,14 @@ int main(int argc, char *argv[])
     /* Can channel and Uart channel .There can only be one.*/
 
     // uart channel create
+    std::vector<std::unique_ptr<UartChannelManager>> Channel_list;
     if (ConfigManager::s_enableUartMess){
         // config form config_manager
         for (const auto& config : configs) {
             auto channel = std::make_unique<UartChannelManager>();
             channel->m_qmlbridge = GuiBridge_share;
             channel->m_scpiManager = Scpi_share;
+
             if (!channel->initSerialPort(config.port, config.baudRate)) {
                 qCWarning(application) << "uart channel "<< config.port <<" Initialization failed!";
                 return 1;
@@ -80,6 +86,7 @@ int main(int argc, char *argv[])
 
             QObject::connect(GuiBridge_share.get(),qml_signal[config.channel-1],channel.get(),&UartChannelManager::writeFrame,Qt::QueuedConnection);
             QObject::connect(Scpi_share.get(),scpi_signal[config.channel-1],channel.get(),&UartChannelManager::writeFrame,Qt::QueuedConnection);
+            Channel_list.push_back(std::move(channel)); // move set <channel> can move
         }
 
         //QObject::connect(Uart_Channels[0].get(),&UartChannelManager::serialDataReceived,Uart_Channels[1].get(),&UartChannelManager::writeSerialData);
@@ -88,24 +95,24 @@ int main(int argc, char *argv[])
     }
 
     // screen GUI engine create
+    QQmlApplicationEngine engine;
     if (ConfigManager::s_enableDisplay){
-        QQmlApplicationEngine engine;
         engine.addImportPath(QStringLiteral("qrc:/qml"));
         engine.rootContext()->setContextProperty("Uart_bridge", GuiBridge_share.get());
 
-        const QUrl url(QStringLiteral("qrc:/qml/Component/test.qml"));   //main.qml   Component/test.qml
+        const QUrl url(QStringLiteral("qrc:/qml/main.qml"));   //main.qml   Component/test.qml
         QObject::connect(&engine, &QQmlApplicationEngine::objectCreated, &app, [url](QObject *obj, const QUrl &objUrl) {
             if (!obj && url == objUrl){
                 qCWarning(application) << "Object not exist and the URL matches.!";
                 QCoreApplication::exit(-1);
-            }
-        }, Qt::QueuedConnection);
+            }}, Qt::QueuedConnection);
 
         engine.load(url);
     }
 
+    std::unique_ptr<WebServerManager> webServer;
     if (ConfigManager::s_enableWEBServer){
-        std::unique_ptr<WebServerManager> webServer = std::make_unique<WebServerManager>();
+        webServer = std::make_unique<WebServerManager>();
         webServer->m_BatteryManager = BatteryModel_share;
         webServer->m_qmlbridge = GuiBridge_share;
         webServer->m_scpiManager = Scpi_share;
@@ -115,8 +122,9 @@ int main(int argc, char *argv[])
         }
     }
 
+    std::unique_ptr<TcpServerManager> vxiServer;
     if (ConfigManager::s_enableLANServer){
-        std::unique_ptr<TcpServerManager> vxiServer = std::make_unique<TcpServerManager>();
+        vxiServer = std::make_unique<TcpServerManager>();
         vxiServer->m_qmlbridge = GuiBridge_share;
         vxiServer->m_scpiManager = Scpi_share;
         if (!vxiServer->startServer()) {
@@ -125,8 +133,9 @@ int main(int argc, char *argv[])
         }
     }
 
+    std::unique_ptr<UartServerManager> uartServer;
     if (ConfigManager::s_enableUARTServer){
-        std::unique_ptr<UartServerManager> uartServer = std::make_unique<UartServerManager>();
+        uartServer = std::make_unique<UartServerManager>();
         uartServer->m_qmlbridge = GuiBridge_share;
         uartServer->m_scpiManager = Scpi_share;
         if (!uartServer->startServer("/dev/ttyWCH27",QSerialPort::Baud38400)) {
@@ -137,21 +146,22 @@ int main(int argc, char *argv[])
 
     // GPIB server create
 
-    /*
+    std::unique_ptr<CanServerManager> canServer;
+    std::unique_ptr<QThread> canThread;
     if (ConfigManager::s_enableCanMess){
-        std::unique_ptr<CanServerManager> canServer = std::make_unique<CanServerManager>();
-        std::unique_ptr<QThread> canThread = std::make_unique<QThread>();
+        canServer = std::make_unique<CanServerManager>();
+        canThread = std::make_unique<QThread>();
 
         canServer->moveToThread(canThread.get());
         canThread->setObjectName("can_worker");
         canThread->start();
 
         QMetaObject::invokeMethod(canServer.get(), [worker = canServer.get()]() {
-            worker->initialize("all", 1000000);  // all
+            worker->initialize("can1", 1000000);  // all
             worker->testLoopback();
         }, Qt::QueuedConnection);//Blocking
         //QTimer::singleShot(300, &app, &QGuiApplication::quit);
-    }*/
+    }
 
     return app.exec();
 }

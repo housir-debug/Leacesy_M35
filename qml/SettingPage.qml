@@ -79,16 +79,16 @@ Item {
                     SetBox {
                         Layout.fillHeight: true
                         Layout.fillWidth: true
-                        property bool Output: false
+                        property bool output: false
 
                         mainText: "A-OutPut"
-                        subText: Output ? "OFF" : "ON"
-                        subTextColor: Output ? "#B06A6A" : "#8CAF6A"
+                        subText: output ? "OFF" : "ON"
+                        subTextColor: output ? "#B06A6A" : "#8CAF6A"
 
                         enclick: !Uart_bridge.isRemote
                         onClicked: {
-                            Output = !Output
-                            Uart_bridge.setChannel_Output(0, Output)
+                            output = !output
+                            Uart_bridge.setChannel_Output(0, output)
                         }
                     }
                     SetBox {

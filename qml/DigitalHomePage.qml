@@ -17,8 +17,8 @@ Item {
     Component.onCompleted: {
         var channels = []
         for (var i = 1; i <= totalChannels; i++) {
-            if (Uart_bridge["ch" + i + "_sv"] !== "0.0.0.0"
-                    && Uart_bridge["ch" + i + "_hv"] !== "0.0.0.0") {
+            if (Uart_bridge["ch" + i + "_sv"] === "0.0.0.0"
+                    && Uart_bridge["ch" + i + "_hv"] === "0.0.0.0") {
 
                 channels.push(i)
             }
@@ -35,92 +35,101 @@ Item {
             anchors.fill: parent
             model: existChannels
 
-            delegate: Item {
-                width: cardPathView.cardWidth
-                height: cardPathView.cardHeight
-                scale: PathView.scale
+            delegate: DigitalCard {
+                required property int index
                 opacity: PathView.opacity
-                z: PathView.z
+                scale: PathView.scale
+                z: PathView.z || 0
 
-                DigitalCard {
-                    required property int index
-                    anchors.fill: parent
+                enclick: !Uart_bridge.isRemote
+                channelOutput: Uart_bridge["ch" + existChannels[index] + "_isOutput"]
 
-                    enclick: !Uart_bridge.isRemote
-                    channelOutput: Uart_bridge["ch" + existChannels[index] + "_isOutput"]
+                channelName: "CH" + existChannels[index]
+                voltage: Uart_bridge["ch" + existChannels[index] + "_Voltage"]
+                voltageUnit: "V"
+                current: Uart_bridge["ch" + existChannels[index] + "_Current"]
+                currentUnit: Uart_bridge["ch" + existChannels[index] + "_CurrentUnit"]
 
-                    channelName: "CH" + existChannels[index]
-                    voltage: Uart_bridge["ch" + existChannels[index] + "_Voltage"]
-                    voltageUnit: "V"
-                    current: Uart_bridge["ch" + existChannels[index] + "_Current"]
-                    currentUnit: Uart_bridge["ch" + existChannels[index] + "_CurrentUnit"]
+                cvSetpoint: Uart_bridge["ch" + existChannels[index] + "_cv"]
+                cvMode: Uart_bridge["ch" + existChannels[index] + "_Status"].charAt(
+                            14) === "1"
+                ccSetpoint: Uart_bridge["ch" + existChannels[index] + "_cc"]
+                ccMode: Uart_bridge["ch" + existChannels[index] + "_Status"].charAt(
+                            13) === "1"
+                ovpSetpoint: Uart_bridge["ch" + existChannels[index] + "_ovp"]
+                ovpMode: Uart_bridge["ch" + existChannels[index] + "_Status"].charAt(
+                             11) === "1"
 
-                    cvSetpoint: Uart_bridge["ch" + existChannels[index] + "_cv"]
-                    cvMode: Uart_bridge["ch" + existChannels[index] + "_Status"].charAt(
-                                14) === "1"
-                    ccSetpoint: Uart_bridge["ch" + existChannels[index] + "_cc"]
-                    ccMode: Uart_bridge["ch" + existChannels[index] + "_Status"].charAt(
-                                13) === "1"
-                    ovpSetpoint: Uart_bridge["ch" + existChannels[index] + "_ovp"]
-                    ovpMode: Uart_bridge["ch" + existChannels[index] + "_Status"].charAt(
-                                 11) === "1"
+                onClicked: {
+                    Uart_bridge.setChannel_Output(existChannels[index],
+                                                  !channelOutput)
+                }
 
-                    onClicked: {
-                        Uart_bridge.setChannel_Output(existChannels[index],
-                                                      !channelOutput)
-                    }
-
-                    onPressAndHold: {
-                        toFunctionPage(existChannels[index])
-                    }
+                onPressAndHold: {
+                    toFunctionPage(existChannels[index])
                 }
             }
 
             path: Path {
-                startX: -cardWidth / 2 // Left outer edge of the screen
+                startX: -18
                 startY: cardPathView.height / 2
-                PathLine {
-                    x: cardPathView.width + cardWidth / 2 // The outer right side of the screen
-                    y: cardPathView.height / 2
-                }
 
                 // Starting point (0.0)
                 PathAttribute {
                     name: "scale"
-                    value: 0.65
+                    value: 0.69
                 }
                 PathAttribute {
                     name: "opacity"
-                    value: 0.5
+                    value: 0.69
+                }
+                PathAttribute {
+                    name: "z"
+                    value: 0
                 }
 
-                // midpoint (0.5)
+                PathLine {
+                    x: cardPathView.width / 2
+                    y: cardPathView.height / 2
+                }
+
                 PathAttribute {
                     name: "scale"
-                    value: 1.0
+                    value: 0.96
                 }
                 PathAttribute {
                     name: "opacity"
-                    value: 1.0
+                    value: 0.96
+                }
+                PathAttribute {
+                    name: "z"
+                    value: 1
+                }
+
+                PathLine {
+                    x: cardPathView.width + 18
+                    y: cardPathView.height / 2
                 }
 
                 // terminus (1.0)
                 PathAttribute {
                     name: "scale"
-                    value: 0.65
+                    value: 0.69
                 }
                 PathAttribute {
                     name: "opacity"
-                    value: 0.5
+                    value: 0.69
+                }
+                PathAttribute {
+                    name: "z"
+                    value: 0
                 }
             }
 
-            property real cardWidth: 280
-            property real cardHeight: parent.height - 18
-            pathItemCount: Math.min(7, existChannels.length * 2 + 1) // odd
+            pathItemCount: 7
+            cacheItemCount: 6
             preferredHighlightBegin: 0.5 //Slide the final card to the center position
             preferredHighlightEnd: 0.5 //Slide the final card to the center position
-            //dragMargin: width
         }
     }
 

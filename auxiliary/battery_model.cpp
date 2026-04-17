@@ -238,6 +238,12 @@ bool BatteryModelManager::saveModel(QSharedPointer<BatteryModel> model,const QSt
 
     QString filePath = QDir(m_modelDirectory).filePath(modelName + ".csv");
     if(!QFile::exists(filePath)){
+        QDir dir(m_modelDirectory);
+        if (!dir.exists()) {
+            qCDebug(battery) <<"[saveModel]:The model folder does not exist. Create this folder.";
+            dir.mkpath(".");
+        }
+
         QFile file(filePath);
         if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
             QTextStream stream(&file);

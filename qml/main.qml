@@ -1,13 +1,15 @@
 import QtQuick 2.15
-import QtQuick.Controls 2.15
 import QtQuick.Window 2.15
+import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import Component 1.0
 
 ApplicationWindow {
     id: mainWindow
-    width: Screen.desktopAvailableWidth
-    height: Screen.desktopAvailableHeight
+    //width: Screen.desktopAvailableWidth
+    //height: Screen.desktopAvailableHeight
+    width: Screen.desktopAvailableHeight
+    height: Screen.desktopAvailableWidth
     color: "#0d1b2a" //"#0a0f1a"
     visibility: "FullScreen"
     visible: true
@@ -62,10 +64,6 @@ ApplicationWindow {
                 stackLayout.currentIndex = 3 // to function_page
                 mainWindow.functionChannel = value
             }
-
-            Component.completed: {
-                Uart_bridge.load_BatteryModel()
-            }
         }
 
         // Index: 2
@@ -106,7 +104,7 @@ ApplicationWindow {
             anchors.centerIn: parent
             width: parent.width * 0.5
             height: parent.height * 0.5
-            source: "logo.png"
+            source: "qrc:/web/web/icon/leacesylogo.png"
             fillMode: Image.PreserveAspectFit
             opacity: 0.7
         }

@@ -1,15 +1,10 @@
 #include "can_server.h"
-#include <QtCore>
-
-// Linux SocketCAN
 #include <sys/epoll.h>
 #include <sys/ioctl.h>
+#include <QtCore>
 #include <net/if.h>
 #include <unistd.h>
 #include <fcntl.h>
-//#include <linux/can.h>
-//#include <sys/socket.h>
-//#include <cstring>
 
 // ========================== 初始化部分 ===================================
 

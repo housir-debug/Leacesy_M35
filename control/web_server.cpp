@@ -42,7 +42,7 @@ WebServerManager::WebServerManager(QObject *parent) : QObject(parent){
 WebServerManager::~WebServerManager()
 {
     if (m_httpServer && m_wsServer && m_webThread) {
-        qCDebug(web)<<"[WebServerManager]:TcpServerManager Destroyed!!!";
+        qCDebug(web)<<"[~WebServerManager]:~WebServerManager Destroyed!!!";
         for (QTcpSocket *client : qAsConst(m_clients)) {
             client->disconnectFromHost();
             client->waitForDisconnected(600);

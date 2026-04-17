@@ -1,12 +1,14 @@
 import QtQuick 2.15
+import QtQuick.Window 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import QtQuick.VirtualKeyboard 2.15
 
 ApplicationWindow {
     id: mainWindow
-    width: Screen.desktopAvailableWidth
-    height: Screen.desktopAvailableHeight
+    //width: Screen.desktopAvailableWidth
+    //height: Screen.desktopAvailableHeight
+    width: Screen.desktopAvailableHeight
+    height: Screen.desktopAvailableWidth
     visibility: "FullScreen"
     visible: true
 
