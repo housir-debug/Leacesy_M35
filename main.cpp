@@ -147,22 +147,15 @@ int main(int argc, char *argv[])
     // GPIB server create
 
     std::unique_ptr<CanServerManager> canServer;
-    std::unique_ptr<QThread> canThread;
-    if (ConfigManager::s_enableCanMess){
+    if (ConfigManager::s_enableCANServer){
         canServer = std::make_unique<CanServerManager>();
-        canThread = std::make_unique<QThread>();
-
-        canServer->moveToThread(canThread.get());
-        canThread->setObjectName("can_worker");
-        canThread->start();
-
-        QMetaObject::invokeMethod(canServer.get(), [worker = canServer.get()]() {
-            worker->initialize("can1", 1000000);  // all
-            worker->testLoopback();
-        }, Qt::QueuedConnection);//Blocking
-        //QTimer::singleShot(300, &app, &QGuiApplication::quit);
+        if (!canServer->startServer("can2", 1000000)) {
+            qCWarning(application) << "canServer not Normal start!";
+            return 1;
+        }
     }
 
+    //QTimer::singleShot(9000, &app, &QGuiApplication::quit); // 9000ms
     return app.exec();
 }
 
