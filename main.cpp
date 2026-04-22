@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
     std::shared_ptr<ScpiManager> Scpi_share = std::make_shared<ScpiManager>();
     GuiBridge_share->m_modelManager = BatteryModel_share;
 
-    // lack of can channel
+    // can channel create
     /* Can channel and Uart channel .There can only be one.*/
 
     // uart channel create

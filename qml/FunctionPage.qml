@@ -9,9 +9,9 @@ Item {
 
     signal backRequested
 
-    property color backgroundcolor: "#0d1b2a" //"#0a0f1a"
     property int initialChannel: 0
     property int currentsetmodel: 0
+    property color backgroundcolor: "#0d1b2a" //"#0a0f1a"
 
     Rectangle {
         anchors.fill: parent
@@ -19,140 +19,125 @@ Item {
 
         RowLayout {
             anchors.fill: parent
-            anchors.margins: 1.8
+            anchors.margins: 7.2
 
-            Rectangle {
+            ColumnLayout {
                 Layout.fillHeight: true
                 Layout.fillWidth: true
-                Layout.preferredWidth: 66
-                color: backgroundcolor
+                Layout.preferredWidth: 69
 
-                ColumnLayout {
-                    anchors.fill: parent
+                Rectangle {
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
+                    color: backgroundcolor
 
-                    Rectangle {
-                        Layout.fillHeight: true
-                        Layout.fillWidth: true
-                        color: backgroundcolor
-
-                        Text {
-                            text: "Software-Ver:"
-                            font.pixelSize: 18
-                            color: "#e0e0e0"
-                            anchors.centerIn: parent
-                        }
+                    Text {
+                        text: "Software"
+                        color: "#e0e0e0"
+                        font.pixelSize: 18
+                        anchors.centerIn: parent
                     }
-                    Rectangle {
-                        Layout.fillHeight: true
-                        Layout.fillWidth: true
-                        color: "#1E3A5F"
+                }
+                Rectangle {
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
+                    color: "#1E3A5F"
 
-                        Text {
-                            text: "V: " + Uart_bridge.SoftVer
-                            font.pixelSize: 18
-                            color: "#e0e0e0"
-                            anchors.centerIn: parent
-                        }
+                    Text {
+                        color: "#e0e0e0"
+                        font.pixelSize: 18
+                        anchors.centerIn: parent
+                        text: "V: " + Uart_bridge.SoftVer
                     }
+                }
 
-                    Rectangle {
-                        Layout.fillHeight: true
-                        Layout.fillWidth: true
-                        color: backgroundcolor
+                Rectangle {
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
+                    color: backgroundcolor
 
-                        Text {
-                            text: "Hardware-Ver:"
-                            font.pixelSize: 18
-                            color: "#e0e0e0"
-                            anchors.centerIn: parent
-                        }
+                    Text {
+                        color: "#e0e0e0"
+                        text: "Hardware"
+                        font.pixelSize: 18
+                        anchors.centerIn: parent
                     }
-                    Rectangle {
-                        Layout.fillHeight: true
-                        Layout.fillWidth: true
-                        color: "#1E3A5F"
+                }
+                Rectangle {
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
+                    color: "#1E3A5F"
 
-                        Text {
-                            text: "V: " + Uart_bridge.HardVer
-                            font.pixelSize: 18
-                            color: "#e0e0e0"
-                            anchors.centerIn: parent
-                        }
+                    Text {
+                        color: "#e0e0e0"
+                        font.pixelSize: 18
+                        anchors.centerIn: parent
+                        text: "V: " + Uart_bridge.HardVer
                     }
+                }
 
-                    Rectangle {
-                        Layout.fillHeight: true
-                        Layout.fillWidth: true
-                        color: backgroundcolor
+                Rectangle {
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
+                    color: backgroundcolor
 
-                        Text {
-                            text: "CH-Software-Ver:"
-                            font.pixelSize: 18
-                            color: "#e0e0e0"
-                            anchors.centerIn: parent
-                        }
+                    Text {
+                        color: "#e0e0e0"
+                        font.pixelSize: 18
+                        text: "CH-Software"
+                        anchors.centerIn: parent
                     }
-                    Rectangle {
-                        Layout.fillHeight: true
-                        Layout.fillWidth: true
-                        color: "#1E3A5F"
+                }
+                Rectangle {
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
+                    color: "#1E3A5F"
 
-                        Text {
-                            text: "V: " + Uart_bridge["ch"
-                                + (functionPage.initialChannel + 1) + "_sv"]
-                            font.pixelSize: 18
-                            color: "#e0e0e0"
-                            anchors.centerIn: parent
-                        }
+                    Text {
+                        color: "#e0e0e0"
+                        font.pixelSize: 18
+                        anchors.centerIn: parent
+                        text: "V: " + Uart_bridge["ch" + (functionPage.initialChannel + 1) + "_sv"]
                     }
+                }
 
-                    Rectangle {
-                        Layout.fillHeight: true
-                        Layout.fillWidth: true
-                        color: backgroundcolor
+                Rectangle {
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
+                    color: backgroundcolor
 
-                        Text {
-                            text: "CH-Hardware-Ver:"
-                            font.pixelSize: 18
-                            color: "#e0e0e0"
-                            anchors.centerIn: parent
-                        }
+                    Text {
+                        color: "#e0e0e0"
+                        font.pixelSize: 18
+                        text: "CH-Hardware"
+                        anchors.centerIn: parent
                     }
-                    Rectangle {
-                        Layout.fillHeight: true
-                        Layout.fillWidth: true
-                        color: "#1E3A5F"
+                }
+                Rectangle {
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
+                    color: "#1E3A5F"
 
-                        Text {
-                            text: "V: " + Uart_bridge["ch"
-                                + (functionPage.initialChannel + 1) + "_hv"]
-                            font.pixelSize: 18
-                            color: "#e0e0e0"
-                            anchors.centerIn: parent
-                        }
+                    Text {
+                        color: "#e0e0e0"
+                        font.pixelSize: 18
+                        anchors.centerIn: parent
+                        text: "V: " + Uart_bridge["ch" + (functionPage.initialChannel + 1) + "_hv"]
                     }
                 }
             }
 
             Rectangle {
                 id: statusIndicator
-                property real scaleFactor: 0.9
-                Layout.fillHeight: true
                 Layout.fillWidth: true
+                Layout.fillHeight: true
                 Layout.preferredWidth: 99
-                color: backgroundcolor
-                border.color: "#1a2f42"
-                border.width: 1 * statusIndicator.scaleFactor
-                radius: 18 * statusIndicator.scaleFactor
+                color: functionPage.backgroundcolor
 
-                readonly property color colorGlow: "#1E5799"
                 readonly property var statusLabels: ["OPC", "WAI", "LCC", "ERR", "CP", "FAN", "CAL", "RL", "IMP", "OT", "OC", "OVP", "LD", "CC", "CV", "PON"]
 
                 GridLayout {
                     anchors.fill: parent
-                    anchors.margins: 8 * statusIndicator.scaleFactor
-                    rowSpacing: 3 * statusIndicator.scaleFactor
-                    columnSpacing: 3 * statusIndicator.scaleFactor
                     columns: 4
                     rows: 4
 
@@ -160,17 +145,24 @@ Item {
                         model: 16
                         delegate: Rectangle {
                             id: indicator
-                            Layout.fillHeight: true
+                            radius: 9
+                            border.width: 1.8
                             Layout.fillWidth: true
+                            Layout.fillHeight: true
                             color: isActive ? "#0F2847" : "#0A1929"
                             border.color: isActive ? "#1E5799" : "#1E3A5F"
-                            border.width: 1.8 * statusIndicator.scaleFactor
-                            radius: 6 * statusIndicator.scaleFactor
 
                             required property int index
                             property bool isActive: functionPage.initialChannel
                                                     !== 0 ? Uart_bridge["ch" + functionPage.initialChannel + "_Status"].charAt(
                                                                 index) === "1" : false
+                            Text {
+                                font.bold: true
+                                anchors.centerIn: parent
+                                text: statusIndicator.statusLabels[index]
+                                color: indicator.isActive ? "#CCCCCC" : "#6a9aaf"
+                            }
+
                             Rectangle {
                                 anchors.top: parent.top
                                 anchors.left: parent.left
@@ -191,7 +183,6 @@ Item {
                                     }
                                 }
                             }
-
                             Rectangle {
                                 anchors.bottom: parent.bottom
                                 anchors.left: parent.left
@@ -217,18 +208,9 @@ Item {
                                 color: "transparent"
                                 border.width: 1.0
                                 border.color: Qt.rgba(
-                                                  statusIndicator.colorGlow.r,
-                                                  statusIndicator.colorGlow.g,
-                                                  statusIndicator.colorGlow.b,
+                                                  "#1E5799".r, "#1E5799".g,
+                                                  "#1E5799".b,
                                                   indicator.isActive ? 0.3 : 0.1)
-                            }
-
-                            Text {
-                                anchors.centerIn: parent
-                                text: statusIndicator.statusLabels[index]
-                                color: indicator.isActive ? "#CCCCCC" : "#6a9aaf"
-                                font.pixelSize: 18 * statusIndicator.scaleFactor
-                                font.bold: true
                             }
                         }
                     }
@@ -277,9 +259,9 @@ Item {
             }
 
             GridLayout {
+                Layout.preferredWidth: 99
                 Layout.fillHeight: true
                 Layout.fillWidth: true
-                Layout.preferredWidth: 99
                 columnSpacing: 1.8
                 rowSpacing: 1.8
                 columns: 2
@@ -408,10 +390,10 @@ Item {
 
             KeyinputBox {
                 id: keyinput
-                enclick: !Uart_bridge.isRemote
-                Layout.fillHeight: true
                 Layout.fillWidth: true
+                Layout.fillHeight: true
                 Layout.preferredWidth: 99
+                enclick: !Uart_bridge.isRemote
 
                 onEntervalue: {
                     switch (settingPage.currentsetmodel) {
@@ -445,6 +427,23 @@ Item {
                         return
                     }
                 }
+            }
+        }
+    }
+
+    MouseArea {
+        id: bottomEdgeSwipe
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: 36
+        property real startY: 0
+
+        onPressed: startY = mouseY
+        onReleased: {
+            var delta = startY - mouseY
+            if (delta > 108) {
+                backRequested()
             }
         }
     }

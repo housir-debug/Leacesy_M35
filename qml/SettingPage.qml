@@ -7,10 +7,11 @@ import Component 1.0
 Item {
     id: settingPage
 
-    signal backRequested
+    signal toDigitalHomePage
+    signal toBatteryHomePage
 
-    property color backgroundcolor: "#0d1b2a" //"#0a0f1a"
     property int currentsetmodel: 0
+    property color backgroundcolor: "#0d1b2a" //"#0a0f1a"
 
     Rectangle {
         anchors.fill: parent
@@ -18,194 +19,188 @@ Item {
 
         RowLayout {
             anchors.fill: parent
-            anchors.margins: 1.8
+            anchors.margins: 7.2
 
-            Rectangle {
-                id: background
-                Layout.fillHeight: true
+            GridLayout {
                 Layout.fillWidth: true
+                Layout.fillHeight: true
                 Layout.preferredWidth: 70
-                color: "#0A1929"
+                columnSpacing: 1.8
+                rowSpacing: 1.8
+                columns: 4
+                rows: 3
 
-                GridLayout {
-                    anchors.fill: parent
-                    columnSpacing: 1.8
-                    rowSpacing: 1.8
-                    columns: 4
-                    rows: 3
+                SetBox {
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
 
-                    SetBox {
-                        Layout.fillHeight: true
-                        Layout.fillWidth: true
+                    mainText: "LAN-IP"
+                    subText: Uart_bridge.IPaddress
+                    pressed: settingPage.currentsetmodel === 1
 
-                        mainText: "LAN-IP"
-                        subText: Uart_bridge.IPaddress
-                        pressed: settingPage.currentsetmodel === 1
-
-                        enclick: !Uart_bridge.isRemote
-                        onClicked: {
-                            settingPage.currentsetmodel = 1
-                            keyinput.text = subText
-                        }
+                    enclick: !Uart_bridge.isRemote
+                    onClicked: {
+                        settingPage.currentsetmodel = 1
+                        keyinput.text = subText
                     }
-                    SetBox {
-                        Layout.fillHeight: true
-                        Layout.fillWidth: true
+                }
+                SetBox {
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
 
-                        mainText: "GPIB-ID"
-                        subText: Uart_bridge.GPIBid
-                        pressed: settingPage.currentsetmodel === 2
+                    mainText: "GPIB-ID"
+                    subText: Uart_bridge.GPIBid
+                    pressed: settingPage.currentsetmodel === 2
 
-                        enclick: !Uart_bridge.isRemote
-                        onClicked: {
-                            settingPage.currentsetmodel = 2
-                            keyinput.text = subText
-                        }
+                    enclick: !Uart_bridge.isRemote
+                    onClicked: {
+                        settingPage.currentsetmodel = 2
+                        keyinput.text = subText
                     }
-                    SetBox {
-                        Layout.fillHeight: true
-                        Layout.fillWidth: true
+                }
+                SetBox {
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
 
-                        mainText: "CAN-ID"
-                        subText: Uart_bridge.CANid
-                        pressed: settingPage.currentsetmodel === 3
+                    mainText: "CAN-ID"
+                    subText: Uart_bridge.CANid
+                    pressed: settingPage.currentsetmodel === 3
 
-                        enclick: !Uart_bridge.isRemote
-                        onClicked: {
-                            settingPage.currentsetmodel = 3
-                            keyinput.text = subText
-                        }
+                    enclick: !Uart_bridge.isRemote
+                    onClicked: {
+                        settingPage.currentsetmodel = 3
+                        keyinput.text = subText
                     }
-                    SetBox {
-                        Layout.fillHeight: true
-                        Layout.fillWidth: true
-                        property bool output: false
+                }
+                SetBox {
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
+                    property bool output: false
 
-                        mainText: "A-OutPut"
-                        subText: output ? "OFF" : "ON"
-                        subTextColor: output ? "#B06A6A" : "#8CAF6A"
+                    mainText: "A-OutPut"
+                    subText: output ? "OFF" : "ON"
+                    subTextColor: output ? "#B06A6A" : "#8CAF6A"
 
-                        enclick: !Uart_bridge.isRemote
-                        onClicked: {
-                            output = !output
-                            Uart_bridge.setChannel_Output(0, output)
-                        }
+                    enclick: !Uart_bridge.isRemote
+                    onClicked: {
+                        output = !output
+                        Uart_bridge.setChannel_Output(0, output)
                     }
-                    SetBox {
-                        Layout.fillHeight: true
-                        Layout.fillWidth: true
+                }
+                SetBox {
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
 
-                        mainText: "LAN-SM"
-                        subText: Uart_bridge.SM
-                        pressed: settingPage.currentsetmodel === 5
+                    mainText: "LAN-SM"
+                    subText: Uart_bridge.SM
+                    pressed: settingPage.currentsetmodel === 5
 
-                        enclick: !Uart_bridge.isRemote
-                        onClicked: {
-                            settingPage.currentsetmodel = 5
-                            keyinput.text = subText
-                        }
+                    enclick: !Uart_bridge.isRemote
+                    onClicked: {
+                        settingPage.currentsetmodel = 5
+                        keyinput.text = subText
                     }
-                    SetBox {
-                        id: initsoc
-                        Layout.fillHeight: true
-                        Layout.fillWidth: true
+                }
+                SetBox {
+                    id: initsoc
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
 
-                        mainText: "A-InitSOC"
-                        subText: "100.00 %"
-                        pressed: settingPage.currentsetmodel === 6
+                    mainText: "A-InitSOC"
+                    subText: "100.00 %"
+                    pressed: settingPage.currentsetmodel === 6
 
-                        enclick: !Uart_bridge.isRemote
-                        onClicked: {
-                            settingPage.currentsetmodel = 6
-                            keyinput.text = subText
-                        }
+                    enclick: !Uart_bridge.isRemote
+                    onClicked: {
+                        settingPage.currentsetmodel = 6
+                        keyinput.text = subText
                     }
-                    SetBox {
-                        id: capacity
-                        Layout.fillHeight: true
-                        Layout.fillWidth: true
+                }
+                SetBox {
+                    id: capacity
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
 
-                        mainText: "A-Capacity"
-                        subText: "00.00 Ah"
-                        pressed: settingPage.currentsetmodel === 7
+                    mainText: "A-Capacity"
+                    subText: "00.00 Ah"
+                    pressed: settingPage.currentsetmodel === 7
 
-                        enclick: !Uart_bridge.isRemote
-                        onClicked: {
-                            settingPage.currentsetmodel = 7
-                            keyinput.text = subText
-                        }
+                    enclick: !Uart_bridge.isRemote
+                    onClicked: {
+                        settingPage.currentsetmodel = 7
+                        keyinput.text = subText
                     }
-                    SetBox {
-                        Layout.fillHeight: true
-                        Layout.fillWidth: true
+                }
+                SetBox {
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
 
-                        mainText: "A-Model"
-                        subText: "Model-1"
-                        subTextColor: "#6AA8B0"
+                    mainText: "A-Model"
+                    subText: "Model-1"
+                    subTextColor: "#6AA8B0"
 
-                        enclick: !Uart_bridge.isRemote
-                        onClicked: {
-                            subText = Uart_bridge.setChannel_BatteryModel(0)
-                        }
+                    enclick: !Uart_bridge.isRemote
+                    onClicked: {
+                        subText = Uart_bridge.setChannel_BatteryModel(0)
                     }
+                }
 
-                    SetBox {
-                        id: cv
-                        Layout.fillHeight: true
-                        Layout.fillWidth: true
+                SetBox {
+                    id: cv
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
 
-                        mainText: "A-CV"
-                        subText: "0.000 V"
-                        pressed: settingPage.currentsetmodel === 9
+                    mainText: "A-CV"
+                    subText: "0.000 V"
+                    pressed: settingPage.currentsetmodel === 9
 
-                        enclick: !Uart_bridge.isRemote
-                        onClicked: {
-                            settingPage.currentsetmodel = 9
-                            keyinput.text = subText
-                        }
+                    enclick: !Uart_bridge.isRemote
+                    onClicked: {
+                        settingPage.currentsetmodel = 9
+                        keyinput.text = subText
                     }
-                    SetBox {
-                        id: cc
-                        Layout.fillHeight: true
-                        Layout.fillWidth: true
+                }
+                SetBox {
+                    id: cc
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
 
-                        mainText: "A-CC"
-                        subText: "1.000 A"
-                        pressed: settingPage.currentsetmodel === 10
+                    mainText: "A-CC"
+                    subText: "1.000 A"
+                    pressed: settingPage.currentsetmodel === 10
 
-                        enclick: !Uart_bridge.isRemote
-                        onClicked: {
-                            settingPage.currentsetmodel = 10
-                            keyinput.text = subText
-                        }
+                    enclick: !Uart_bridge.isRemote
+                    onClicked: {
+                        settingPage.currentsetmodel = 10
+                        keyinput.text = subText
                     }
-                    SetBox {
-                        id: ovp
-                        Layout.fillHeight: true
-                        Layout.fillWidth: true
+                }
+                SetBox {
+                    id: ovp
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
 
-                        mainText: "A-OVP"
-                        subText: "8.000 V"
-                        pressed: settingPage.currentsetmodel === 11
+                    mainText: "A-OVP"
+                    subText: "8.000 V"
+                    pressed: settingPage.currentsetmodel === 11
 
-                        enclick: !Uart_bridge.isRemote
-                        onClicked: {
-                            settingPage.currentsetmodel = 11
-                            keyinput.text = subText
-                        }
+                    enclick: !Uart_bridge.isRemote
+                    onClicked: {
+                        settingPage.currentsetmodel = 11
+                        keyinput.text = subText
                     }
-                    SetBox {
-                        Layout.fillHeight: true
-                        Layout.fillWidth: true
+                }
+                SetBox {
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
 
-                        mainText: "A-I-Unit"
-                        subText: "A"
-                        subTextColor: "#9A6AB0"
+                    mainText: "A-I-Unit"
+                    subText: "A"
+                    subTextColor: "#9A6AB0"
 
-                        enclick: !Uart_bridge.isRemote
-                        onClicked: {
-                            subText = Uart_bridge.setChannel_CurrentUnit(0)
-                        }
+                    enclick: !Uart_bridge.isRemote
+                    onClicked: {
+                        subText = Uart_bridge.setChannel_CurrentUnit(0)
                     }
                 }
             }
@@ -270,6 +265,23 @@ Item {
     }
 
     MouseArea {
+        id: bottomEdgeSwipe
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: 36
+        property real startY: 0
+
+        onPressed: startY = mouseY
+        onReleased: {
+            var delta = startY - mouseY
+            if (delta > 108) {
+                toDigitalHomePage()
+            }
+        }
+    }
+
+    MouseArea {
         id: topEdgeSwipe
         anchors.top: parent.top
         anchors.left: parent.left
@@ -281,7 +293,7 @@ Item {
         onReleased: {
             var delta = mouseY - startY
             if (delta > 108) {
-                backRequested()
+                toBatteryHomePage()
             }
         }
     }

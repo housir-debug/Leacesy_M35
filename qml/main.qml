@@ -10,8 +10,8 @@ ApplicationWindow {
     //height: Screen.desktopAvailableHeight
     width: Screen.desktopAvailableHeight
     height: Screen.desktopAvailableWidth
-    color: "#0d1b2a" //"#0a0f1a"
     visibility: "FullScreen"
+    color: "#0d1b2a" //"#0a0f1a"
     visible: true
 
     property int homePageModel: 0
@@ -69,58 +69,64 @@ ApplicationWindow {
         // Index: 2
         SettingPage {
             id: setting_page
-            onBackRequested: {
-                if (homePageModel === 0) {
-                    stackLayout.currentIndex = 0
-                } else {
-                    stackLayout.currentIndex = 1
-                }
+            backgroundcolor: mainWindow.color
+
+            onToDigitalHomePage: {
+                stackLayout.currentIndex = 0 // to digitalmain_page
+            }
+
+            onToBatteryHomePage: {
+                stackLayout.currentIndex = 1 // to batterymain_page
             }
         }
 
         // Index: 3
         FunctionPage {
             id: function_page
+            backgroundcolor: mainWindow.color
             initialChannel: mainWindow.functionChannel
+
             onBackRequested: {
                 if (homePageModel === 0) {
-                    stackLayout.currentIndex = 0
+                    stackLayout.currentIndex = 0 // to digitalmain_page
                 } else {
-                    stackLayout.currentIndex = 1
+                    stackLayout.currentIndex = 1 // to batterymain_page
                 }
             }
         }
     }
 
     Rectangle {
-        id: remoteOverlay
-        anchors.fill: parent
-        color: "#80000000" // Transparency
-        visible: Uart_bridge.isRemote
         z: 100
+        id: remoteOverlay
+        color: "#80000000" // Transparency
+        anchors.fill: parent
+        visible: Uart_bridge.isRemote
 
         Image {
             id: logoImage
+            opacity: 0.6
             anchors.centerIn: parent
             width: parent.width * 0.5
             height: parent.height * 0.5
-            source: "qrc:/web/web/icon/leacesylogo.png"
             fillMode: Image.PreserveAspectFit
-            opacity: 0.7
+            source: "qrc:/web/web/icon/leacesyicon.png"
         }
 
         Text {
+            anchors.horizontalCenter: parent.horizontalCenter
+            text: "Remote Mode - Double tap to Exit"
             anchors.top: logoImage.bottom
             anchors.topMargin: 20
-            anchors.horizontalCenter: parent.horizontalCenter
-            text: "Remote Mode - Double tap to exit"
-            color: "white"
             font.pixelSize: 16
-            opacity: 0.8
+            color: "white"
+            opacity: 0.9
         }
 
         MouseArea {
             anchors.fill: parent
+            enabled: Uart_bridge.isRemote
+
             onDoubleClicked: {
                 // default 200ms
                 Uart_bridge.update_remotemodel(false)

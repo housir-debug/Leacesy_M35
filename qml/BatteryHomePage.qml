@@ -6,20 +6,18 @@ import Component 1.0
 Item {
     id: batteryhomePage
 
-    signal toFunctionPage(int value)
     signal toSettingPage
     signal toDigitalHomePage
+    signal toFunctionPage(int value)
 
-    property color backgroundcolor: "#0d1b2a" //"#0a0f1a"
     property int totalChannels: 36
     property var existChannels: []
+    property color backgroundcolor: "#0d1b2a" //"#0a0f1a"
 
     Component.onCompleted: {
         var channels = []
         for (var i = 1; i <= totalChannels; i++) {
-            if (Uart_bridge["ch" + i + "_sv"] !== "0.0.0.0"
-                    && Uart_bridge["ch" + i + "_hv"] !== "0.0.0.0") {
-
+            if (Uart_bridge["ch" + i + "_sv"] === "0.0.0.0") {
                 channels.push(i)
             }
         }
@@ -37,87 +35,93 @@ Item {
             anchors.fill: parent
             model: existChannels
 
-            delegate: Item {
-                width: cardPathView.cardWidth
-                height: cardPathView.cardHeight
-                scale: PathView.scale
+            delegate: BatteryCard {
+                required property int index
                 opacity: PathView.opacity
-                z: PathView.z
+                scale: PathView.scale
+                z: PathView.z || 0
 
-                BatteryCard {
-                    required property int index
-                    anchors.fill: parent
+                enclick: !Uart_bridge.isRemote
+                channelOutput: Uart_bridge["ch" + existChannels[index] + "_isOutput"]
 
-                    enclick: !Uart_bridge.isRemote
-                    channelOutput: Uart_bridge["ch" + existChannels[index] + "_isOutput"]
+                channelName: "CH" + existChannels[index]
+                soc: Uart_bridge["ch" + existChannels[index] + "_CurrentSOC"]
+                ocv: Uart_bridge["ch" + existChannels[index] + "_cv"]
+                ocvUnit: "V"
+                esr: Uart_bridge["ch" + existChannels[index] + "_imp"]
+                esrUnit: "Ω"
 
-                    channelName: "CH" + existChannels[index]
-                    soc: Uart_bridge["ch" + existChannels[index] + "_CurrentSOC"]
-                    ocv: Uart_bridge["ch" + existChannels[index] + "_cv"]
-                    ocvUnit: "V"
-                    esr: Uart_bridge["ch" + existChannels[index] + "_imp"]
-                    esrUnit: "Ω"
+                batteryModel: Uart_bridge["ch" + existChannels[index] + "_BatteryModel"]
+                batteryCapacity: Uart_bridge["ch" + existChannels[index] + "_CapacityAH"]
 
-                    batteryModel: Uart_bridge["ch" + existChannels[index] + "_BatteryModel"]
-                    batteryCapacity: Uart_bridge["ch" + existChannels[index] + "_CapacityAH"]
+                onClicked: {
+                    Uart_bridge.setChannel_BatteryOutput(existChannels[index],
+                                                         !channelOutput)
+                }
 
-                    onClicked: {
-                        Uart_bridge.setChannel_BatteryOutput(
-                                    existChannels[index], !channelOutput)
-                    }
-
-                    onPressAndHold: {
-                        toFunctionPage(existChannels[index])
-                    }
+                onPressAndHold: {
+                    toFunctionPage(existChannels[index])
                 }
             }
 
             path: Path {
-                startX: -cardPathView.cardWidth / 2 // Left outer edge of the screen
+                // Starting point (0.0)
+                startX: -36 //-18
                 startY: cardPathView.height / 2
+                PathAttribute {
+                    name: "scale"
+                    value: 0.81 // 0.69
+                }
+                PathAttribute {
+                    name: "opacity"
+                    value: 0.72
+                }
+                PathAttribute {
+                    name: "z"
+                    value: 0
+                }
+
+                // middle
                 PathLine {
-                    x: cardPathView.width + cardPathView.cardWidth
-                       / 2 // The outer right side of the screen
+                    x: cardPathView.width / 2
                     y: cardPathView.height / 2
                 }
-
-                // Starting point (0.0)
                 PathAttribute {
                     name: "scale"
-                    value: 0.65
+                    value: 0.96
                 }
                 PathAttribute {
                     name: "opacity"
-                    value: 0.5
-                }
-
-                // midpoint (0.5)
-                PathAttribute {
-                    name: "scale"
-                    value: 1.0
+                    value: 0.9
                 }
                 PathAttribute {
-                    name: "opacity"
-                    value: 1.0
+                    name: "z"
+                    value: 1
                 }
 
                 // terminus (1.0)
+                PathLine {
+                    x: cardPathView.width + 18
+                    y: cardPathView.height / 2
+                }
                 PathAttribute {
                     name: "scale"
-                    value: 0.65
+                    value: 0.81 // 0.69
                 }
                 PathAttribute {
                     name: "opacity"
-                    value: 0.5
+                    value: 0.72
+                }
+                PathAttribute {
+                    name: "z"
+                    value: 0
                 }
             }
 
-            property real cardWidth: 280
-            property real cardHeight: parent.height - 18
-            pathItemCount: Math.min(7, existChannels.length * 2 + 1) // odd
+            pathItemCount: 7
+            cacheItemCount: 6
             preferredHighlightBegin: 0.5 //Slide the final card to the center position
             preferredHighlightEnd: 0.5 //Slide the final card to the center position
-            //dragMargin: width
         }
     }
 
@@ -133,7 +137,7 @@ Item {
         onReleased: {
             var delta = startY - mouseY
             if (delta > 108) {
-                toDigitalHomePage()
+                toSettingPage()
             }
         }
     }
@@ -150,7 +154,7 @@ Item {
         onReleased: {
             var delta = mouseY - startY
             if (delta > 108) {
-                toSettingPage()
+                toDigitalHomePage()
             }
         }
     }
@@ -158,7 +162,7 @@ Item {
 
 /*##^##
 Designer {
-    D{i:0;autoSize:true;height:480;width:640}
+    D{i:0;autoSize:true;formeditorZoom:0.75;height:360;width:960}
 }
 ##^##*/
 

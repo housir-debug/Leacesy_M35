@@ -6,20 +6,18 @@ import Component 1.0
 Item {
     id: digitalhomePage
 
-    signal toFunctionPage(int value)
     signal toSettingPage
     signal toBatteryHomePage
+    signal toFunctionPage(int value)
 
-    property color backgroundcolor: "#0d1b2a" //"#0a0f1a"
     property int totalChannels: 36
     property var existChannels: []
+    property color backgroundcolor: "#0d1b2a" //"#0a0f1a"
 
     Component.onCompleted: {
         var channels = []
         for (var i = 1; i <= totalChannels; i++) {
-            if (Uart_bridge["ch" + i + "_sv"] === "0.0.0.0"
-                    && Uart_bridge["ch" + i + "_hv"] === "0.0.0.0") {
-
+            if (Uart_bridge["ch" + i + "_sv"] === "0.0.0.0") {
                 channels.push(i)
             }
         }
@@ -71,54 +69,52 @@ Item {
             }
 
             path: Path {
-                startX: -18
-                startY: cardPathView.height / 2
-
                 // Starting point (0.0)
+                startX: -36 //-18
+                startY: cardPathView.height / 2
                 PathAttribute {
                     name: "scale"
-                    value: 0.69
+                    value: 0.81 // 0.69
                 }
                 PathAttribute {
                     name: "opacity"
-                    value: 0.69
+                    value: 0.72
                 }
                 PathAttribute {
                     name: "z"
                     value: 0
                 }
 
+                // middle
                 PathLine {
                     x: cardPathView.width / 2
                     y: cardPathView.height / 2
                 }
-
                 PathAttribute {
                     name: "scale"
                     value: 0.96
                 }
                 PathAttribute {
                     name: "opacity"
-                    value: 0.96
+                    value: 0.9
                 }
                 PathAttribute {
                     name: "z"
                     value: 1
                 }
 
+                // terminus (1.0)
                 PathLine {
-                    x: cardPathView.width + 18
+                    x: cardPathView.width + 36 //+ 18
                     y: cardPathView.height / 2
                 }
-
-                // terminus (1.0)
                 PathAttribute {
                     name: "scale"
-                    value: 0.69
+                    value: 0.81 // 0.69
                 }
                 PathAttribute {
                     name: "opacity"
-                    value: 0.69
+                    value: 0.72
                 }
                 PathAttribute {
                     name: "z"
