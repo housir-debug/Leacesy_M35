@@ -8,7 +8,7 @@ Q_DECLARE_LOGGING_CATEGORY(tcp)
 
 struct DeviceLink {
     QTcpSocket* client;
-    quint8 id;
+    quint32 id;
     QByteArray VxiScpi_response;
 
     DeviceLink(): client(nullptr), id(0) {}
@@ -48,13 +48,12 @@ private:
     void buildfoundResponse     (quint32 xid,quint32 error,quint32 extraleng = 0);
 
 private:
-    quint32 m_nextLinkId{0};
+    quint32 m_nextLinkId{1};
     QMap<quint8, DeviceLink> m_deviceLinks;
 
     QMutex m_sycmutex;
     QByteArray m_readbuffer;
     QByteArray m_responsebuffer;
-    QDataStream m_stream{&m_responsebuffer, QIODevice::WriteOnly};
 
     QList<QTcpSocket*> m_clients;
     QTcpServer *m_tcpServer{nullptr};

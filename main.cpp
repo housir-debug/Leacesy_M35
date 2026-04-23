@@ -88,10 +88,6 @@ int main(int argc, char *argv[])
             QObject::connect(Scpi_share.get(),scpi_signal[config.channel-1],channel.get(),&UartChannelManager::writeFrame,Qt::QueuedConnection);
             Channel_list.push_back(std::move(channel)); // move set <channel> can move
         }
-
-        //QObject::connect(Uart_Channels[0].get(),&UartChannelManager::serialDataReceived,Uart_Channels[1].get(),&UartChannelManager::writeSerialData);
-        //QObject::connect(Uart_Channels[1].get(),&UartChannelManager::serialDataReceived,Uart_Channels[0].get(),&UartChannelManager::writeSerialData);
-        //QTimer::singleShot(300, &app, &QGuiApplication::quit);
     }
 
     // screen GUI engine create
@@ -108,6 +104,7 @@ int main(int argc, char *argv[])
             }}, Qt::QueuedConnection);
 
         engine.load(url);
+        GuiBridge_share->load_BatteryModel();
     }
 
     std::unique_ptr<WebServerManager> webServer;

@@ -49,7 +49,6 @@ bool UartChannelManager::initSerialPort(const QString &portName,qint32 baudRate)
 
                 m_serialThread = new QThread(this);
                 m_serialThread->setObjectName(QString("UartChannel_%1_worker").arg(m_channel));
-                m_stream.setByteOrder(QDataStream::BigEndian); // Big-endian order
 
                 this->moveToThread(m_serialThread);
                 m_serialPort->moveToThread(m_serialThread);
@@ -95,7 +94,7 @@ const QVector<Command> UartChannelManager::m_initCommands = {
     {0x04, 0x0f, QByteArray::fromHex("01"), false},// set measure average =1
     {0x02, 0x00, QByteArray::fromHex("00 00 00 00"), false},// set cv =0
     {0x02, 0x01, QByteArray::fromHex("3f 80 00 00"), false},// set cc =1
-    {0x04, 0x1f, QByteArray::fromHex("ff ff ff ff"), false},// set relarge
+    {0x04, 0x1f, QByteArray::fromHex("ff ff ff ff"), false},// set relarge, not vaild parameter
     {0x02, 0x03, QByteArray::fromHex("41 00 00 00"), false},// set ovp =8
     {0x04, 0x1d, QByteArray::fromHex("00 01"), false},// set Output impedance step =1
     {0x02, 0x02, QByteArray::fromHex("00 00 00 00"), false},// set Output impedance =0 -> cv model
@@ -119,8 +118,8 @@ void UartChannelManager::sendInitCommand()
 
 void UartChannelManager::startLoopbackTest()
 {
-    QByteArray testData(1024, 0);
     qCDebug(uart_channel)<<"[startLoopbackTest]:Starting Loopback Test.";
+    QByteArray testData(1024, 0);
 
     m_testTimer.start();
     m_serialPort->write(testData);
@@ -158,7 +157,9 @@ void UartChannelManager::handleReadyRead()
     // Normal response processing of the protocol
     if (m_readbuffer.size() >= 3){
         if(static_cast<quint8>(m_readbuffer[0]) == HEADER_LOW && static_cast<quint8>(m_readbuffer[1]) == HEADER_HIGH){
+            qCDebug(uart_channel)<<"[handleReadyRead]:Channel_"<<m_channel<<" Received: "<<m_readbuffer.toHex(' ');
             quint8 lengthB = static_cast<quint8>(m_readbuffer[2]);
+
             if (m_readbuffer.size() >= lengthB + 4){
                 if(static_cast<quint8>(m_readbuffer[lengthB + 3]) == END_MARKER){
                     quint8 cmd = static_cast<quint8>(m_readbuffer[3]);
@@ -228,10 +229,10 @@ void UartChannelManager::handleOutputcmd(quint8 func){
     quint32 shts{0};quint8 sh{0};bool status{false};
 
     if (m_readparam.size()==1){
-        m_stream >> sh;
+        sh = static_cast<quint8>(m_readparam[0]);
         status = sh!=0;
     } else if(m_readparam.size()==4){
-        m_stream >> shts;
+        shts = qFromBigEndian<quint32>(m_readparam.constData());
     }
 
     switch (func){
@@ -294,7 +295,7 @@ void UartChannelManager::handleSettingcmd(quint8 func){
     float shf{0.0f};
 
     if(m_readparam.size()==4){
-        m_stream >> shf;
+        shf = qFromBigEndian<float>(m_readparam.constData());
     }
 
     switch (func){
@@ -389,11 +390,11 @@ void UartChannelManager::handleControlcmd(quint8 func){
     float shf{0.0f};quint16 sht{0};quint8 sh{0};
 
     if (m_readparam.size()==1){
-        m_stream >> sh;
+        sh = static_cast<quint8>(m_readparam[0]);
     } else if(m_readparam.size()==2){
-        m_stream >> sht;
+        sht = qFromBigEndian<quint16>(m_readparam.constData());
     } else if(m_readparam.size()==4){
-        m_stream >> shf;
+        shf = qFromBigEndian<float>(m_readparam.constData());
     }
 
     switch (func){
@@ -529,47 +530,47 @@ void UartChannelManager::handleMeasurementcmd(quint8 func){ // new protocol Need
     float shf{0.0f};quint16 sht{0};quint8 sh{0};
 
     if (m_readparam.size() == 4){
-        m_stream >> shf;
+        shf = qFromBigEndian<float>(m_readparam.constData());
     }else if (m_readparam.size() == 2){
-        m_stream >> sht;
+        sht = qFromBigEndian<quint16>(m_readparam.constData());
     }else if (m_readparam.size() == 1){
-        m_stream >> sh;
+        sh = static_cast<quint8>(m_readparam[0]);
     }
 
     switch (func){
         case 0x80: // :MEAS:VOLT[:DC]?
             m_qmlbridge->update_Voltage(m_channel,shf);
             if (m_isSCPIrequest) {m_scpiManager->processCHFloatResponse(shf);}
-            qCDebug(uart_channel)<<"[handleMeasurementcmd]:Channel_"<<m_channel<<" Query[] "<<shf;
+            qCDebug(uart_channel)<<"[handleMeasurementcmd]:Channel_"<<m_channel<<" Query[0x80] "<<shf;
             return;
         case 0x81: // :MEAS:CURR[:DC]?
             m_qmlbridge->update_CurrentAndUnit(m_channel,shf);
             if (m_isSCPIrequest) {m_scpiManager->processCHFloatResponse(shf);}
-            qCDebug(uart_channel)<<"[handleMeasurementcmd]:Channel_"<<m_channel<<" Query[] "<<shf;
+            qCDebug(uart_channel)<<"[handleMeasurementcmd]:Channel_"<<m_channel<<" Query[0x81] "<<shf;
             return;
         case 0x82: // :MEAS:SCUR[:DC]?
             m_scpiManager->processCHFloatResponse(shf);
-            qCDebug(uart_channel)<<"[handleMeasurementcmd]:Channel_"<<m_channel<<" Query[] "<<shf;
+            qCDebug(uart_channel)<<"[handleMeasurementcmd]:Channel_"<<m_channel<<" Query[0x82] "<<shf;
             return;
         case 0x83: // :MEAS:BTMP?
             m_scpiManager->processCHFloatResponse(shf);
-            qCDebug(uart_channel)<<"[handleMeasurementcmd]:Channel_"<<m_channel<<" Query[] "<<shf;
+            qCDebug(uart_channel)<<"[handleMeasurementcmd]:Channel_"<<m_channel<<" Query[0x83] "<<shf;
             return;
         case 0x84: // :MEAS:HTMP?
             m_scpiManager->processCHFloatResponse(shf);
-            qCDebug(uart_channel)<<"[handleMeasurementcmd]:Channel_"<<m_channel<<" Query[] "<<shf;
+            qCDebug(uart_channel)<<"[handleMeasurementcmd]:Channel_"<<m_channel<<" Query[0x84] "<<shf;
             return;
         case 0x85: // :MEASure:DVMeter:ACDC?
             m_scpiManager->processCHFloatResponse(shf);
-            qCDebug(uart_channel)<<"[handleMeasurementcmd]:Channel_"<<m_channel<<" Query[] "<<shf;
+            qCDebug(uart_channel)<<"[handleMeasurementcmd]:Channel_"<<m_channel<<" Query[0x85] "<<shf;
             return;
         case 0x86: // :MEASure:DVMeter?
             m_scpiManager->processCHFloatResponse(shf);
-            qCDebug(uart_channel)<<"[handleMeasurementcmd]:Channel_"<<m_channel<<" Query[] "<<shf;
+            qCDebug(uart_channel)<<"[handleMeasurementcmd]:Channel_"<<m_channel<<" Query[0x86] "<<shf;
             return;
         case 0x87: // :THER[:PROT]:FAN?
             m_scpiManager->processCHIntResponse(sht);
-            qCDebug(uart_channel)<<"[handleMeasurementcmd]:Channel_"<<m_channel<<" Query[] "<<sht;
+            qCDebug(uart_channel)<<"[handleMeasurementcmd]:Channel_"<<m_channel<<" Query[0x87] "<<sht;
             return;
         case 0x9D: // :THER[:PROT]:DUTY?
             m_scpiManager->processCHIntResponse(sht);
@@ -735,11 +736,12 @@ void UartChannelManager::handleRegistercmd(quint8 func){
     quint16 sht{0};quint8 sh{0};QString str;
 
     if (m_readparam.size() == 2){
-        m_stream >> sht;
+        sht = qFromBigEndian<quint16>(m_readparam.constData());
     } else if (m_readparam.size() == 4){
-        m_stream >> str;
+        const quint8* bytes = reinterpret_cast<const quint8*>(m_readparam.constData());
+        str = QString("%1.%2.%3.%4").arg(bytes[0]).arg(bytes[1]).arg(bytes[2]).arg(bytes[3]);
     } else if (m_readparam.size() == 1){
-        m_stream >> sh;
+        sh = static_cast<quint8>(m_readparam[0]);
     }
 
     switch (func){
@@ -798,7 +800,7 @@ void UartChannelManager::handleCalibratecmd(quint8 func){
     quint8 sh{0};
 
     if (m_readparam.size() == 1){
-        m_stream >> sh;
+        sh = static_cast<quint8>(m_readparam[0]);
     }
 
     switch (func){
@@ -870,24 +872,23 @@ void UartChannelManager::handleCalibratecmd(quint8 func){
 void UartChannelManager::handleCalibrationcmd(quint8 func){
     float shf{0.0f}; // step = func
 
-    if (m_readparam.size()==4){
-        m_stream >> shf;
-    }
+    if (m_readparam.size()==4){ // // Query and Set
+        shf = qFromBigEndian<float>(m_readparam.constData());
 
-    // Query and Set
-    m_scpiManager->processCHFloatResponse(shf);
-    qCDebug(uart_channel)<<"[handleCalibrationcmd]:Channel_"<<m_channel<<" Query/Set step: "<<func<<" CD: "<<shf;
+        m_scpiManager->processCHFloatResponse(shf);
+        qCDebug(uart_channel)<<"[handleCalibrationcmd]:Channel_"<<m_channel<<" Query/Set step: "<<func<<" CD: "<<shf;
+    }
 }
 
 void UartChannelManager::handleTriggercmd(quint8 func){ // new protocol Needs to be change
     float shf{0.0f};quint16 sht{0};quint8 sh{0};
 
     if (m_readparam.size() == 4){
-        m_stream >> shf;
+        shf = qFromBigEndian<float>(m_readparam.constData());
     }else if (m_readparam.size() == 2){
-        m_stream >> sht;
+        sht = qFromBigEndian<quint16>(m_readparam.constData());
     }else if (m_readparam.size() == 1){
-        m_stream >> sh;
+        sh = static_cast<quint8>(m_readparam[0]);
     }
 
     switch (func){

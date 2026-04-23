@@ -180,9 +180,7 @@ void WebServerManager::setupRoutes()
     };
 
     m_apiRoutes["/api/models"] = [this](QTcpSocket* client) {
-        QJsonObject response;
-        response["models"] = getModelsInfo();
-
+        QJsonObject response = getModelsInfo();
         QByteArray jsonData = QJsonDocument(response).toJson();
         sendHttpResponse(client, jsonData, "application/json");
     };
@@ -218,8 +216,8 @@ void WebServerManager::setupRoutes()
 
         QJsonObject response;
         if (addModelFromNetwork(modelName,modelData)) {
+            response = getModelsInfo();
             response["type"] = "model_sync";
-            response["models"] = getModelsInfo();
             socket->sendTextMessage(QJsonDocument(response).toJson());
         } else {
             response["type"] = "error";
@@ -233,8 +231,8 @@ void WebServerManager::setupRoutes()
         QString modelName = obj["name"].toString();
 
         if (m_BatteryManager->removeModel(modelName)) {
+            response = getModelsInfo();
             response["type"] = "model_sync";
-            response["models"] = getModelsInfo();
             socket->sendTextMessage(QJsonDocument(response).toJson());
         } else {
             response["type"] = "error";
@@ -345,7 +343,7 @@ bool WebServerManager::addModelFromNetwork(const QString &modelName, const QJson
                     BatteryDataPoint point;
                     point.soc = pointObj["soc"].toDouble();
                     point.ocv = pointObj["ocv"].toDouble();
-                    point.imp = pointObj["ocv"].toDouble();
+                    point.imp = pointObj["imp"].toDouble();
                     model->data_points.append(point);
                 }else{
                     qCWarning(web) << "[addModelFromNetwork]:Parameter lack error!";
@@ -376,11 +374,12 @@ QJsonObject  WebServerManager::getModelsInfo() const {
         QJsonArray dataArray;
         const auto &model = it.value();
         const auto &points = model->data_points;
+
         for (const auto &point : points) {
             QJsonObject pointObj;
-            pointObj["soc"] = point.soc;
-            pointObj["ocv"] = point.ocv;
-            pointObj["esr"] = point.imp;
+            pointObj["soc"] = std::round(point.soc * 10.0) / 10.0;
+            pointObj["ocv"] = std::round(point.ocv * 100.0) / 100.0;
+            pointObj["esr"] = std::round(point.imp * 1000.0) / 1000.0;
             dataArray.append(pointObj);
         }
 

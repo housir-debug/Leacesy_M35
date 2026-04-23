@@ -177,7 +177,10 @@ h3 {
     background: #0a0a0a;
     border-radius: 16px;
     padding: 20px;
-    min-height: 400px;
+    height: 480px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #404040 #1a1a1a;
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.9rem;
     border: 1px solid rgba(255, 255, 255, 0.05);

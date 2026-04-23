@@ -12,28 +12,42 @@ GuiBridge::GuiBridge(QObject *parent) : QObject(parent) {
     m_HardVer = ConfigManager::s_hardwareVersion;
 }
 
+void GuiBridge::load_BatteryModel(){
+    if (m_modelManager && m_modelManager->getAvailableModels().isEmpty()) {
+        QTimer::singleShot(0, this, [this]() {
+            if (m_modelManager->loadAllModels()) {
+                m_currentModelList = m_modelManager->getAvailableModels();
+                if (!m_currentModelList.isEmpty()) {
+                    #define CHANNEL(n) \
+                    mCH##n##_batteryModel = m_currentModelList[0]; \
+                    mCH##n##_activeModel = m_modelManager->getModel(m_currentModelList[0]); \
+                    emit CH##n##_BatteryModelChanged();
+                    CHANNEL_COUNT
+                    #undef CHANNEL
+                }}});
+    }
+}
+
 QJsonArray GuiBridge::getAllChannelsData() {
     QJsonArray channels;
-    qCDebug(uart_bridge) << "update Web channels data.";
-
     #define CHANNEL(n) \
         do { \
-            QJsonObject channel; \
-            channel["channel"] = n; \
-            channel["isOutput"] = mCH##n##_isOutput.load(); \
-            channel["voltage"] = mCH##n##_Voltage.load(); \
-            channel["current"] = mCH##n##_Current.load(); \
-            channel["current_unit"] = mCH##n##_CurrentUnit; \
-            channel["cvSetpoint"] = mCH##n##_cv.load(); \
-            channel["ccSetpoint"] = mCH##n##_cc.load(); \
-            channel["ovSetpoint"] = mCH##n##_ovp.load(); \
-            channel["status"] = mCH##n##_Status; \
-            channels.append(channel); \
-        } while(0);
+            if (mCH##n##_sv != "0.0.0.0") { \
+                QJsonObject channel; \
+                channel["channel"] = n; \
+                channel["isOutput"] = mCH##n##_isOutput.load(); \
+                channel["voltage"] = mCH##n##_Voltage.load(); \
+                channel["current"] = mCH##n##_Current.load(); \
+                channel["current_unit"] = mCH##n##_CurrentUnit; \
+                channel["cvSetpoint"] = mCH##n##_cv.load(); \
+                channel["ccSetpoint"] = mCH##n##_cc.load(); \
+                channel["ovSetpoint"] = mCH##n##_ovp.load(); \
+                channel["status"] = mCH##n##_Status; \
+                channels.append(channel); \
+        }} while(0);
 
     CHANNEL_COUNT
     #undef CHANNEL
-
     return channels;
 }
 
@@ -248,8 +262,10 @@ void GuiBridge::update_HardVer(int ch,const QString &ver){
 // =========================== Q_INVOKABLE And C++ ===========================
 
 void GuiBridge::update_remotemodel(bool isRemote){
-    m_isRemote.store(isRemote);
-    emit isRemote_Changed();
+    if (m_isRemote.load() != isRemote){
+        m_isRemote.store(isRemote);
+        emit isRemote_Changed();
+    }
 }
 
 void GuiBridge::update_Configuration(int model,const QString& val){
@@ -536,38 +552,4 @@ void GuiBridge::to_Channel(int channel,quint8 cmd,quint8 func,const QByteArray& 
             return;
     }
 }
-
-void GuiBridge::load_BatteryModel(){
-    if (!m_modelManager) {
-        qDebug() << "m_modelManager 为空，无法加载模型";
-        return;
-    }
-
-    if (!m_modelManager->getAvailableModels().isEmpty()) {
-        qDebug(uart_bridge) << "电池模型已加载，共" << m_modelManager->getAvailableModels().size() << "个模型，无需重复加载";
-        return;
-    }
-
-    QTimer::singleShot(0, this, [this]() {
-        bool success = m_modelManager->loadAllModels();
-
-        if (success) {
-            m_currentModelList = m_modelManager->getAvailableModels();
-
-            if (!m_currentModelList.isEmpty()) {
-                QString activemodel = m_currentModelList[0];
-                #define CHANNEL(n) \
-                mCH##n##_batteryModel = activemodel; \
-                mCH##n##_activeModel = m_modelManager->getModel(activemodel); \
-                emit CH##n##_BatteryModelChanged();
-                CHANNEL_COUNT
-                #undef CHANNEL
-            }
-        } else {
-            qCritical() << "加载电池模型失败";
-        }
-    });
-}
-
-
 

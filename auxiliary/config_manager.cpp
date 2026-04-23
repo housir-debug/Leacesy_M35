@@ -38,7 +38,7 @@ std::vector<UartConfig> configs = {
     {"/dev/ttyWCH25", QSerialPort::Baud38400, 0x1f},
     {"/dev/ttyWCH26", QSerialPort::Baud38400, 0x20},
     {"/dev/ttyWCH27", QSerialPort::Baud38400, 0x21},   // 33*/
-    {"/dev/ttyS7",    QSerialPort::Baud38400, 0x01},   // test
+    {"/dev/ttyS5",    QSerialPort::Baud38400, 0x01},   // test
 };
 
 // log config

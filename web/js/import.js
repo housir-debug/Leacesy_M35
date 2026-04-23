@@ -84,7 +84,7 @@ class CSVImport {
                 name: model.name
             }));
 
-            this.showStatus(`Deleting "${model.name}"...`, 'info');
+            this.showStatus(`Delete "${model.name}"`, 'success');
         } catch (error) {
             console.error('Failed to delete model:', error);
             this.showStatus('Failed to delete model', 'error');
@@ -130,6 +130,21 @@ class CSVImport {
     setupEventListeners() {
         const uploadZone = document.getElementById('upload-zone');
         const fileInput = document.getElementById('file-input');
+
+        window.addEventListener('dragover', (e) => {
+            // 检查是否是上传区域，如果不是则阻止默认行为
+            if (!e.target.closest('#upload-zone')) {
+                e.preventDefault();
+            }
+        });
+
+        window.addEventListener('drop', (e) => {
+            // 检查是否是上传区域，如果不是则阻止默认行为
+            if (!e.target.closest('#upload-zone')) {
+                e.preventDefault();
+                return; // 不处理文件
+            }
+        });
 
         if (uploadZone && fileInput) {
             // 点击上传区域时触发文件选择对话框

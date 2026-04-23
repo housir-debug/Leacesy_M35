@@ -20,16 +20,12 @@ class UartChannelManager : public QObject
 {
     Q_OBJECT
 
-signals:
-    // Transit
-    void serialDataReceived(const QByteArray& data,bool isforce);
-
 public:
     explicit UartChannelManager(QObject *parent = nullptr);
     ~UartChannelManager();
 
-    bool initSerialPort(const QString &portName,qint32 baudRate);
     void writeFrame(quint8 cmd, quint8 func, const QByteArray& param,bool isScpi);
+    bool initSerialPort(const QString &portName,qint32 baudRate);
 
     std::shared_ptr<ScpiManager> m_scpiManager{nullptr};
     std::shared_ptr<GuiBridge> m_qmlbridge{nullptr};
@@ -55,8 +51,6 @@ private:
     QElapsedTimer m_testTimer;
 
     QByteArray m_readparam;
-    QDataStream m_stream{&m_readparam, QIODevice::ReadOnly};
-
     QByteArray m_readbuffer;
     bool m_isSCPIrequest{false};
     QByteArray m_responsebuffer;

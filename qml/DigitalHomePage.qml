@@ -17,9 +17,12 @@ Item {
     Component.onCompleted: {
         var channels = []
         for (var i = 1; i <= totalChannels; i++) {
-            if (Uart_bridge["ch" + i + "_sv"] === "0.0.0.0") {
+            channels.push(i)
+
+
+            /*if (Uart_bridge["ch" + i + "_sv"] !== "0.0.0.0") {
                 channels.push(i)
-            }
+            }*/
         }
         existChannels = channels
     }
