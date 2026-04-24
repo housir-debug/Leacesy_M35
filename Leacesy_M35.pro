@@ -1,4 +1,4 @@
-QT += quick quickcontrols2 virtualkeyboard core serialport websockets
+QT += quick quickcontrols2 core serialport websockets
 
 CONFIG += c++14
 

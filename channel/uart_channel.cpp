@@ -56,10 +56,9 @@ bool UartChannelManager::initSerialPort(const QString &portName,qint32 baudRate)
                 m_serialThread->start();
 
                 connect(m_serialPort, &QSerialPort::readyRead, this, &UartChannelManager::handleReadyRead, Qt::DirectConnection);
-                connect(m_serialPort, &QSerialPort::errorOccurred, this, [this](QSerialPort::SerialPortError error) {
-                    if (error != QSerialPort::NoError) {
-                        qCWarning(uart_channel) <<"[initSerialPort]:Channel_"<<m_channel<<" Occur Error: "<<m_serialPort->errorString();
-                    }}, Qt::DirectConnection);
+                connect(m_serialPort, &QSerialPort::errorOccurred, this, [this]() {
+                    qCWarning(uart_channel)<<"[initSerialPort]:Channel_"<<m_channel<<" Error: "<<m_serialPort->errorString();
+                }, Qt::DirectConnection);
                 connect(m_refreshtimer,&QTimer::timeout,this,[this]{
                     static int step = 0;
                     step = (step + 1) % 3;
@@ -85,34 +84,34 @@ bool UartChannelManager::initSerialPort(const QString &portName,qint32 baudRate)
 }
 
 const QVector<Command> UartChannelManager::m_initCommands = {
-    {0x05, 0x84, "", false},// query software
-    {0x05, 0x85, "", false},// query Hardware
-    {0x01, 0x00, "", false},// Turnoff output
-    {0x04, 0x0e, QByteArray::fromHex("00"), false},// set A Unit
-    {0x04, 0x0c, QByteArray::fromHex("3f 80 00 00"), false},// set NPLC =1
-    {0x04, 0x1e, QByteArray::fromHex("37 82 dc bf"), false},// set Tint =1.56e-05
-    {0x04, 0x0f, QByteArray::fromHex("01"), false},// set measure average =1
-    {0x02, 0x00, QByteArray::fromHex("00 00 00 00"), false},// set cv =0
-    {0x02, 0x01, QByteArray::fromHex("3f 80 00 00"), false},// set cc =1
-    {0x04, 0x1f, QByteArray::fromHex("ff ff ff ff"), false},// set relarge, not vaild parameter
-    {0x02, 0x03, QByteArray::fromHex("41 00 00 00"), false},// set ovp =8
-    {0x04, 0x1d, QByteArray::fromHex("00 01"), false},// set Output impedance step =1
-    {0x02, 0x02, QByteArray::fromHex("00 00 00 00"), false},// set Output impedance =0 -> cv model
+    {0x05, 0x84, ""},// query software
+    {0x05, 0x85, ""},// query Hardware
+    {0x01, 0x00, ""},// Turnoff output
+    {0x04, 0x0e, QByteArray::fromHex("00")},// set A Unit
+    {0x04, 0x0c, QByteArray::fromHex("3f 80 00 00")},// set NPLC =1
+    {0x04, 0x1e, QByteArray::fromHex("37 82 dc bf")},// set Tint =1.56e-05
+    {0x04, 0x0f, QByteArray::fromHex("01")},// set measure average =1
+    {0x02, 0x00, QByteArray::fromHex("00 00 00 00")},// set cv =0
+    {0x02, 0x01, QByteArray::fromHex("3f 80 00 00")},// set cc =1
+    {0x04, 0x1f, QByteArray::fromHex("ff ff ff ff")},// set relarge, not vaild parameter
+    {0x02, 0x03, QByteArray::fromHex("41 00 00 00")},// set ovp =8
+    {0x04, 0x1d, QByteArray::fromHex("00 01")},// set Output impedance step =1
+    {0x02, 0x02, QByteArray::fromHex("00 00 00 00")},// set Output impedance =0 -> cv model
 };
 
 void UartChannelManager::sendInitCommand()
 {
     if (m_InitIndex < m_initCommands.size()) {
         const Command& cmd = m_initCommands[m_InitIndex];
-        writeFrame(cmd.cmd, cmd.func, cmd.param, cmd.isScpi);
+        writeFrame(cmd.cmd, cmd.func, cmd.param, false);
+
         QTimer::singleShot(60, this, &UartChannelManager::sendInitCommand);// 60ms
         m_InitIndex++;
         return;
     }
 
     if(ConfigManager::s_enableDisplay || ConfigManager::s_enableWEBServer){
-        qCDebug(uart_channel)<<"[sendInitCommand]: start m_refreshtimer.";
-        //m_refreshtimer->start();
+        m_refreshtimer->start();
     }
 }
 
@@ -142,13 +141,11 @@ void UartChannelManager::writeFrame(quint8 cmd, quint8 func, const QByteArray& p
     m_responsebuffer.append(checksum);
     m_responsebuffer.append(END_MARKER);
 
-    qCDebug(uart_channel)<<"[writeFrame]:Channel_"<<m_channel<<" Send: "<<m_responsebuffer.toHex(' ');
-    m_serialPort->write(m_responsebuffer);
     //m_serialPort->flush();//immediately
-    m_isSCPIrequest = isScpi;
+    m_serialPort->write(m_responsebuffer);
+    if (isScpi){m_scpiCommand = (static_cast<quint16>(cmd) << 8) | func;}
+    qCDebug(uart_channel)<<"[writeFrame]:Channel_"<<m_channel<<" Send: "<<m_responsebuffer.toHex(' ');
 }
-
-//---------------------------------------------------------------------------------
 
 void UartChannelManager::handleReadyRead()
 {
@@ -224,6 +221,8 @@ void UartChannelManager::handleReadyRead()
         m_readbuffer.clear();
     }*/
 }
+
+//---------------------------------------------------------------------------------
 
 void UartChannelManager::handleOutputcmd(quint8 func){
     quint32 shts{0};quint8 sh{0};bool status{false};
@@ -540,12 +539,12 @@ void UartChannelManager::handleMeasurementcmd(quint8 func){ // new protocol Need
     switch (func){
         case 0x80: // :MEAS:VOLT[:DC]?
             m_qmlbridge->update_Voltage(m_channel,shf);
-            if (m_isSCPIrequest) {m_scpiManager->processCHFloatResponse(shf);}
+            if (m_scpiCommand == 0x0480){m_scpiManager->processCHFloatResponse(shf);}
             qCDebug(uart_channel)<<"[handleMeasurementcmd]:Channel_"<<m_channel<<" Query[0x80] "<<shf;
             return;
         case 0x81: // :MEAS:CURR[:DC]?
             m_qmlbridge->update_CurrentAndUnit(m_channel,shf);
-            if (m_isSCPIrequest) {m_scpiManager->processCHFloatResponse(shf);}
+            if (m_scpiCommand == 0x0481){m_scpiManager->processCHFloatResponse(shf);}
             qCDebug(uart_channel)<<"[handleMeasurementcmd]:Channel_"<<m_channel<<" Query[0x81] "<<shf;
             return;
         case 0x82: // :MEAS:SCUR[:DC]?
@@ -747,7 +746,7 @@ void UartChannelManager::handleRegistercmd(quint8 func){
     switch (func){
         case 0x80: // :STAT:OPER[:EVEN]?
             m_qmlbridge->update_Status(m_channel,sht);
-            if (m_isSCPIrequest){m_scpiManager->processCHIntResponse(sht);}
+            if (m_scpiCommand == 0x0580){m_scpiManager->processCHIntResponse(sht);}
             qCDebug(uart_channel)<<"[handleRegistercmd]:Channel_"<<m_channel<<" Query[0x80] "<<sht;
             return;
         case 0x00: // not SCPI cmd

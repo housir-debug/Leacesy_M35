@@ -13,7 +13,6 @@ struct Command {
     quint8 cmd;
     quint8 func;
     QByteArray param;
-    bool isScpi;
 };
 
 class UartChannelManager : public QObject
@@ -52,11 +51,11 @@ private:
 
     QByteArray m_readparam;
     QByteArray m_readbuffer;
-    bool m_isSCPIrequest{false};
     QByteArray m_responsebuffer;
 
     quint8 m_channel{0};
     quint8 m_InitIndex{0};
+    quint16 m_scpiCommand{0};
 
     QTimer *m_refreshtimer{nullptr};
     QThread *m_serialThread{nullptr};

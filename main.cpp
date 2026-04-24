@@ -38,7 +38,6 @@ std::vector<ScpiSign_toUartCh> scpi_signal = {
 int main(int argc, char *argv[])
 {
     // create APP-gui
-    // qputenv("QT_IM_MODULE", QByteArray("qtvirtualkeyboard"));
     QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     QGuiApplication::setApplicationName("Leacesy_Instrument-hrx");
     QGuiApplication app(argc, argv);

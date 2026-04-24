@@ -121,7 +121,7 @@ public:
     #undef CHANNEL
 
 public:
-    //web
+    void load_BatteryModel();
     QJsonArray getAllChannelsData();
 
     // C++ model signal to this for qml engine
@@ -151,5 +151,5 @@ public:
     Q_INVOKABLE QString setChannel_BatteryModel(int channel);
     Q_INVOKABLE void setChannel_Batterymode(int channel,bool staticmode);
     void to_Channel(int channel,quint8 cmd,quint8 func,const QByteArray& param);
-    Q_INVOKABLE void load_BatteryModel();
+
 };

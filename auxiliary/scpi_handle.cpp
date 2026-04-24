@@ -706,7 +706,7 @@ scpi_result_t ScpiManager::staticReset(scpi_t* context) {
 
 int ScpiManager::staticError(scpi_t* context, int_fast16_t err) {
     auto* self = static_cast<ScpiManager*>(context->user_context);
-    qCWarning(scpi) <<"[staticError]:SCPI Error Code:"<< err << "Desc:" << SCPI_ErrorTranslate(err);
+    qCDebug(scpi)<<"[staticError]:SCPI Error Code:"<< err << "Desc:" << SCPI_ErrorTranslate(err);
     QString errorMsg = QString("%1,\"%2\"").arg(err).arg(SCPI_ErrorTranslate(err));
     self->m_responseBuffer.append(errorMsg.toUtf8());
     return 0;
@@ -714,7 +714,7 @@ int ScpiManager::staticError(scpi_t* context, int_fast16_t err) {
 
 size_t ScpiManager::staticWrite(scpi_t* context, const char* data, size_t len) {
     auto* self = static_cast<ScpiManager*>(context->user_context);
-    qCDebug(scpi) <<"[staticWrite]:SCPI Response: "<< data;
+    qCDebug(scpi)<<"[staticWrite]:SCPI Response: "<< data;
     self->m_responseBuffer.append(data, len);
     return len; // Automatically add \r\n
 }

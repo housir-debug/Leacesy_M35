@@ -146,14 +146,12 @@ void GuiBridge::update_Status(int ch,quint16 status){
 
     switch(ch) {
         #define CHANNEL(n) \
-            case n: { \
-                if (mCH##n##_Status == binaryStr) {return;} \
-                \
-                mCH##n##_Status = binaryStr; \
-                qCDebug(uart_bridge) << "Channel" << n << "status changed to:" << binaryStr; \
-                emit CH##n##_StatusChanged(); \
-                return; \
-            }
+            case n: \
+                if (mCH##n##_Status != binaryStr) { \
+                    mCH##n##_Status = binaryStr; \
+                    emit CH##n##_StatusChanged(); \
+                }return;
+
         CHANNEL_COUNT
         #undef CHANNEL
         default: return;
@@ -166,8 +164,8 @@ void GuiBridge::update_Cv(int ch,float cv){
             case n: \
                 mCH##n##_cv.store(cv); \
                 emit CH##n##_cvChanged(); \
-                qCDebug(uart_bridge) << "Channel" << n << "CV updated to:" << cv; \
                 return;
+
         CHANNEL_COUNT
         #undef CHANNEL
         default: return;
@@ -180,8 +178,8 @@ void GuiBridge::update_Cc(int ch,float cc){
             case n: \
                 mCH##n##_cc.store(cc); \
                 emit CH##n##_ccChanged(); \
-                qCDebug(uart_bridge) << "Channel" << n << "CC updated to:" << cc; \
                 return;
+
         CHANNEL_COUNT
         #undef CHANNEL
         default: return;
@@ -194,8 +192,8 @@ void GuiBridge::update_Imp(int ch,float imp){
             case n: \
                 mCH##n##_imp.store(imp); \
                 emit CH##n##_impChanged(); \
-                qCDebug(uart_bridge) << "Channel" << n << "IMP updated to:" << imp; \
                 return;
+
         CHANNEL_COUNT
         #undef CHANNEL
         default: return;
@@ -208,8 +206,8 @@ void GuiBridge::update_Ovp(int ch,float ovp){
             case n: \
                 mCH##n##_ovp.store(ovp); \
                 emit CH##n##_ovpChanged(); \
-                qCDebug(uart_bridge) << "Channel" << n << "OVP updated to:" << ovp; \
                 return;
+
         CHANNEL_COUNT
         #undef CHANNEL
         default: return;
@@ -222,8 +220,8 @@ void GuiBridge::update_IsOutput(int ch,bool status){
             case n: \
                 mCH##n##_isOutput.store(status); \
                 emit CH##n##_isOutputChanged(); \
-                qCDebug(uart_bridge) << "Channel" << n << "IsOutput updated to:" << status; \
                 return;
+
         CHANNEL_COUNT
         #undef CHANNEL
         default: return;
@@ -238,6 +236,7 @@ void GuiBridge::update_SoftVer(int ch,const QString &ver){
                 emit CH##n##_svChanged(); \
                 qCDebug(uart_bridge) << "Channel" << n << "SV updated to:" << ver; \
                 return;
+
         CHANNEL_COUNT
         #undef CHANNEL
         default: return;
@@ -252,12 +251,12 @@ void GuiBridge::update_HardVer(int ch,const QString &ver){
                 emit CH##n##_hvChanged(); \
                 qCDebug(uart_bridge) << "Channel" << n << "HV updated to:" << ver; \
                 return;
+
         CHANNEL_COUNT
         #undef CHANNEL
         default: return;
     }
 }
-
 
 // =========================== Q_INVOKABLE And C++ ===========================
 
