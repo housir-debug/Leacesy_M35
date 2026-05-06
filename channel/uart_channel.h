@@ -19,6 +19,9 @@ class UartChannelManager : public QObject
 {
     Q_OBJECT
 
+signals:
+    void to_CanServer(quint8 ch,quint16 uart,const QByteArray &param);
+
 public:
     explicit UartChannelManager(QObject *parent = nullptr);
     ~UartChannelManager();
