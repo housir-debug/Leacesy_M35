@@ -6,21 +6,22 @@ Q_LOGGING_CATEGORY(uart_server, "UART_SERVER:")
 UartServerManager::UartServerManager(QObject *parent): QObject(parent) {}
 UartServerManager::~UartServerManager()
 {
-    if (m_uartServer && m_serverThread) {
-        qCDebug(uart_server)<<"[~UartServerManager]:UartServerManager Destroyed!!!";
+    if (m_uartServer) {
         m_uartServer->close();
         delete m_uartServer;
         m_uartServer= nullptr;
+    }
 
+    if (m_serverThread) {
         m_serverThread->quit();
         m_serverThread->wait(1000); // wait 1s
         m_serverThread->deleteLater();
         delete m_serverThread;
         m_serverThread = nullptr;
     }
-}
 
-//---------------------------------------------------------------------------------
+    qCDebug(uart_server)<<"[~UartServerManager]:UartServerManager Destroyed!!!";
+}
 
 bool UartServerManager::startServer(const QString &portName,qint32 baudRate)
 {
@@ -58,6 +59,7 @@ bool UartServerManager::startServer(const QString &portName,qint32 baudRate)
         return true;
     }
 
+    qCWarning(uart_server)<<"[startServer]:already exist A certain member";
     return false;
 }
 

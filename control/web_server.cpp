@@ -6,7 +6,8 @@
 
 Q_LOGGING_CATEGORY(web, "WEB:")
 
-WebServerManager::WebServerManager(QObject *parent) : QObject(parent){
+WebServerManager::WebServerManager(QObject *parent) : QObject(parent)
+{
     m_staticFiles = {
         {"/",                     ":/web/web/index.html"},
         {"/index.html",           ":/web/web/index.html"},
@@ -41,8 +42,7 @@ WebServerManager::WebServerManager(QObject *parent) : QObject(parent){
 }
 WebServerManager::~WebServerManager()
 {
-    if (m_httpServer && m_wsServer && m_webThread) {
-        qCDebug(web)<<"[~WebServerManager]:~WebServerManager Destroyed!!!";
+    if (m_httpServer) {
         for (QTcpSocket *client : qAsConst(m_clients)) {
             client->disconnectFromHost();
             client->waitForDisconnected(600);
@@ -51,18 +51,24 @@ WebServerManager::~WebServerManager()
         m_httpServer->close();
         delete m_httpServer;
         m_httpServer = nullptr;
+    }
 
+    if (m_wsServer) {
         m_sockets.clear();
         m_wsServer->close();
         delete m_wsServer;
         m_wsServer = nullptr;
+    }
 
+    if (m_webThread) {
         m_webThread->quit();
         m_webThread->wait(1000); // wait 1s
         m_webThread->deleteLater();
         delete m_webThread;
         m_webThread = nullptr;
     }
+
+    qCDebug(web)<<"[~WebServerManager]:~WebServerManager Destroyed!!!";
 }
 
 bool WebServerManager::startServer(){
@@ -136,11 +142,17 @@ bool WebServerManager::startServer(){
             if (m_httpServer->listen(QHostAddress::Any, Vxi11::HTTP_PORT)) {
                 if (m_wsServer->listen(QHostAddress::Any, Vxi11::WEB_PORT)) {
                     setupRoutes(); // init route API and Web route
-                }}}, Qt::QueuedConnection);
+                    return;
+                }
+                qCWarning(web)<<"[startServer]: m_wsServer listen failed!";
+            }
+            qCWarning(web)<<"[startServer]: m_httpServer listen failed!";
+        }, Qt::QueuedConnection);
 
         return true;
     }
 
+    qCWarning(web)<<"[startServer]: already exist A certain member";
     return false;
 }
 
@@ -189,7 +201,7 @@ void WebServerManager::setupRoutes()
 
     m_webRoutes["scpi_command"] = [this](QWebSocket* socket, const QJsonObject& obj) {
         QByteArray cmd = (obj["command"].toString()+"\n").toUtf8();
-        qCDebug(web) << "SCPI command received:" << cmd;
+        qCDebug(web)<<"[setupRoutes]:SCPI command received:" << cmd;
 
         m_qmlbridge->update_remotemodel(true);
         QByteArray res = m_scpiManager->processCommand(cmd);
@@ -260,15 +272,16 @@ void WebServerManager::handleHttpRequest(QTcpSocket *client){
                 m_apiRoutes[path](client);
                 return;
             }
-            else if (m_staticFiles.contains(path)) {
+
+            if (m_staticFiles.contains(path)) {
                 QString resourcePath = m_staticFiles[path];
                 if (!m_fileCache.contains(path)) {
                     QFile file(resourcePath);
                     if (!file.open(QIODevice::ReadOnly)) {
+                        qCWarning(web)<<"[handleHttpRequest]: open web file: "<<resourcePath<<"failed!";
                         sendHttpResponse(client, "500 Internal Server Error", "text/plain", 500);
                         return;
                     }
-
                     m_fileCache[path] = file.readAll();
                 }
 
@@ -277,12 +290,14 @@ void WebServerManager::handleHttpRequest(QTcpSocket *client){
                 return;
             }
 
+            qCWarning(web)<<"[handleHttpRequest]: request route method not exist!";
             sendHttpResponse(client, "404 Not Found", "text/plain", 404);
             return;
         }
     }
 
     sendHttpResponse(client, "Please access using a web browser.", "text/plain");
+    qCWarning(web)<<"[handleHttpRequest]: request format failed!";
     return;
 }
 
@@ -309,8 +324,7 @@ void WebServerManager::sendHttpResponse(QTcpSocket *client, const QByteArray &co
 
     client->write(header.toUtf8());
     client->write(content);
-    //client->flush();
-    client->close();
+    //client->close(); // http1.0 long connection
 }
 
 //---------------------------------------------------------------------------------
@@ -319,15 +333,19 @@ void WebServerManager::onWsTextMessageReceived(QWebSocket *socket,const QString 
 {
     QMutexLocker locker(&m_webmutex);
 
-    QJsonDocument doc = QJsonDocument::fromJson(message.toUtf8());
     qCDebug(web) <<"[onWsTextMessageReceived]:WEB request: "<<message;
+    QJsonDocument doc = QJsonDocument::fromJson(message.toUtf8());
+
     if (!doc.isNull() && doc.isObject()) {
         QJsonObject obj = doc.object();
         QString type = obj["type"].toString();
         if (m_webRoutes.contains(type)) {
             m_webRoutes[type](socket,obj);
+            return;
         }
+        qCWarning(web)<<"[onWsTextMessageReceived]: request route method not exist!";
     }
+    qCWarning(web)<<"[onWsTextMessageReceived]: received information format error!";
 }
 
 bool WebServerManager::addModelFromNetwork(const QString &modelName, const QJsonArray &modelData) {
@@ -359,7 +377,7 @@ bool WebServerManager::addModelFromNetwork(const QString &modelName, const QJson
         return true;
     }
 
-    qCWarning(web) << "[addModelFromNetwork]:Parameter error or model incorrect!";
+    qCWarning(web)<<"[addModelFromNetwork]:Parameter error or model incorrect!";
     return false;
 }
 

@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
         QObject::connect(GuiBridge_share.get(),&GuiBridge::to_CANid,canServer.get(),&CanServerManager::change_canid,Qt::QueuedConnection);
     }
 
-    // uart channel create and LAN / UART Server create
+    // SCPI parser uart channel create and LAN / UART Server create
     std::shared_ptr<ScpiManager> Scpi_share = std::make_shared<ScpiManager>();
     std::vector<std::unique_ptr<UartChannelManager>> Channel_list;
     if (ConfigManager::s_enableUartMess){

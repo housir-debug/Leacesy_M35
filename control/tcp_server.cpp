@@ -10,8 +10,7 @@ Q_LOGGING_CATEGORY(tcp, "TCP:")
 TcpServerManager::TcpServerManager(QObject *parent):QObject(parent){}
 TcpServerManager::~TcpServerManager()
 {
-    if (m_serverThread && m_tcpServer) {
-        qCDebug(tcp)<<"[~TcpServerManager]:TcpServerManager Destroyed!!!";
+    if (m_tcpServer) {
         for (QTcpSocket *client : qAsConst(m_clients)) {
             client->disconnectFromHost();
             client->waitForDisconnected(600);
@@ -21,13 +20,17 @@ TcpServerManager::~TcpServerManager()
         m_tcpServer->close();
         delete m_tcpServer;
         m_tcpServer = nullptr;
+    }
 
+    if (m_serverThread) {
         m_serverThread->quit();
         m_serverThread->wait(1000); // wait 1s
         m_serverThread->deleteLater();
         delete m_serverThread;
         m_serverThread = nullptr;
     }
+
+    qCDebug(tcp)<<"[~TcpServerManager]:TcpServerManager Destroyed!!!";
 }
 
 bool TcpServerManager::startServer()
@@ -84,11 +87,15 @@ bool TcpServerManager::startServer()
                         IPPROTO_TCP,                // TCP protocol
                         Vxi11::VXI_PORT
                     );
-                }}}, Qt::QueuedConnection);
+                    return;
+                }}
+            qCWarning(tcp)<<"[startServer]: m_tcpServer listen failed!";
+        }, Qt::QueuedConnection);
 
         return true;
     }
 
+    qCWarning(tcp)<<"[startServer]: already exist A certain member";
     return false;
 }
 

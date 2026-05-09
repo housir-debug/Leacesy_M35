@@ -129,21 +129,24 @@ CanServerManager::CanServerManager(QObject *parent): QObject(parent)
 }
 CanServerManager::~CanServerManager()
 {
-   if (m_serverThread && m_readNotifier && m_writeNotifier) {
-       qCDebug(can)<<"[~CanServerManager]CAN~ delete finished";
+   if (m_readNotifier && m_writeNotifier) {
        delete m_readNotifier;
        m_readNotifier = nullptr;
        delete m_writeNotifier;
        m_writeNotifier = nullptr;
        shutdown(m_socketFd, SHUT_RDWR);
        close(m_socketFd);
+   }
 
+    if (m_serverThread) {
        m_serverThread->quit();
        m_serverThread->wait(1000); // wait 1s
        m_serverThread->deleteLater();
        delete m_serverThread;
        m_serverThread = nullptr;
    }
+
+   qCDebug(can)<<"[~CanServerManager]CAN~ delete finished";
 }
 
 bool CanServerManager::startServer(const QString &interface, quint32 bitrate)
@@ -220,6 +223,7 @@ bool CanServerManager::startServer(const QString &interface, quint32 bitrate)
         }
     }
 
+    qCWarning(can)<<"[startServer]: already exist A certain member";
     return false;
 }
 

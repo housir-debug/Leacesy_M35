@@ -6,22 +6,27 @@ Q_LOGGING_CATEGORY(uart_channel, "UART_CHANNEL:")
 UartChannelManager::UartChannelManager(QObject *parent):QObject(parent){}
 UartChannelManager::~UartChannelManager()
 {
-    if (m_serialPort && m_serialThread && m_refreshtimer) {
-        qCDebug(uart_channel)<<"[~UartChannelManager]:Channel_"<<m_channel<<" Destroyed!!!";
+    if (m_refreshtimer) {
         m_refreshtimer->stop();
         delete m_refreshtimer;
         m_refreshtimer = nullptr;
+    }
 
+    if (m_serialPort) {
         m_serialPort->close();
         delete m_serialPort;
         m_serialPort = nullptr;
+    }
 
+    if (m_serialThread) {
         m_serialThread->quit();
         m_serialThread->wait(1000);// 等待1秒
         m_serialThread->deleteLater();
         delete m_serialThread;
         m_serialThread = nullptr;
     }
+
+    qCDebug(uart_channel)<<"[~UartChannelManager]:Channel_"<<m_channel<<" Destroyed!!!";
 }
 
 bool UartChannelManager::initSerialPort(const QString &portName,qint32 baudRate)
@@ -72,7 +77,9 @@ bool UartChannelManager::initSerialPort(const QString &portName,qint32 baudRate)
                     if (m_serialPort->open(QIODevice::ReadWrite)) {
                         //startLoopbackTest();
                         sendInitCommand();
-                    }}, Qt::QueuedConnection);
+                    }
+                    qCWarning(uart_channel)<<"[initSerialPort]:m_serialPort open failed!";
+                }, Qt::QueuedConnection);
 
                 return true;
             }
