@@ -65,18 +65,39 @@ bool UartServerManager::startServer(const QString &portName,qint32 baudRate)
 
 void UartServerManager::handleReadyRead()
 {
-    // read information
-    m_readbuffer.clear();
-    m_readbuffer.append(m_uartServer->readAll());
-    QString message = QString::fromUtf8(m_readbuffer).trimmed();   // SOCKET ASCll Define(0x00-0x7F)
-    qCDebug(uart_server)<<"[handleReadyRead]:Uart SCPI Request Commend: "<< message;
+    if (m_qmlbridge->m_remoteStatus.load()==3){
+        // read information
+        m_readbuffer.clear();
+        m_readbuffer.append(m_uartServer->readAll());
+        QString message = QString::fromUtf8(m_readbuffer).trimmed();   // SOCKET ASCll Define(0x00-0x7F)
+        qCDebug(uart_server)<<"[handleReadyRead]:Uart SCPI Request Commend: "<< message;
 
-    // Return response
-    m_responsebuffer.clear();
-    m_qmlbridge->update_remotemodel(true);
-    m_responsebuffer = m_scpiManager->processCommand(m_readbuffer);
-    if (!m_responsebuffer.isEmpty()){
-        qCDebug(uart_server)<<"[handleReadyRead]:Uart SCPI Response: "<<m_responsebuffer;
-        m_uartServer->write(m_responsebuffer);
+        // Return response
+        m_responsebuffer.clear();
+        m_responsebuffer = m_scpiManager->processCommand(m_readbuffer);
+        if (!m_responsebuffer.isEmpty()){
+            qCDebug(uart_server)<<"[handleReadyRead]:Uart SCPI Response: "<<m_responsebuffer;
+            m_uartServer->write(m_responsebuffer);
+        }
+    }
+    else if (m_qmlbridge->m_remoteStatus.load()==0){
+        m_readbuffer.clear();
+        m_qmlbridge->update_remotemodel(3);
+        m_readbuffer.append(m_uartServer->readAll());
+        QString message = QString::fromUtf8(m_readbuffer).trimmed();   // SOCKET ASCll Define(0x00-0x7F)
+        qCDebug(uart_server)<<"[handleReadyRead]:Uart SCPI Request Commend: "<< message;
+
+        // Return response
+        m_responsebuffer.clear();
+        m_responsebuffer = m_scpiManager->processCommand(m_readbuffer);
+        if (!m_responsebuffer.isEmpty()){
+            qCDebug(uart_server)<<"[handleReadyRead]:Uart SCPI Response: "<<m_responsebuffer;
+            m_uartServer->write(m_responsebuffer);
+        }
+    }
+    else{
+        QByteArray errMsg = QString("Other interfaces of the instrument are currently in operation").toUtf8();
+        qCDebug(uart_server)<<"[handleReadyRead]:Currently in an alternative remote mode";
+        m_uartServer->write(errMsg);
     }
 }

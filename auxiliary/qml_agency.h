@@ -11,7 +11,7 @@ class GuiBridge : public QObject
 {
     Q_OBJECT
 
-    Q_PROPERTY(bool isRemote MEMBER m_isRemote NOTIFY isRemote_Changed)
+    Q_PROPERTY(quint8 reface MEMBER m_remoteStatus NOTIFY isRemote_Changed)
     Q_PROPERTY(QString IPaddress MEMBER m_IPaddress NOTIFY ipAdress_Changed)
     Q_PROPERTY(QString SM MEMBER m_SM NOTIFY sm_Changed)
     Q_PROPERTY(QString GPIBid MEMBER m_GPIBid NOTIFY gpibId_Changed)
@@ -87,7 +87,7 @@ public:
     QStringList m_currentModelList;
 
     // to qml engine property variate
-    std::atomic<bool> m_isRemote{false};
+    std::atomic<quint8> m_remoteStatus{0};
     QString m_IPaddress;
     QString m_SM;
     QString m_GPIBid;
@@ -137,7 +137,7 @@ public:
     void update_HardVer(int ch,const QString &ver);
 
     //Q_INVOKABLE And C++
-    Q_INVOKABLE void update_remotemodel(bool is_remote);
+    Q_INVOKABLE void update_remotemodel(quint8 reface);
     Q_INVOKABLE void update_Configuration(int model,const QString& val);
     void refresh_interfaces(const QString& ip, const QString& netmask);
 

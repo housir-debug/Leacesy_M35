@@ -260,9 +260,9 @@ void GuiBridge::update_HardVer(int ch,const QString &ver){
 
 // =========================== Q_INVOKABLE And C++ ===========================
 
-void GuiBridge::update_remotemodel(bool isRemote){
-    if (m_isRemote.load() != isRemote){
-        m_isRemote.store(isRemote);
+void GuiBridge::update_remotemodel(quint8 reface){
+    if (m_remoteStatus.load() != reface){
+        m_remoteStatus.store(reface);
         emit isRemote_Changed();
     }
 }

@@ -65,9 +65,20 @@ bool TcpServerManager::startServer()
                 connect(client, &QTcpSocket::errorOccurred,this, [client](QAbstractSocket::SocketError error){
                     qCWarning(tcp)<<"[startServer]:ERROR Socket: ["<< client->objectName()<<"]"<< error <<client->errorString();
                 }, Qt::DirectConnection);
+
                 connect(client, &QTcpSocket::readyRead,this, [this, client](){
-                    processClientData(client);
-                }, Qt::DirectConnection);
+                    if (m_qmlbridge->m_remoteStatus.load()==2){
+                        processClientData(client);
+                    }
+                    else if (m_qmlbridge->m_remoteStatus.load()==0){
+                        m_qmlbridge->update_remotemodel(2);
+                        processClientData(client);
+                    }
+                    else{
+                        QByteArray errMsg = QString("Other interfaces of the instrument are currently in operation").toUtf8();
+                        qCDebug(tcp)<<"[startServer]:Currently in an alternative remote mode";
+                        client->write(errMsg);
+                    }}, Qt::DirectConnection);
 
                 m_clients.append(client);
                 return;
@@ -104,7 +115,6 @@ void TcpServerManager::processClientData(QTcpSocket *client)
     QMutexLocker locker(&m_sycmutex);
 
     m_responsebuffer.clear();
-    m_qmlbridge->update_remotemodel(true);
     m_readbuffer.append(client->readAll());
     qCDebug(tcp)<<"[processClientData]: "<<client->objectName()<<" Received Hex: "<< m_readbuffer.toHex(' ');
 
@@ -319,10 +329,9 @@ void TcpServerManager::handleDeviceRemote(QTcpSocket* client, const quint32 xid,
     quint8 lid = checkRequestlinkid(client,xid,address);
 
     if (lid !=0) {
-        m_qmlbridge->update_remotemodel(true);
-
         qCDebug(tcp)<<"[handleDeviceRemote]:DEVICE_REMOTE: "<<client->objectName();
         buildfoundResponse(xid, Vxi11::NO_ERROR);
+        m_qmlbridge->update_remotemodel(2);
         client->write(m_responsebuffer);
     }
 }
@@ -332,10 +341,9 @@ void TcpServerManager::handleDeviceLocal(QTcpSocket* client, const quint32 xid,c
     quint8 lid = checkRequestlinkid(client,xid,address);
 
     if (lid !=0) {
-        m_qmlbridge->update_remotemodel(false);
-
         qCDebug(tcp)<<"[handleDeviceLocal]:DEVICE_LOCAL: "<<client->objectName();
         buildfoundResponse(xid, Vxi11::NO_ERROR);
+        m_qmlbridge->update_remotemodel(0);
         client->write(m_responsebuffer);
     }
 }

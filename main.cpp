@@ -93,7 +93,8 @@ int main(int argc, char *argv[])
     std::unique_ptr<CanServerManager> canServer;
     if (ConfigManager::s_enableCANServer){
         canServer = std::make_unique<CanServerManager>();
-        if (!canServer->startServer("can2", 1000000)) {
+        canServer->m_qmlbridge = GuiBridge_share;
+        if (!canServer->startServer()) {
             qCWarning(application) << "canServer not Normal start!";
             return 1;
         }

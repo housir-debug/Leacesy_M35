@@ -582,14 +582,18 @@ void UartChannelManager::handleMeasurementcmd(quint8 func){ // new protocol Need
     switch (func){
         case 0x80: // :MEAS:VOLT[:DC]?
             m_qmlbridge->update_Voltage(m_channel,shf);
-            emit to_CanServer(m_channel,0x0480,m_readparam);
-            if (m_scpiCommand == 0x0480){m_scpiManager->processCHFloatResponse(shf);}
+            if (m_scpiCommand == 0x0480){
+                m_scpiManager->processCHFloatResponse(shf);
+                emit to_CanServer(m_channel,0x0480,m_readparam);
+            }
             qCDebug(uart_channel)<<"[handleMeasurementcmd]:Channel_"<<m_channel<<" Query[0x80] "<<shf;
             return;
         case 0x81: // :MEAS:CURR[:DC]?
             m_qmlbridge->update_CurrentAndUnit(m_channel,shf);
-            emit to_CanServer(m_channel,0x0481,m_readparam);
-            if (m_scpiCommand == 0x0481){m_scpiManager->processCHFloatResponse(shf);}
+            if (m_scpiCommand == 0x0481){
+                m_scpiManager->processCHFloatResponse(shf);
+                emit to_CanServer(m_channel,0x0481,m_readparam);
+            }
             qCDebug(uart_channel)<<"[handleMeasurementcmd]:Channel_"<<m_channel<<" Query[0x81] "<<shf;
             return;
         case 0x82: // :MEAS:SCUR[:DC]?
@@ -816,8 +820,10 @@ void UartChannelManager::handleRegistercmd(quint8 func){
     switch (func){
         case 0x80: // :STAT:OPER[:EVEN]?
             m_qmlbridge->update_Status(m_channel,sht);
-            emit to_CanServer(m_channel,0x0580,m_readparam);
-            if (m_scpiCommand == 0x0580){m_scpiManager->processCHIntResponse(sht);}
+            if (m_scpiCommand == 0x0580){
+                m_scpiManager->processCHIntResponse(sht);
+                emit to_CanServer(m_channel,0x0580,m_readparam);
+            }
             qCDebug(uart_channel)<<"[handleRegistercmd]:Channel_"<<m_channel<<" Query[0x80] "<<sht;
             return;
         case 0x00: // not SCPI cmd

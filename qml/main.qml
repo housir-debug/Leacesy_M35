@@ -99,16 +99,16 @@ ApplicationWindow {
     Rectangle {
         z: 100
         id: remoteOverlay
-        color: "#80000000" // Transparency
         anchors.fill: parent
-        visible: Uart_bridge.isRemote
+        color: "#90000000" //"#FF000000" // Translucent or black
+        visible: Uart_bridge.reface !== 0
 
         Image {
             id: logoImage
-            opacity: 0.6
+            opacity: 0.69
             anchors.centerIn: parent
-            width: parent.width * 0.5
-            height: parent.height * 0.5
+            width: parent.width * 0.81
+            height: parent.height * 0.81
             fillMode: Image.PreserveAspectFit
             source: "qrc:/web/web/icon/leacesyicon.png"
         }
@@ -117,19 +117,19 @@ ApplicationWindow {
             anchors.horizontalCenter: parent.horizontalCenter
             text: "Remote Mode - Double tap to Exit"
             anchors.top: logoImage.bottom
-            anchors.topMargin: 20
-            font.pixelSize: 16
-            color: "white"
-            opacity: 0.9
+            font.pixelSize: 18
+            color: "#FFD700" //yellow or "red"
+            font.bold: true
+            opacity: 0.81
         }
 
         MouseArea {
             anchors.fill: parent
-            enabled: Uart_bridge.isRemote
+            enabled: Uart_bridge.reface !== 0
 
             onDoubleClicked: {
                 // default 200ms
-                Uart_bridge.update_remotemodel(false)
+                Uart_bridge.update_remotemodel(0)
             }
         }
     }

@@ -200,16 +200,36 @@ void WebServerManager::setupRoutes()
     // -----------------------------------------------------------------------
 
     m_webRoutes["scpi_command"] = [this](QWebSocket* socket, const QJsonObject& obj) {
-        QByteArray cmd = (obj["command"].toString()+"\n").toUtf8();
-        qCDebug(web)<<"[setupRoutes]:SCPI command received:" << cmd;
+        if (m_qmlbridge->m_remoteStatus.load()==4){
+            QByteArray cmd = (obj["command"].toString()+"\n").toUtf8();
+            qCDebug(web)<<"[setupRoutes]:SCPI command received:" << cmd;
+            QByteArray res = m_scpiManager->processCommand(cmd);
 
-        m_qmlbridge->update_remotemodel(true);
-        QByteArray res = m_scpiManager->processCommand(cmd);
+            if (!res.isEmpty()){
+                QJsonObject response;
+                response["type"] = "scpi_response";
+                response["result"] = QString::fromUtf8(res);
+                socket->sendTextMessage(QJsonDocument(response).toJson());
+            }
+        }
+        else if (m_qmlbridge->m_remoteStatus.load()==0){
+            m_qmlbridge->update_remotemodel(4);
+            QByteArray cmd = (obj["command"].toString()+"\n").toUtf8();
+            qCDebug(web)<<"[setupRoutes]:SCPI command received:" << cmd;
+            QByteArray res = m_scpiManager->processCommand(cmd);
 
-        if (!res.isEmpty()){
+            if (!res.isEmpty()){
+                QJsonObject response;
+                response["type"] = "scpi_response";
+                response["result"] = QString::fromUtf8(res);
+                socket->sendTextMessage(QJsonDocument(response).toJson());
+            }
+        }
+        else{
             QJsonObject response;
             response["type"] = "scpi_response";
-            response["result"] = QString::fromUtf8(res);
+            response["result"] = "Other interfaces of the instrument are currently in operation";
+            qCDebug(web)<<"[setupRoutes]:Currently in an alternative remote mode";
             socket->sendTextMessage(QJsonDocument(response).toJson());
         }
     };
