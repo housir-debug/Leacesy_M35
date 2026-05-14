@@ -5,9 +5,6 @@ import QtQuick.Layouts 1.15
 Item {
     id: root
 
-    implicitWidth: 280
-    implicitHeight: 400
-
     property bool enclick: true
     property bool channelOutput: false
 
@@ -23,6 +20,9 @@ Item {
     signal clicked
     signal pressAndHold
 
+    implicitWidth: 280
+    implicitHeight: 400
+
     //property real scaleFactor: 1.0
     property real scaleFactor: {
         if (width > 0 && height > 0) {
@@ -32,285 +32,204 @@ Item {
     }
     property bool pressed: false
     property bool longpressed: false
-    readonly property color colorBackground: "#1E1E2E"
-    readonly property color colorCardBorder: "#2B2B3C"
-    readonly property color colorGlow: "#4A6FA5"
-    readonly property color colorCv: "#1DBF75"
-    readonly property color colorCc: "#FF3D52"
-    readonly property color colorOv: "#E5C27D"
-    readonly property color textPrimary: "#FFFFFF"
-    readonly property color textSecondary: "#A0A0B0"
 
     Rectangle {
         id: card
-        radius: 32 * root.scaleFactor
         anchors.fill: parent
-        border.width: 2 * root.scaleFactor
-        border.color: root.channelOutput ? root.colorGlow : root.colorCardBorder
-        color: root.channelOutput ? "#353548" : "#181824"
+        radius: 36 * root.scaleFactor
+        border.width: 1.8 * root.scaleFactor
+        border.color: root.channelOutput ? "#4A6FA5" : "#2B2B3C"
+        color: root.channelOutput ? "#363648" : "#181824"
 
         Rectangle {
             width: parent.width * 0.7
-            height: 1 * root.scaleFactor
-            color: root.colorGlow
-            opacity: 0.4
+            height: 0.9 * root.scaleFactor
+            color: root.channelOutput ? "#6B8ABC" : "#404050"
             anchors.horizontalCenter: parent.horizontalCenter
+            anchors.topMargin: 8.1 * root.scaleFactor
             anchors.top: parent.top
-            anchors.topMargin: 8 * root.scaleFactor
         }
+
         Rectangle {
             width: parent.width * 0.7
-            height: 1 * root.scaleFactor
-            color: root.colorGlow
-            opacity: 0.4
+            height: 0.9 * root.scaleFactor
+            color: root.channelOutput ? "#6B8ABC" : "#404050"
             anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottomMargin: 8.1 * root.scaleFactor
             anchors.bottom: parent.bottom
-            anchors.bottomMargin: 8 * root.scaleFactor
         }
 
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 18 * root.scaleFactor
-            spacing: 9 * root.scaleFactor
+            spacing: 18 * root.scaleFactor
 
             Item {
                 Layout.fillWidth: true
-                Layout.fillHeight: true
-                Layout.preferredHeight: parent.height * 0.18
                 Layout.alignment: Qt.AlignTop
+                Layout.preferredHeight: parent.height * 0.18
 
                 Text {
                     id: channelText
-                    color: root.textPrimary
+                    color: "#E0E0E0"
                     font.bold: true
                     font.pixelSize: 36 * root.scaleFactor
                     anchors.centerIn: parent
                     text: root.channelName
-                    style: Text.Raised
-                    styleColor: "#000000"
+                    //opacity: 0.81
                 }
 
                 Rectangle {
                     id: channelDot
                     anchors {
                         verticalCenter: parent.verticalCenter
+                        rightMargin: 6 * root.scaleFactor
                         right: parent.right
                     }
+
+                    radius: width / 2
                     width: 36 * root.scaleFactor
                     height: 36 * root.scaleFactor
-                    radius: width / 2
-                    color: root.channelOutput ? "#1AF080" : "#3A3A4E"
-                    border.width: 1 * root.scaleFactor
-                    border.color: "#000000"
-
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: parent.width + 4 * root.scaleFactor
-                        height: parent.height + 4 * root.scaleFactor
-                        radius: width / 2
-                        color: "transparent"
-                        border.width: 1 * root.scaleFactor
-                        border.color: root.channelOutput ? root.colorGlow : "transparent"
-                        opacity: 0.6
-                    }
+                    color: root.channelOutput ? "#1AF080" : "#6A6A7E"
+                    border.width: 1.2 * root.scaleFactor
+                    border.color: "#363636"
                 }
             }
 
             Rectangle {
                 id: batteryCard
-                radius: 24 * root.scaleFactor
-                color: "#2A2A3C"
                 Layout.fillWidth: true
-                Layout.fillHeight: true
-                Layout.preferredHeight: parent.height * 0.36
+                Layout.preferredHeight: parent.height * 0.27
 
-                Rectangle {
-                    id: batteryBody
-                    anchors {
-                        fill: parent
-                        margins: 3.6 * root.scaleFactor
-                    }
-                    radius: 24 * root.scaleFactor
-                    color: "#1E1E2E"
-                    border.color: "#4A6FA5"
-                    border.width: 1.8 * root.scaleFactor
-                    clip: true
+                color: "#2A2A3C" //"transparent"
+                border.color: "#4A6FA5"
+                border.width: 1.8 * root.scaleFactor
+                radius: 18 * root.scaleFactor
 
-                    Rectangle {
-                        id: batteryFill
-                        anchors {
-                            left: parent.left
-                            leftMargin: 1.8 * root.scaleFactor
-                            verticalCenter: parent.verticalCenter
-                        }
-                        width: (parent.width - 3.6 * root.scaleFactor)
-                               * ((root.soc / 100) > 1 ? 1.0 : (root.soc / 100))
-                        height: batteryFill.width < 24 ? parent.height - (24 - batteryFill.width)
-                                                         * 2 : parent.height
-                        radius: batteryFill.width < 24 ? batteryFill.width / 2 : 24
-                                                         * root.scaleFactor
-                        color: root.soc > 60 ? "#2ECC71" : (root.soc > 20 ? "#F39C12" : "#E74C3C")
-                    }
+                GridLayout {
+                    rows: 4
+                    columns: 9
+                    anchors.fill: parent
+                    anchors.margins: 6.6 * root.scaleFactor
+                    columnSpacing: 0.9 * root.scaleFactor
+                    rowSpacing: 0.9 * root.scaleFactor
 
-                    GridLayout {
-                        anchors.fill: parent
-                        columns: 9
-                        rows: 4
-                        opacity: 0.12
-                        columnSpacing: 1.2 * root.scaleFactor
-                        rowSpacing: 1.2 * root.scaleFactor
-
-                        Repeater {
-                            model: 36
-                            Rectangle {
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                color: "#4A6FA5"
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        anchors {
-                            left: parent.left
-                            top: parent.top
-                            bottom: parent.bottom
-                            margins: 12 * root.scaleFactor
-                        }
-                        width: 3.6 * root.scaleFactor
-                        radius: 1.8 * root.scaleFactor
-                        gradient: Gradient {
-                            GradientStop {
-                                position: 0.0
-                                color: "#C0C0C0"
-                            }
-                            GradientStop {
-                                position: 0.5
-                                color: "#E8E8E8"
-                            }
-                            GradientStop {
-                                position: 1.0
-                                color: "#C0C0C0"
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        anchors {
-                            right: parent.right
-                            top: parent.top
-                            bottom: parent.bottom
-                            margins: 12 * root.scaleFactor
-                        }
-                        width: 3.6 * root.scaleFactor
-                        radius: 1.8 * root.scaleFactor
-                        gradient: Gradient {
-                            GradientStop {
-                                position: 0.0
-                                color: "#C0C0C0"
-                            }
-                            GradientStop {
-                                position: 0.5
-                                color: "#E8E8E8"
-                            }
-                            GradientStop {
-                                position: 1.0
-                                color: "#C0C0C0"
-                            }
+                    Repeater {
+                        model: 36
+                        Rectangle {
+                            color: "#1E1E2E" //"#4A6FA5"
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            radius: 1.8 * root.scaleFactor
                         }
                     }
                 }
 
+                Rectangle {
+                    id: batteryFill
+                    anchors {
+                        left: parent.left
+                        leftMargin: 3 * root.scaleFactor
+                        verticalCenter: parent.verticalCenter
+                    }
+                    width: (parent.width - 6 * root.scaleFactor)
+                           * ((root.soc / 100) > 1 ? 1.0 : (root.soc / 100))
+                    height: batteryFill.width
+                            < 18 ? parent.height - (18 - batteryFill.width)
+                                   * 2 : (parent.height - 6 * root.scaleFactor)
+                    radius: batteryFill.width < 18 ? batteryFill.width / 2 : 18 * root.scaleFactor
+                    color: root.soc > 60 ? "#2ECC71" : (root.soc > 20 ? "#F39C12" : "#E74C3C")
+                    opacity: 0.66
+                }
+
                 Text {
+                    color: "#E0E0E0"
                     anchors.centerIn: parent
                     text: root.soc.toFixed(2) + " %"
-                    font.pixelSize: 30 * root.scaleFactor
-                    font.bold: true
-                    font.family: "Microsoft YaHei"
-                    color: root.soc > 30 ? "#FFFFFF" : "#E0E0E0"
-                    style: Text.Outline
-                    styleColor: "#80000000"
-                    z: 1
+                    font.pixelSize: 36 * root.scaleFactor
+                }
+
+                Rectangle {
+                    anchors {
+                        left: parent.left
+                        leftMargin: 9 * root.scaleFactor
+                        verticalCenter: parent.verticalCenter
+                    }
+                    color: "#C0C0C0"
+                    height: parent.height * 0.7
+                    width: 1.8 * root.scaleFactor
+                }
+
+                Rectangle {
+                    anchors {
+                        right: parent.right
+                        rightMargin: 9 * root.scaleFactor
+                        verticalCenter: parent.verticalCenter
+                    }
+                    color: "#C0C0C0"
+                    height: parent.height * 0.7
+                    width: 1.8 * root.scaleFactor
                 }
             }
 
             GridLayout {
                 id: infoGrid
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                Layout.preferredHeight: parent.height * 0.48
-                Layout.margins: 3.6
                 columns: 2
-                columnSpacing: 1.8 * root.scaleFactor
-                rowSpacing: 1.8 * root.scaleFactor
+                Layout.margins: 3.6
+                Layout.fillWidth: true
+                Layout.preferredHeight: parent.height * 0.99
+                columnSpacing: 3.6 * root.scaleFactor
+                rowSpacing: 3.6 * root.scaleFactor
 
                 Repeater {
                     model: [{
-                            "label": "OCV",
-                            "value": root.ocv.toFixed(3),
-                            "unit": root.ocvUnit
+                            "label": "OCV/" + root.ocvUnit,
+                            "value": root.ocv.toFixed(3)
                         }, {
-                            "label": "ESR",
-                            "value": root.esr.toFixed(3),
-                            "unit": root.esrUnit
+                            "label": "ESR/" + root.esrUnit,
+                            "value": root.esr.toFixed(3)
                         }, {
-                            "label": "Capacity",
-                            "value": root.batteryCapacity.toFixed(3),
-                            "unit": "Ah"
+                            "label": "Ah",
+                            "value": root.batteryCapacity.toFixed(3)
                         }, {
                             "label": "Model",
-                            "value": root.batteryModel,
-                            "unit": ""
+                            "value": root.batteryModel
                         }]
 
                     Rectangle {
-                        radius: 18 * root.scaleFactor
-                        color: root.channelOutput ? "#151E2C" : "#181824"
-                        border.color: "#2A3448"
-                        border.width: 1.2 * root.scaleFactor
+                        color: "#080810"
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        radius: 18 * root.scaleFactor
+                        border.width: 0.9 * root.scaleFactor
+                        border.color: "#3A3A4E"
 
                         Column {
                             anchors.centerIn: parent
-                            spacing: 0.9 * root.scaleFactor
+                            spacing: 1.8 * root.scaleFactor
 
                             Text {
+                                color: "#6E7ADF"
                                 text: modelData.label
-                                font.pixelSize: 12 * root.scaleFactor
-                                font.family: "Microsoft YaHei"
-                                font.weight: Font.Medium
-                                color: "#8E9AFF"
                                 anchors.horizontalCenter: parent.horizontalCenter
+                                font.pixelSize: 12 * root.scaleFactor
+                                font.bold: true
                             }
 
-                            Row {
-                                spacing: 3.6 * root.scaleFactor
+                            Text {
+                                text: modelData.value
                                 anchors.horizontalCenter: parent.horizontalCenter
-
-                                Text {
-                                    visible: modelData.value
-                                    text: modelData.value
-                                    font.pixelSize: 12 * root.scaleFactor
-                                    font.family: "Microsoft YaHei"
-                                    font.weight: Font.Bold
-                                    color: "#FFFFFF"
-                                }
-
-                                Text {
-                                    visible: modelData.unit
-                                    text: modelData.unit
-                                    font.pixelSize: 9 * root.scaleFactor
-                                    font.family: "Microsoft YaHei"
-                                    font.weight: Font.Medium
-                                    color: "#8E9AFF"
-                                    anchors.bottom: parent.bottom
-                                    anchors.bottomMargin: 1.2 * root.scaleFactor
-                                }
+                                font.pixelSize: 18 * root.scaleFactor
+                                color: "#E0E0E0"
                             }
                         }
                     }
                 }
+            }
+
+            Item {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
             }
         }
 
@@ -318,7 +237,7 @@ Item {
             id: mouseArea
             anchors.fill: parent
             enabled: root.enclick
-            pressAndHoldInterval: 1000
+            pressAndHoldInterval: 600 // 0.6s
 
             onPressed: {
                 root.pressed = true
@@ -355,7 +274,7 @@ Item {
         property: "scale"
         from: 1.0
         to: 0.96
-        duration: 100
+        duration: 110
         easing.type: Easing.OutCubic
     }
 
@@ -365,7 +284,7 @@ Item {
         property: "scale"
         from: 0.96
         to: 1.0
-        duration: 120
+        duration: 110
         easing.type: Easing.OutElastic
         easing.amplitude: 0.2
         easing.period: 0.4

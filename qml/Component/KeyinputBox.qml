@@ -6,12 +6,13 @@ import QtGraphicalEffects 1.15
 Item {
     id: root
 
-    implicitWidth: 280
-    implicitHeight: 400
-
     property bool enclick: true
     property alias text: defaultField.text
+
     signal entervalue(string value)
+
+    implicitWidth: 280
+    implicitHeight: 400
 
     //property real scaleFactor: 1.0
     property real scaleFactor: {
@@ -20,39 +21,18 @@ Item {
         }
         return 1.0
     }
-    readonly property color colorBackground: "#0A1929"
-    readonly property color colorSurface: "#102B40"
-    readonly property color colorSurfaceHover: "#1E3A5F"
-    readonly property color colorBorder: "#1E3A5F"
-    readonly property color colorBorderLight: "#2A4A70"
-    readonly property color colorAccent: "#4A9EFF"
-    readonly property color colorAccentGlow: "#3D8CFF"
-    readonly property color colorTextPrimary: "#E0E0E0"
-    readonly property color colorTextSecondary: "#8A9FB0"
-    readonly property color colorPlaceholder: "#5F7D9C"
-    readonly property var valueslist: ["7", "8", "9", "4", "5", "6", "1", "2", "3", "0", ".", "↵"]
 
     Rectangle {
+        color: "#0A1929"
         anchors.fill: parent
-        radius: 16 * root.scaleFactor
-        color: root.colorBackground
-        border.width: 1 * root.scaleFactor
-        border.color: Qt.rgba(root.colorAccent.r, root.colorAccent.g,
-                              root.colorAccent.b, 0.2)
-
-        Rectangle {
-            anchors.fill: parent
-            radius: parent.radius
-            color: "transparent"
-            border.width: 2 * root.scaleFactor
-            border.color: Qt.rgba(root.colorAccent.r, root.colorAccent.g,
-                                  root.colorAccent.b, 0.1)
-        }
+        radius: 18 * root.scaleFactor
+        border.width: 1.8 * root.scaleFactor
+        border.color: "#004095"
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 12 * root.scaleFactor
-            spacing: 8 * root.scaleFactor
+            anchors.margins: 9 * root.scaleFactor
+            spacing: 9 * root.scaleFactor
 
             TextField {
                 id: defaultField
@@ -61,32 +41,30 @@ Item {
                 Layout.preferredHeight: 16
 
                 placeholderText: "请输入"
-                placeholderTextColor: root.colorPlaceholder
+                placeholderTextColor: "#5F7D9C"
+                font.pixelSize: 18 * root.scaleFactor
                 inputMethodHints: Qt.ImhNone //Qt.ImhDigitsOnly
                 echoMode: TextInput.Normal
-                font.pixelSize: 18 * root.scaleFactor
-                font.family: "Segoe UI, Microsoft YaHei, sans-serif"
-                color: root.colorTextPrimary
-                selectionColor: root.colorAccent
-                selectedTextColor: root.colorBackground
+
+                color: "#E0E0E0"
+                selectionColor: "#1A6ECF"
+                selectedTextColor: "#0A1929"
 
                 background: Rectangle {
-                    radius: 12 * root.scaleFactor
-                    color: root.colorSurface
-                    border.width: defaultField.activeFocus ? 2 : 1
-                    border.color: defaultField.activeFocus ? root.colorAccent : root.colorBorder
+                    radius: 9 * root.scaleFactor
+                    color: "#102B40"
+                    border.width: defaultField.activeFocus ? 1.8 : 0.9
+                    border.color: defaultField.activeFocus ? "#1A6ECF" : "#1E3A5F"
 
                     layer {
                         enabled: defaultField.activeFocus
                         effect: DropShadow {
                             transparentBorder: true
-                            color: Qt.rgba(root.colorAccent.r,
-                                           root.colorAccent.g,
-                                           root.colorAccent.b, 0.3)
-                            radius: 12 * root.scaleFactor
-                            samples: 24
+                            color: Qt.rgba(0.24, 0.63, 0.90, 0.3)
+                            radius: 9 * root.scaleFactor
                             horizontalOffset: 0
                             verticalOffset: 0
+                            samples: 24
                         }
                     }
                 }
@@ -95,40 +73,37 @@ Item {
                     id: deleteBtn
                     enabled: root.enclick
                     anchors.right: parent.right
-                    anchors.rightMargin: 6 * root.scaleFactor
+                    anchors.rightMargin: 9 * root.scaleFactor
                     anchors.verticalCenter: parent.verticalCenter
+                    height: 36 * root.scaleFactor
+                    width: 45 * root.scaleFactor
+
+                    contentItem: Text {
+                        text: "⌫"
+                        color: "#0A1929"
+                        anchors.fill: parent
+                        verticalAlignment: Text.AlignVCenter
+                        horizontalAlignment: Text.AlignHCenter
+                    }
 
                     background: Rectangle {
-                        implicitWidth: 48 * root.scaleFactor
-                        implicitHeight: 32 * root.scaleFactor
-                        radius: 8 * root.scaleFactor
-                        color: root.colorAccent
-                        opacity: 1.0
+                        radius: 9 * root.scaleFactor
+                        color: "#1A6ECF"
 
                         Rectangle {
-                            width: parent.width
-                            height: parent.height / 2
+                            anchors.fill: parent
                             radius: parent.radius
                             gradient: Gradient {
                                 GradientStop {
                                     position: 0.0
-                                    color: Qt.rgba(1, 1, 1, 0.2)
+                                    color: Qt.rgba(1, 1, 1, 0.18)
                                 }
                                 GradientStop {
                                     position: 1.0
-                                    color: Qt.rgba(1, 1, 1, 0)
+                                    color: Qt.rgba(0.36, 0.36, 0.36, 0.81)
                                 }
                             }
                         }
-                    }
-
-                    contentItem: Text {
-                        text: "⌫"
-                        color: root.colorBackground
-                        anchors.fill: parent
-                        font.bold: true
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
                     }
 
                     onClicked: {
@@ -142,24 +117,26 @@ Item {
                 }
 
                 Rectangle {
-                    width: 2 * root.scaleFactor
-                    height: 24 * root.scaleFactor
-                    color: root.colorAccent
-                    opacity: 0.5
                     anchors.left: parent.left
-                    anchors.leftMargin: 4 * root.scaleFactor
+                    anchors.leftMargin: 3.6 * root.scaleFactor
                     anchors.verticalCenter: parent.verticalCenter
+                    width: 1.8 * root.scaleFactor
+                    height: parent.height * 0.36
+                    color: "#1A6ECF"
                 }
             }
 
             GridLayout {
+                id: grid
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.preferredHeight: 84
-                columnSpacing: 8 * root.scaleFactor
-                rowSpacing: 8 * root.scaleFactor
+                columnSpacing: 9 * root.scaleFactor
+                rowSpacing: 9 * root.scaleFactor
                 columns: 3
                 rows: 4
+
+                readonly property var valueslist: ["7", "8", "9", "4", "5", "6", "1", "2", "3", "0", ".", "↵"]
 
                 Repeater {
                     model: 12
@@ -172,74 +149,39 @@ Item {
                         Layout.preferredHeight: 1
 
                         //hoverEnabled: true
-                        text: root.valueslist[index]
                         required property int index
 
                         background: Rectangle {
-                            color: btn.pressed ? root.colorSurfaceHover : root.colorSurface
-                            border.color: btn.pressed ? root.colorAccent : root.colorBorder
+                            color: btn.pressed ? "#1E3A5F" : "#102B40"
+                            border.color: btn.pressed ? "#1A6ECF" : "#1E3A5F"
                             border.width: 1 * root.scaleFactor
-                            radius: 12 * root.scaleFactor
+                            radius: 18 * root.scaleFactor
 
-                            Rectangle {
-                                width: parent.width
-                                height: parent.height / 2
-                                radius: parent.radius
-                                color: "transparent"
-                                gradient: Gradient {
-                                    GradientStop {
-                                        position: 0.0
-                                        color: Qt.rgba(1, 1, 1, 0.1)
-                                    }
-                                    GradientStop {
-                                        position: 1.0
-                                        color: Qt.rgba(1, 1, 1, 0)
-                                    }
-                                }
-                            }
-
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: parent.radius
-                                color: "transparent"
-                                border.width: btn.pressed ? 2 : 0
-                                border.color: Qt.rgba(root.colorAccent.r,
-                                                      root.colorAccent.g,
-                                                      root.colorAccent.b, 0.5)
-                            }
-
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: parent.radius
-                                color: root.valueslist[index]
-                                       === "↵" ? Qt.rgba(root.colorAccent.r,
-                                                         root.colorAccent.g,
-                                                         root.colorAccent.b,
-                                                         0.1) : "transparent"
-                                visible: valueslist[index] === "↵" ? true : false
+                            layer.enabled: text === "↵"
+                            layer.effect: DropShadow {
+                                transparentBorder: true
+                                color: Qt.rgba(0.24, 0.63, 0.90, 0.81)
+                                radius: 9 * root.scaleFactor
+                                samples: 16
                             }
                         }
 
                         contentItem: Text {
-                            text: parent.text
-                            font.pixelSize: root.valueslist[index]
-                                            === "↵" ? 36 : 22 * root.scaleFactor
-                            font.bold: root.valueslist[index] !== "↵"
-                            color: root.valueslist[index]
-                                   === "↵" ? root.colorAccent : root.colorTextPrimary
+                            font.bold: true
+                            font.pixelSize: 27 * root.scaleFactor
+                            color: grid.valueslist[index] === "↵" ? "#1A6ECF" : "#E0E0E0"
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
-
-                            font.family: root.valueslist[index] === "0" ? "Segoe UI, Microsoft YaHei, sans-serif" : "Segoe UI, Microsoft YaHei, sans-serif"
+                            text: grid.valueslist[index]
                         }
 
                         onClicked: {
-                            if (root.valueslist[index] === "↵"
+                            if (grid.valueslist[index] === "↵"
                                     && defaultField.text.length > 0) {
                                 root.entervalue(defaultField.text)
                                 defaultField.clear()
                             } else {
-                                let val = valueslist[index]
+                                let val = grid.valueslist[index]
                                 defaultField.insert(
                                             defaultField.cursorPosition, val)
                             }
@@ -249,11 +191,11 @@ Item {
             }
         }
     }
-
-    Behavior on scaleFactor {
-        NumberAnimation {
-            duration: 200
-            easing.type: Easing.OutQuad
-        }
-    }
 }
+
+/*##^##
+Designer {
+    D{i:0;autoSize:true;height:400;width:280}
+}
+##^##*/
+

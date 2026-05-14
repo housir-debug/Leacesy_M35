@@ -98,7 +98,7 @@ public:
     #define CHANNEL(n) \
         std::atomic<float> mCH##n##_Voltage{0.0f}; \
         std::atomic<float> mCH##n##_Current{0.0f}; \
-        QString mCH##n##_CurrentUnit{"A"}; \
+        QString mCH##n##_CurrentUnit{"mA"}; \
         QString mCH##n##_Status{"0000000000000000"}; \
         std::atomic<float> mCH##n##_cv{0.0f}; \
         std::atomic<float> mCH##n##_cc{1.0f}; \
@@ -110,7 +110,7 @@ public:
         \
         std::atomic<float> mCH##n##_currentSOC{100}; \
         std::atomic<float> mCH##n##_capacityAH{1}; \
-        QString mCH##n##_batteryModel{"model-1"}; \
+        QString mCH##n##_batteryModel{"Lithium"}; \
         std::atomic<bool> mCH##n##_batterystaticmode{false}; \
         std::atomic<bool> mCH##n##_activebattery{false}; \
         QSharedPointer<BatteryModel> mCH##n##_activeModel; \
@@ -142,6 +142,7 @@ public:
     void refresh_interfaces(const QString& ip, const QString& netmask);
 
     // qml procress
+    Q_INVOKABLE QVariantList getActiveChannels();
     Q_INVOKABLE void setChannel_Output(int channel,bool switchs);
     Q_INVOKABLE void setChannel_Setstatus(int channel,int model,const QString& val);
     Q_INVOKABLE QString setChannel_CurrentUnit(int channel);

@@ -92,7 +92,7 @@ void loggermanage(const QString &loglevel,const QString &parentPath) {
     if (loglevel == "debug"){rules = "*.debug=true\n*.info=true\n*.warning=true";}
     else if (loglevel == "warning") {rules = "*.debug=false\n*.info=false\n*.warning=true";}
     else if (loglevel == "release") {rules = "*.debug=false\n*.info=false\n*.warning=false";}
-    else if (loglevel == "self-define"){
+    else if (loglevel == "selfdefine"){
         rules = "LOG:.debug=false\n"
                 "CAN:.debug=false\n"
                 "WEB:.debug=true\n"

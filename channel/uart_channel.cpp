@@ -77,6 +77,7 @@ bool UartChannelManager::initSerialPort(const QString &portName,qint32 baudRate)
                     if (m_serialPort->open(QIODevice::ReadWrite)) {
                         //startLoopbackTest();
                         sendInitCommand();
+                        return;
                     }
                     qCWarning(uart_channel)<<"[initSerialPort]:m_serialPort open failed!";
                 }, Qt::QueuedConnection);
@@ -118,7 +119,7 @@ void UartChannelManager::sendInitCommand()
     }
 
     if(ConfigManager::s_enableDisplay || ConfigManager::s_enableWEBServer){
-        m_refreshtimer->start();
+        //m_refreshtimer->start();
     }
 }
 

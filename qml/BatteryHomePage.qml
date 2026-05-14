@@ -10,23 +10,9 @@ Item {
     signal toDigitalHomePage
     signal toFunctionPage(int value)
 
-    property int totalChannels: 36
-    property var existChannels: []
-    property color backgroundcolor: "#0d1b2a" //"#0a0f1a"
-
-    Component.onCompleted: {
-        var channels = []
-        for (var i = 1; i <= totalChannels; i++) {
-            channels.push(i)
-
-
-            /*if (Uart_bridge["ch" + i + "_sv"] !== "0.0.0.0") {
-                channels.push(i)
-            }*/
-        }
-
-        existChannels = channels
-    }
+    property bool enclick: true
+    property color backgroundcolor: "#0d1b2a"
+    property var existChannels: Uart_bridge.getActiveChannels()
 
     Rectangle {
         anchors.fill: parent
@@ -43,7 +29,7 @@ Item {
                 scale: PathView.scale
                 z: PathView.z || 0
 
-                enclick: !Uart_bridge.isRemote
+                enclick: batteryhomePage.enclick
                 channelOutput: Uart_bridge["ch" + existChannels[index] + "_isOutput"]
 
                 channelName: "CH" + existChannels[index]
@@ -67,34 +53,34 @@ Item {
             }
 
             path: Path {
-                // Starting point (0.0)
-                startX: -36 //-18
+                // Starting point
+                startX: -120
                 startY: cardPathView.height / 2
                 PathAttribute {
                     name: "scale"
-                    value: 0.81 // 0.69
+                    value: 0.81
                 }
                 PathAttribute {
                     name: "opacity"
-                    value: 0.72
+                    value: 0.81
                 }
                 PathAttribute {
                     name: "z"
                     value: 0
                 }
 
-                // middle
+                // middle point
                 PathLine {
                     x: cardPathView.width / 2
                     y: cardPathView.height / 2
                 }
                 PathAttribute {
                     name: "scale"
-                    value: 0.96
+                    value: 0.98
                 }
                 PathAttribute {
                     name: "opacity"
-                    value: 0.9
+                    value: 0.98
                 }
                 PathAttribute {
                     name: "z"
@@ -103,16 +89,16 @@ Item {
 
                 // terminus (1.0)
                 PathLine {
-                    x: cardPathView.width + 18
+                    x: cardPathView.width + 120
                     y: cardPathView.height / 2
                 }
                 PathAttribute {
                     name: "scale"
-                    value: 0.81 // 0.69
+                    value: 0.81
                 }
                 PathAttribute {
                     name: "opacity"
-                    value: 0.72
+                    value: 0.81
                 }
                 PathAttribute {
                     name: "z"
@@ -129,16 +115,15 @@ Item {
 
     MouseArea {
         id: bottomEdgeSwipe
+        enabled: batteryhomePage.enclick
         anchors.bottom: parent.bottom
-        anchors.left: parent.left
-        anchors.right: parent.right
+        width: parent.width
         height: 36
-        property real startY: 0
 
+        property real startY: 0
         onPressed: startY = mouseY
         onReleased: {
-            var delta = startY - mouseY
-            if (delta > 108) {
+            if (startY - mouseY > 81) {
                 toSettingPage()
             }
         }
@@ -146,16 +131,15 @@ Item {
 
     MouseArea {
         id: topEdgeSwipe
+        enabled: batteryhomePage.enclick
         anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
+        width: parent.width
         height: 36
-        property real startY: 0
 
+        property real startY: 0
         onPressed: startY = mouseY
         onReleased: {
-            var delta = mouseY - startY
-            if (delta > 108) {
+            if (mouseY - startY > 81) {
                 toDigitalHomePage()
             }
         }

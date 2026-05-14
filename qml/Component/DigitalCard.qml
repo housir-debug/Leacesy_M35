@@ -5,9 +5,6 @@ import QtQuick.Layouts 1.15
 Item {
     id: root
 
-    implicitWidth: 280
-    implicitHeight: 400
-
     property bool enclick: true
     property bool channelOutput: false
 
@@ -27,6 +24,9 @@ Item {
     signal clicked
     signal pressAndHold
 
+    implicitWidth: 280
+    implicitHeight: 400
+
     //property real scaleFactor: 1.0
     property real scaleFactor: {
         if (width > 0 && height > 0) {
@@ -36,108 +36,99 @@ Item {
     }
     property bool pressed: false
     property bool longpressed: false
-    readonly property color colorBackground: "#1E1E2E"
-    readonly property color colorCardBorder: "#2B2B3C"
-    readonly property color colorGlow: "#4A6FA5"
-    readonly property color colorCv: "#1DBF75"
-    readonly property color colorCc: "#FF3D52"
-    readonly property color colorOv: "#E5C27D"
-    readonly property color textPrimary: "#FFFFFF"
-    readonly property color textSecondary: "#A0A0B0"
 
     Rectangle {
         id: card
-        radius: 32 * root.scaleFactor
         anchors.fill: parent
-        border.width: 2 * root.scaleFactor
-        border.color: root.channelOutput ? root.colorGlow : root.colorCardBorder
-        color: root.channelOutput ? "#353548" : "#181824"
+        radius: 36 * root.scaleFactor
+        border.width: 1.8 * root.scaleFactor
+        border.color: root.channelOutput ? "#4A6FA5" : "#2B2B3C"
+        color: root.channelOutput ? "#363648" : "#181824"
 
         Rectangle {
             width: parent.width * 0.7
-            height: 1 * root.scaleFactor
-            color: root.colorGlow
-            opacity: 0.4
+            height: 0.9 * root.scaleFactor
+            color: root.channelOutput ? "#6B8ABC" : "#404050"
             anchors.horizontalCenter: parent.horizontalCenter
+            anchors.topMargin: 8.1 * root.scaleFactor
             anchors.top: parent.top
-            anchors.topMargin: 8 * root.scaleFactor
         }
+
         Rectangle {
             width: parent.width * 0.7
-            height: 1 * root.scaleFactor
-            color: root.colorGlow
-            opacity: 0.4
+            height: 0.9 * root.scaleFactor
+            color: root.channelOutput ? "#6B8ABC" : "#404050"
             anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottomMargin: 8.1 * root.scaleFactor
             anchors.bottom: parent.bottom
-            anchors.bottomMargin: 8 * root.scaleFactor
         }
 
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 18 * root.scaleFactor
-            spacing: 16 * root.scaleFactor
+            spacing: 18 * root.scaleFactor
 
             Item {
                 Layout.fillWidth: true
-                Layout.preferredHeight: parent.height * 0.18
                 Layout.alignment: Qt.AlignTop
+                Layout.preferredHeight: parent.height * 0.18
 
                 Text {
                     id: channelText
-                    color: root.textPrimary
+                    color: "#E0E0E0"
                     font.bold: true
                     font.pixelSize: 36 * root.scaleFactor
                     anchors.centerIn: parent
                     text: root.channelName
-                    style: Text.Raised
-                    styleColor: "#000000"
+                    //opacity: 0.81
                 }
 
                 Rectangle {
                     id: channelDot
                     anchors {
                         verticalCenter: parent.verticalCenter
+                        rightMargin: 6 * root.scaleFactor
                         right: parent.right
                     }
+
+                    radius: width / 2
                     width: 36 * root.scaleFactor
                     height: 36 * root.scaleFactor
-                    radius: width / 2
-                    color: root.channelOutput ? "#1AF080" : "#3A3A4E"
-                    border.width: 1 * root.scaleFactor
-                    border.color: "#000000"
-
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: parent.width + 4 * root.scaleFactor
-                        height: parent.height + 4 * root.scaleFactor
-                        radius: width / 2
-                        color: "transparent"
-                        border.width: 1 * root.scaleFactor
-                        border.color: root.channelOutput ? root.colorGlow : "transparent"
-                        opacity: 0.6
-                    }
+                    color: root.channelOutput ? "#1AF080" : "#6A6A7E"
+                    border.width: 1.2 * root.scaleFactor
+                    border.color: "#363636"
                 }
             }
 
             Rectangle {
                 id: measurementCard
-                radius: 16 * root.scaleFactor
-                color: "#080810"
-                border.width: 1.2 * root.scaleFactor
-                border.color: "#3A3A4E"
                 Layout.fillWidth: true
                 Layout.preferredHeight: parent.height * 0.4
+
+                color: "#080810"
+                border.color: "#3A3A4E"
+                border.width: 1.2 * root.scaleFactor
+                radius: 18 * root.scaleFactor
 
                 gradient: Gradient {
                     orientation: Gradient.Vertical
                     GradientStop {
                         position: 0.0
-                        color: "#14141E"
+                        color: "#181824"
                     }
                     GradientStop {
                         position: 1.0
-                        color: "#0A0A12"
+                        color: "#090918"
                     }
+                }
+
+                Rectangle {
+                    color: "#404050"
+                    width: parent.width * 0.81
+                    height: 0.9 * root.scaleFactor
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottomMargin: 6.6 * root.scaleFactor
+                    anchors.bottom: parent.bottom
                 }
 
                 ColumnLayout {
@@ -146,35 +137,34 @@ Item {
 
                     Text {
                         id: voltageText
-                        color: root.colorCv
-                        font.bold: true
-                        font.pixelSize: 36 * root.scaleFactor
+                        color: "#0DAF65"
                         Layout.alignment: Qt.AlignHCenter
                         text: root.voltage.toFixed(4) + " " + root.voltageUnit
-                        style: Text.Raised
-                        styleColor: "#000000"
-                    }
-
-                    Text {
-                        id: currentText
-                        color: root.colorCc
+                        font.pixelSize: 36 * root.scaleFactor
                         font.bold: true
-                        font.pixelSize: (root.currentUnit == "mA" ? 30 : 36) * root.scaleFactor
-                        Layout.alignment: Qt.AlignHCenter
-                        text: root.current.toFixed(4) + " " + root.currentUnit
-                        style: Text.Raised
-                        styleColor: "#000000"
                     }
-                }
 
-                Rectangle {
-                    width: parent.width - 20 * root.scaleFactor
-                    height: 2 * root.scaleFactor
-                    color: root.colorGlow
-                    opacity: 0.3
-                    anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 5 * root.scaleFactor
-                    anchors.horizontalCenter: parent.horizontalCenter
+                    Row {
+                        spacing: 6 * root.scaleFactor
+                        Layout.alignment: Qt.AlignHCenter
+
+                        Text {
+                            id: currentText
+                            color: "#DF1D32"
+                            text: root.current.toFixed(4)
+                            font.pixelSize: 36 * root.scaleFactor
+                            font.bold: true
+                        }
+
+                        Text {
+                            id: unitText
+                            color: "#DF1D32"
+                            text: root.currentUnit
+                            anchors.baseline: currentText.baseline
+                            font.pixelSize: (root.currentUnit == "mA" ? 18 : 36) * root.scaleFactor
+                            font.bold: true
+                        }
+                    }
                 }
             }
 
@@ -191,34 +181,33 @@ Item {
 
                     Text {
                         text: "CV"
-                        color: root.colorCv
+                        color: "#1DBF75"
                         font.bold: true
-                        font.pixelSize: 20 * root.scaleFactor
-                        style: Text.Raised
-                        anchors.left: parent.left
+                        font.pixelSize: 18 * root.scaleFactor
                         anchors.verticalCenter: parent.verticalCenter
-                        anchors.leftMargin: 3 * root.scaleFactor
+                        anchors.leftMargin: 6 * root.scaleFactor
+                        anchors.left: parent.left
                     }
 
                     Text {
-                        text: root.cvSetpoint.toFixed(3) + " V"
-                        color: root.textSecondary
-                        font.pixelSize: 15 * root.scaleFactor
-                        font.bold: root.cvModel ? true : false
+                        color: "#A0A0B0"
                         anchors.centerIn: parent
-                        anchors.verticalCenter: parent.verticalCenter
+                        text: root.cvSetpoint.toFixed(3) + " V"
+                        font.bold: root.cvModel ? true : false
+                        font.pixelSize: 18 * root.scaleFactor
                     }
 
                     Rectangle {
+                        radius: width / 2
+                        color: root.cvMode ? "#1DBF75" : "transparent"
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.rightMargin: 6 * root.scaleFactor
+                        anchors.right: parent.right
+
                         width: 22 * root.scaleFactor
                         height: 22 * root.scaleFactor
-                        radius: width / 2
-                        border.width: 2 * root.scaleFactor
-                        border.color: root.colorCv
-                        color: root.cvMode ? root.colorCv : "transparent"
-                        anchors.right: parent.right
-                        anchors.rightMargin: 3 * root.scaleFactor
-                        anchors.verticalCenter: parent.verticalCenter
+                        border.width: 1.8 * root.scaleFactor
+                        border.color: "#1DBF75"
                     }
                 }
 
@@ -229,34 +218,33 @@ Item {
 
                     Text {
                         text: "CC"
-                        color: root.colorCc
+                        color: "#FF3D52"
                         font.bold: true
-                        font.pixelSize: 20 * root.scaleFactor
-                        style: Text.Raised
-                        anchors.left: parent.left
+                        font.pixelSize: 18 * root.scaleFactor
                         anchors.verticalCenter: parent.verticalCenter
-                        anchors.leftMargin: 3 * root.scaleFactor
+                        anchors.leftMargin: 6 * root.scaleFactor
+                        anchors.left: parent.left
                     }
 
                     Text {
-                        text: root.ccSetpoint.toFixed(3) + " A"
-                        color: root.textSecondary
-                        font.pixelSize: 15 * root.scaleFactor
-                        font.bold: root.ccModel ? true : false
+                        color: "#A0A0B0"
                         anchors.centerIn: parent
-                        anchors.verticalCenter: parent.verticalCenter
+                        text: root.ccSetpoint.toFixed(3) + " A"
+                        font.bold: root.ccModel ? true : false
+                        font.pixelSize: 18 * root.scaleFactor
                     }
 
                     Rectangle {
+                        radius: width / 2
+                        color: root.ccMode ? "#FF3D52" : "transparent"
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.rightMargin: 6 * root.scaleFactor
+                        anchors.right: parent.right
+
                         width: 22 * root.scaleFactor
                         height: 22 * root.scaleFactor
-                        radius: width / 2
-                        border.width: 2 * root.scaleFactor
-                        border.color: root.colorCc
-                        color: root.ccMode ? root.colorCc : "transparent"
-                        anchors.right: parent.right
-                        anchors.rightMargin: 3 * root.scaleFactor
-                        anchors.verticalCenter: parent.verticalCenter
+                        border.width: 1.8 * root.scaleFactor
+                        border.color: "#FF3D52"
                     }
                 }
 
@@ -267,34 +255,33 @@ Item {
 
                     Text {
                         text: "OVP"
-                        color: root.colorOv
+                        color: "#E5C27D"
                         font.bold: true
-                        font.pixelSize: 20 * root.scaleFactor
-                        style: Text.Raised
-                        anchors.left: parent.left
+                        font.pixelSize: 18 * root.scaleFactor
                         anchors.verticalCenter: parent.verticalCenter
-                        anchors.leftMargin: 3 * root.scaleFactor
+                        anchors.leftMargin: 6 * root.scaleFactor
+                        anchors.left: parent.left
                     }
 
                     Text {
-                        text: root.ovpSetpoint.toFixed(3) + " V"
-                        color: root.textSecondary
-                        font.pixelSize: 15 * root.scaleFactor
-                        font.bold: root.ovpModel ? true : false
+                        color: "#A0A0B0"
                         anchors.centerIn: parent
-                        anchors.verticalCenter: parent.verticalCenter
+                        text: root.ovpSetpoint.toFixed(3) + " V"
+                        font.bold: root.ovpModel ? true : false
+                        font.pixelSize: 18 * root.scaleFactor
                     }
 
                     Rectangle {
+                        radius: width / 2
+                        color: root.ovpMode ? "#E5C27D" : "transparent"
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.rightMargin: 6 * root.scaleFactor
+                        anchors.right: parent.right
+
                         width: 22 * root.scaleFactor
                         height: 22 * root.scaleFactor
-                        radius: width / 2
-                        border.width: 2 * root.scaleFactor
-                        border.color: root.colorOv
-                        color: root.ovpMode ? root.colorOv : "transparent"
-                        anchors.right: parent.right
-                        anchors.rightMargin: 3 * root.scaleFactor
-                        anchors.verticalCenter: parent.verticalCenter
+                        border.width: 1.8 * root.scaleFactor
+                        border.color: "#E5C27D"
                     }
                 }
             }
@@ -309,7 +296,7 @@ Item {
             id: mouseArea
             anchors.fill: parent
             enabled: root.enclick
-            pressAndHoldInterval: 1000
+            pressAndHoldInterval: 600 // 0.6s
 
             onPressed: {
                 root.pressed = true
@@ -346,7 +333,7 @@ Item {
         property: "scale"
         from: 1.0
         to: 0.96
-        duration: 100
+        duration: 110
         easing.type: Easing.OutCubic
     }
 
@@ -356,7 +343,7 @@ Item {
         property: "scale"
         from: 0.96
         to: 1.0
-        duration: 120
+        duration: 110
         easing.type: Easing.OutElastic
         easing.amplitude: 0.2
         easing.period: 0.4

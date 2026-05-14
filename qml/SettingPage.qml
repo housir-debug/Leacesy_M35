@@ -10,8 +10,9 @@ Item {
     signal toDigitalHomePage
     signal toBatteryHomePage
 
+    property bool enclick: true
     property int currentsetmodel: 0
-    property color backgroundcolor: "#0d1b2a" //"#0a0f1a"
+    property color backgroundcolor: "#0d1b2a"
 
     Rectangle {
         anchors.fill: parent
@@ -19,7 +20,7 @@ Item {
 
         RowLayout {
             anchors.fill: parent
-            anchors.margins: 7.2
+            anchors.margins: 6.6
 
             GridLayout {
                 Layout.fillWidth: true
@@ -38,7 +39,7 @@ Item {
                     subText: Uart_bridge.IPaddress
                     pressed: settingPage.currentsetmodel === 1
 
-                    enclick: !Uart_bridge.isRemote
+                    enclick: settingPage.enclick
                     onClicked: {
                         settingPage.currentsetmodel = 1
                         keyinput.text = subText
@@ -52,7 +53,7 @@ Item {
                     subText: Uart_bridge.GPIBid
                     pressed: settingPage.currentsetmodel === 2
 
-                    enclick: !Uart_bridge.isRemote
+                    enclick: settingPage.enclick
                     onClicked: {
                         settingPage.currentsetmodel = 2
                         keyinput.text = subText
@@ -66,7 +67,7 @@ Item {
                     subText: Uart_bridge.CANid
                     pressed: settingPage.currentsetmodel === 3
 
-                    enclick: !Uart_bridge.isRemote
+                    enclick: settingPage.enclick
                     onClicked: {
                         settingPage.currentsetmodel = 3
                         keyinput.text = subText
@@ -77,11 +78,11 @@ Item {
                     Layout.fillWidth: true
                     property bool output: false
 
-                    mainText: "A-OutPut"
+                    mainText: "All"
                     subText: output ? "OFF" : "ON"
                     subTextColor: output ? "#B06A6A" : "#8CAF6A"
 
-                    enclick: !Uart_bridge.isRemote
+                    enclick: settingPage.enclick
                     onClicked: {
                         output = !output
                         Uart_bridge.setChannel_Output(0, output)
@@ -95,7 +96,7 @@ Item {
                     subText: Uart_bridge.SM
                     pressed: settingPage.currentsetmodel === 5
 
-                    enclick: !Uart_bridge.isRemote
+                    enclick: settingPage.enclick
                     onClicked: {
                         settingPage.currentsetmodel = 5
                         keyinput.text = subText
@@ -106,11 +107,11 @@ Item {
                     Layout.fillHeight: true
                     Layout.fillWidth: true
 
-                    mainText: "A-InitSOC"
+                    mainText: "All-SOC"
                     subText: "100.00 %"
                     pressed: settingPage.currentsetmodel === 6
 
-                    enclick: !Uart_bridge.isRemote
+                    enclick: settingPage.enclick
                     onClicked: {
                         settingPage.currentsetmodel = 6
                         keyinput.text = subText
@@ -121,11 +122,11 @@ Item {
                     Layout.fillHeight: true
                     Layout.fillWidth: true
 
-                    mainText: "A-Capacity"
-                    subText: "00.00 Ah"
+                    mainText: "All-Ah"
+                    subText: "0.00"
                     pressed: settingPage.currentsetmodel === 7
 
-                    enclick: !Uart_bridge.isRemote
+                    enclick: settingPage.enclick
                     onClicked: {
                         settingPage.currentsetmodel = 7
                         keyinput.text = subText
@@ -135,11 +136,11 @@ Item {
                     Layout.fillHeight: true
                     Layout.fillWidth: true
 
-                    mainText: "A-Model"
-                    subText: "Model-1"
+                    mainText: "All-Model"
+                    subText: "Lithium"
                     subTextColor: "#6AA8B0"
 
-                    enclick: !Uart_bridge.isRemote
+                    enclick: settingPage.enclick
                     onClicked: {
                         subText = Uart_bridge.setChannel_BatteryModel(0)
                     }
@@ -150,11 +151,11 @@ Item {
                     Layout.fillHeight: true
                     Layout.fillWidth: true
 
-                    mainText: "A-CV"
+                    mainText: "All-CV"
                     subText: "0.000 V"
                     pressed: settingPage.currentsetmodel === 9
 
-                    enclick: !Uart_bridge.isRemote
+                    enclick: settingPage.enclick
                     onClicked: {
                         settingPage.currentsetmodel = 9
                         keyinput.text = subText
@@ -165,11 +166,11 @@ Item {
                     Layout.fillHeight: true
                     Layout.fillWidth: true
 
-                    mainText: "A-CC"
-                    subText: "1.000 A"
+                    mainText: "All-CC"
+                    subText: "0.000 A"
                     pressed: settingPage.currentsetmodel === 10
 
-                    enclick: !Uart_bridge.isRemote
+                    enclick: settingPage.enclick
                     onClicked: {
                         settingPage.currentsetmodel = 10
                         keyinput.text = subText
@@ -180,11 +181,11 @@ Item {
                     Layout.fillHeight: true
                     Layout.fillWidth: true
 
-                    mainText: "A-OVP"
-                    subText: "8.000 V"
+                    mainText: "All-OVP"
+                    subText: "0.000 V"
                     pressed: settingPage.currentsetmodel === 11
 
-                    enclick: !Uart_bridge.isRemote
+                    enclick: settingPage.enclick
                     onClicked: {
                         settingPage.currentsetmodel = 11
                         keyinput.text = subText
@@ -194,11 +195,11 @@ Item {
                     Layout.fillHeight: true
                     Layout.fillWidth: true
 
-                    mainText: "A-I-Unit"
+                    mainText: "All-Unit"
                     subText: "A"
                     subTextColor: "#9A6AB0"
 
-                    enclick: !Uart_bridge.isRemote
+                    enclick: settingPage.enclick
                     onClicked: {
                         subText = Uart_bridge.setChannel_CurrentUnit(0)
                     }
@@ -207,7 +208,7 @@ Item {
 
             KeyinputBox {
                 id: keyinput
-                enclick: !Uart_bridge.isRemote
+                enclick: settingPage.enclick
                 Layout.preferredWidth: 30
                 Layout.fillHeight: true
                 Layout.fillWidth: true
@@ -232,7 +233,7 @@ Item {
                         break
                     case 6:
                         // A-InitSOC
-                        initsoc.subText = value
+                        initsoc.subText = value + " %"
                         Uart_bridge.setChannel_InitSOC(0, value)
                         break
                     case 7:
@@ -242,17 +243,17 @@ Item {
                         break
                     case 9:
                         // A-CV
-                        cv.subText = value
+                        cv.subText = value + " V"
                         Uart_bridge.setChannel_Setstatus(0, 0, value)
                         break
                     case 10:
                         // A-CC
-                        cc.subText = value
+                        cc.subText = value + " A"
                         Uart_bridge.setChannel_Setstatus(0, 1, value)
                         break
                     case 11:
                         // A-OVP
-                        ovp.subText = value
+                        ovp.subText = value + " V"
                         Uart_bridge.setChannel_Setstatus(0, 3, value)
                         break
                     default:
@@ -266,16 +267,15 @@ Item {
 
     MouseArea {
         id: bottomEdgeSwipe
+        enabled: settingPage.enclick
         anchors.bottom: parent.bottom
-        anchors.left: parent.left
-        anchors.right: parent.right
+        width: parent.width
         height: 36
-        property real startY: 0
 
+        property real startY: 0
         onPressed: startY = mouseY
         onReleased: {
-            var delta = startY - mouseY
-            if (delta > 108) {
+            if (startY - mouseY > 81) {
                 toDigitalHomePage()
             }
         }
@@ -283,16 +283,15 @@ Item {
 
     MouseArea {
         id: topEdgeSwipe
+        enabled: settingPage.enclick
         anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
+        width: parent.width
         height: 36
-        property real startY: 0
 
+        property real startY: 0
         onPressed: startY = mouseY
         onReleased: {
-            var delta = mouseY - startY
-            if (delta > 108) {
+            if (mouseY - startY > 81) {
                 toBatteryHomePage()
             }
         }

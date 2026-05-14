@@ -347,6 +347,16 @@ void GuiBridge::refresh_interfaces(const QString& ip, const QString& netmask){
 
 // =========================== Q_INVOKABLE ===========================
 
+QVariantList GuiBridge::getActiveChannels()
+{
+    QVariantList channels;
+    #define CHANNEL(n) if(mCH##n##_sv == "0.0.0.0"){channels.append(n);}
+    CHANNEL_COUNT
+    #undef CHANNEL
+
+    return channels;
+}
+
 void GuiBridge::setChannel_Output(int channel,bool switchs){
     quint8 func = switchs ? 0x01 : 0x00;
     qCDebug(uart_bridge) << "setChannel_Output - channel:" << channel << "switch:" << switchs;

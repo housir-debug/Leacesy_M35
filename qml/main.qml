@@ -15,7 +15,7 @@ ApplicationWindow {
     visible: true
 
     property int homePageModel: 0
-    property int functionChannel: 0
+    property int functionChannel: 1
 
     StackLayout {
         id: stackLayout
@@ -25,6 +25,7 @@ ApplicationWindow {
         // Index: 0
         DigitalHomePage {
             id: digitalmain_page
+            enclick: Uart_bridge.reface === 0
             backgroundcolor: mainWindow.color
 
             onToBatteryHomePage: {
@@ -47,6 +48,7 @@ ApplicationWindow {
         // Index: 1
         BatteryHomePage {
             id: batterymain_page
+            enclick: Uart_bridge.reface === 0
             backgroundcolor: mainWindow.color
 
             onToDigitalHomePage: {
@@ -69,6 +71,7 @@ ApplicationWindow {
         // Index: 2
         SettingPage {
             id: setting_page
+            enclick: Uart_bridge.reface === 0
             backgroundcolor: mainWindow.color
 
             onToDigitalHomePage: {
@@ -83,6 +86,7 @@ ApplicationWindow {
         // Index: 3
         FunctionPage {
             id: function_page
+            enclick: Uart_bridge.reface === 0
             backgroundcolor: mainWindow.color
             initialChannel: mainWindow.functionChannel
 
@@ -119,6 +123,8 @@ ApplicationWindow {
             anchors.top: logoImage.bottom
             font.pixelSize: 18
             color: "#FFD700" //yellow or "red"
+            styleColor: "#000000"
+            style: Text.Raised
             font.bold: true
             opacity: 0.81
         }

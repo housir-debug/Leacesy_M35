@@ -7,8 +7,8 @@ ApplicationWindow {
     id: mainWindow
     //width: Screen.desktopAvailableWidth
     //height: Screen.desktopAvailableHeight
-    width: Screen.desktopAvailableHeight
-    height: Screen.desktopAvailableWidth
+    width: 1440
+    height: 400
     visibility: "FullScreen"
     visible: true
 
@@ -16,8 +16,22 @@ ApplicationWindow {
         anchors.fill: parent
         color: "#0d1b2a"
 
+        Rectangle {
+            width: 9
+            height: 9
+            radius: height / 2
+            //color: "#0000FF"
+            anchors.centerIn: parent
+        }
+
 
         /*DigitalCard {
+            anchors.centerIn: parent
+            scale: 1
+        }*/
+
+
+        /*BatteryCard {
             anchors.centerIn: parent
             scale: 1
         }*/
@@ -39,9 +53,11 @@ ApplicationWindow {
             anchors.centerIn: parent
             scale: 1
         }*/
-        BatteryCard {
+
+
+        /*Unlock {
             anchors.centerIn: parent
             scale: 1
-        }
+        }*/
     }
 }

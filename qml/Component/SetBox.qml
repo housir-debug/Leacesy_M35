@@ -6,17 +6,17 @@ import QtGraphicalEffects 1.15
 Item {
     id: root
 
-    implicitWidth: 80
-    implicitHeight: 80
-
     property bool enclick: true
     property string mainText: "main"
     property string subText: "sub"
-    property color mainTextColor: "#E0E0E0"
+    property color mainTextColor: "#C0C0C0"
     property color subTextColor: "#8A9FB0"
 
     signal clicked
     signal pressAndHold
+
+    implicitWidth: 90
+    implicitHeight: 90
 
     //property real scaleFactor: 1.0
     property real scaleFactor: {
@@ -27,79 +27,40 @@ Item {
     }
     property bool pressed: false
     property bool longpressed: false
-    readonly property color colorBackground: "#0A1929"
-    readonly property color colorBackgroundPressed: "#1E3A5F"
-    readonly property color colorBorder: "#1E3A5F"
-    readonly property color colorBorderPressed: "#4A9EFF"
-    readonly property color colorGlow: "#4A9EFF"
 
     Rectangle {
         anchors.fill: parent
         radius: 18 * root.scaleFactor
-        border.width: 1.2 * root.scaleFactor
-        border.color: root.pressed ? root.colorBorderPressed : root.colorBorder
-        color: root.pressed ? root.colorBackgroundPressed : root.colorBackground
+        border.width: 1.8 * root.scaleFactor
+        border.color: root.pressed ? "#4A9EFF" : "#2E4A6F"
+        color: root.pressed ? "#1E3A5F" : "#0A1929"
 
         Rectangle {
-            width: parent.width
-            height: parent.height / 2
-            radius: parent.radius
+            anchors.fill: parent
+            radius: 18 * root.scaleFactor
             gradient: Gradient {
                 GradientStop {
                     position: 0.0
-                    color: Qt.rgba(1, 1, 1, 0.15)
+                    color: Qt.rgba(1, 1, 1, 0.12)
                 }
                 GradientStop {
-                    position: 0.8
-                    color: "transparent"
-                }
-            }
-        }
-
-        Rectangle {
-            width: parent.width
-            height: parent.height / 2
-            radius: parent.radius
-            gradient: Gradient {
-                GradientStop {
-                    position: 0.2
+                    position: 0.5
                     color: "transparent"
                 }
                 GradientStop {
                     position: 1.0
-                    color: Qt.rgba(0, 0, 0, 0.2)
+                    color: Qt.rgba(0, 0, 0, 0.18)
                 }
             }
-            anchors.bottom: parent.bottom
-        }
-
-        Rectangle {
-            anchors.fill: parent
-            radius: parent.radius - 1.8
-            color: "transparent"
-            border.width: 1.8 * root.scaleFactor
-            border.color: Qt.rgba(root.colorGlow.r, root.colorGlow.g,
-                                  root.colorGlow.b, 0.15)
         }
 
         Rectangle {
             width: parent.width * 0.6
-            height: 2 * root.scaleFactor
-            color: root.colorGlow
-            opacity: root.pressed ? 0.5 : 0.2
+            height: 1.8 * root.scaleFactor
+            color: root.pressed ? "#2E4A6F" : "#092754"
             anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottomMargin: 6.9 * root.scaleFactor
             anchors.bottom: parent.bottom
-            anchors.bottomMargin: 6 * root.scaleFactor
-
-            layer {
-                enabled: root.pressed
-                effect: DropShadow {
-                    transparentBorder: true
-                    color: root.colorGlow
-                    radius: 8 * root.scaleFactor
-                    samples: 16 * root.scaleFactor
-                }
-            }
         }
 
         Column {
@@ -108,10 +69,11 @@ Item {
 
             Text {
                 id: mainLabel
-                color: root.mainTextColor
-                anchors.horizontalCenter: parent.horizontalCenter
-                visible: root.mainText !== ""
                 text: root.mainText
+                color: root.mainTextColor
+                visible: root.mainText !== ""
+                anchors.horizontalCenter: parent.horizontalCenter
+
                 font.bold: true
                 font.pixelSize: {
                     var baseSize = 18 * root.scaleFactor
@@ -124,17 +86,16 @@ Item {
                     else
                         return baseSize * 0.4
                 }
-                style: Text.Raised
-                styleColor: Qt.rgba(0, 0, 0, 0.3)
             }
 
             Text {
                 id: subLabel
-                color: root.subTextColor
-                anchors.horizontalCenter: parent.horizontalCenter
-                visible: root.subText !== ""
                 text: root.subText
-                font.bold: true
+                color: root.subTextColor
+                visible: root.subText !== ""
+                anchors.horizontalCenter: parent.horizontalCenter
+
+                //font.bold: true
                 font.pixelSize: {
                     var baseSize = 18 * root.scaleFactor
                     if (root.subText.length <= 9)
@@ -146,9 +107,6 @@ Item {
                     else
                         return baseSize * 0.4
                 }
-
-                style: Text.Raised
-                styleColor: Qt.rgba(0, 0, 0, 0.3)
             }
         }
 
@@ -156,7 +114,7 @@ Item {
             id: mouseArea
             anchors.fill: parent
             enabled: root.enclick
-            pressAndHoldInterval: 1000
+            pressAndHoldInterval: 600 // 0.6s
 
             onPressed: {
                 root.pressed = true
@@ -193,7 +151,7 @@ Item {
         property: "scale"
         from: 1.0
         to: 0.96
-        duration: 100
+        duration: 110
         easing.type: Easing.OutCubic
     }
 
@@ -203,9 +161,16 @@ Item {
         property: "scale"
         from: 0.96
         to: 1.0
-        duration: 150
+        duration: 110
         easing.type: Easing.OutElastic
         easing.amplitude: 0.2
         easing.period: 0.4
     }
 }
+
+/*##^##
+Designer {
+    D{i:0;autoSize:true;height:90;width:90}
+}
+##^##*/
+

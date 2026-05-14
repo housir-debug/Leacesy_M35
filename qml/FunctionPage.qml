@@ -9,9 +9,10 @@ Item {
 
     signal backRequested
 
-    property int initialChannel: 0
+    property bool enclick: true
+    property int initialChannel: 1
     property int currentsetmodel: 0
-    property color backgroundcolor: "#0d1b2a" //"#0a0f1a"
+    property color backgroundcolor: "#0d1b2a"
 
     Rectangle {
         anchors.fill: parent
@@ -19,7 +20,7 @@ Item {
 
         RowLayout {
             anchors.fill: parent
-            anchors.margins: 7.2
+            anchors.margins: 6.6
 
             ColumnLayout {
                 Layout.fillHeight: true
@@ -97,7 +98,7 @@ Item {
                         color: "#e0e0e0"
                         font.pixelSize: 18
                         anchors.centerIn: parent
-                        text: "V: " + Uart_bridge["ch" + (functionPage.initialChannel + 1) + "_sv"]
+                        text: "V: " + Uart_bridge["ch" + functionPage.initialChannel + "_sv"]
                     }
                 }
 
@@ -122,7 +123,7 @@ Item {
                         color: "#e0e0e0"
                         font.pixelSize: 18
                         anchors.centerIn: parent
-                        text: "V: " + Uart_bridge["ch" + (functionPage.initialChannel + 1) + "_hv"]
+                        text: "V: " + Uart_bridge["ch" + functionPage.initialChannel + "_hv"]
                     }
                 }
             }
@@ -164,10 +165,7 @@ Item {
                             }
 
                             Rectangle {
-                                anchors.top: parent.top
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                height: parent.height / 2
+                                anchors.fill: parent
                                 radius: parent.radius
 
                                 gradient: Gradient {
@@ -175,42 +173,13 @@ Item {
                                         position: 0.0
                                         color: Qt.rgba(
                                                    1, 1, 1,
-                                                   indicator.isActive ? 0.2 : 0.08)
+                                                   indicator.isActive ? 0.18 : 0.09)
                                     }
                                     GradientStop {
                                         position: 1.0
                                         color: "transparent"
                                     }
                                 }
-                            }
-                            Rectangle {
-                                anchors.bottom: parent.bottom
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                height: parent.height / 2
-                                radius: parent.radius
-
-                                gradient: Gradient {
-                                    GradientStop {
-                                        position: 0.0
-                                        color: "transparent"
-                                    }
-                                    GradientStop {
-                                        position: 1.0
-                                        color: Qt.rgba(0, 0, 0, 0.3)
-                                    }
-                                }
-                            }
-
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: parent.radius - 1.5
-                                color: "transparent"
-                                border.width: 1.0
-                                border.color: Qt.rgba(
-                                                  "#1E5799".r, "#1E5799".g,
-                                                  "#1E5799".b,
-                                                  indicator.isActive ? 0.3 : 0.1)
                             }
                         }
                     }
@@ -223,38 +192,24 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 99
 
-                enclick: !Uart_bridge.isRemote
-                channelOutput: functionPage.initialChannel
-                               !== 0 ? Uart_bridge["ch" + functionPage.initialChannel
-                                                   + "_isOutput"] : false
-                channelName: functionPage.initialChannel
-                             === 0 ? "CH*" : "CH" + functionPage.initialChannel
+                enclick: functionPage.enclick
+                channelName: "CH" + functionPage.initialChannel
+                channelOutput: Uart_bridge["ch" + functionPage.initialChannel + "_isOutput"]
 
-                soc: functionPage.initialChannel
-                     !== 0 ? Uart_bridge["ch" + functionPage.initialChannel + "_CurrentSOC"] : 100.0
-                voltage: functionPage.initialChannel
-                         !== 0 ? Uart_bridge["ch" + functionPage.initialChannel + "_Voltage"] : 0.0
+                voltage: Uart_bridge["ch" + functionPage.initialChannel + "_Voltage"]
                 voltageUnit: "V"
-                current: functionPage.initialChannel
-                         !== 0 ? Uart_bridge["ch" + functionPage.initialChannel + "_Current"] : 0.0
-                currentUnit: functionPage.initialChannel
-                             !== 0 ? Uart_bridge["ch" + functionPage.initialChannel
-                                                 + "_CurrentUnit"] : "A"
+                current: Uart_bridge["ch" + functionPage.initialChannel + "_Current"]
+                currentUnit: Uart_bridge["ch" + functionPage.initialChannel + "_CurrentUnit"]
+                soc: Uart_bridge["ch" + functionPage.initialChannel + "_CurrentSOC"]
 
                 onDigitalclicked: {
                     Uart_bridge.setChannel_Output(functionPage.initialChannel,
                                                   !channelOutput)
-                    if (functionPage.initialChannel === 0) {
-                        channelOutput = !channelOutput
-                    }
                 }
 
                 onBatteryclicked: {
                     Uart_bridge.setChannel_BatteryOutput(
                                 functionPage.initialChannel, !channelOutput)
-                    if (functionPage.initialChannel === 0) {
-                        channelOutput = !channelOutput
-                    }
                 }
             }
 
@@ -273,10 +228,10 @@ Item {
                     Layout.fillWidth: true
 
                     mainText: "CV"
-                    subText: Uart_bridge["ch" + functionPage.initialChannel + "_cv"] + ""
+                    subText: Uart_bridge["ch" + functionPage.initialChannel + "_cv"] + " V"
                     pressed: functionPage.currentsetmodel === 1
 
-                    enclick: !Uart_bridge.isRemote
+                    enclick: functionPage.enclick
                     onClicked: {
                         functionPage.currentsetmodel = 1
                         keyinput.text = subText
@@ -287,11 +242,11 @@ Item {
                     Layout.fillHeight: true
                     Layout.fillWidth: true
 
-                    mainText: "InitSOC"
-                    subText: Uart_bridge["ch" + functionPage.initialChannel + "_currentSOC"] + ""
+                    mainText: "SOC"
+                    subText: Uart_bridge["ch" + functionPage.initialChannel + "_CurrentSOC"] + " %"
                     pressed: functionPage.currentsetmodel === 2
 
-                    enclick: !Uart_bridge.isRemote
+                    enclick: functionPage.enclick
                     onClicked: {
                         functionPage.currentsetmodel = 2
                         keyinput.text = subText
@@ -303,10 +258,10 @@ Item {
                     Layout.fillWidth: true
 
                     mainText: "CC"
-                    subText: Uart_bridge["ch" + functionPage.initialChannel + "_cc"] + ""
+                    subText: Uart_bridge["ch" + functionPage.initialChannel + "_cc"] + " A"
                     pressed: functionPage.currentsetmodel === 3
 
-                    enclick: !Uart_bridge.isRemote
+                    enclick: functionPage.enclick
                     onClicked: {
                         functionPage.currentsetmodel = 3
                         keyinput.text = subText
@@ -317,11 +272,11 @@ Item {
                     Layout.fillHeight: true
                     Layout.fillWidth: true
 
-                    mainText: "Capacity"
+                    mainText: "Ah"
                     subText: Uart_bridge["ch" + functionPage.initialChannel + "_CapacityAH"] + ""
                     pressed: functionPage.currentsetmodel === 4
 
-                    enclick: !Uart_bridge.isRemote
+                    enclick: functionPage.enclick
                     onClicked: {
                         functionPage.currentsetmodel = 4
                         keyinput.text = subText
@@ -333,10 +288,10 @@ Item {
                     Layout.fillWidth: true
 
                     mainText: "OVP"
-                    subText: Uart_bridge["ch" + functionPage.initialChannel + "_ovp"] + ""
+                    subText: Uart_bridge["ch" + functionPage.initialChannel + "_ovp"] + " V"
                     pressed: functionPage.currentsetmodel === 5
 
-                    enclick: !Uart_bridge.isRemote
+                    enclick: functionPage.enclick
                     onClicked: {
                         functionPage.currentsetmodel = 5
                         keyinput.text = subText
@@ -347,10 +302,10 @@ Item {
                     Layout.fillWidth: true
 
                     mainText: "Model"
-                    subText: "Model-1"
+                    subText: Uart_bridge["ch" + functionPage.initialChannel + "_BatteryModel"]
                     subTextColor: "#6AA8B0"
 
-                    enclick: !Uart_bridge.isRemote
+                    enclick: functionPage.enclick
                     onClicked: {
                         subText = Uart_bridge.setChannel_BatteryModel(
                                     functionPage.initialChannel)
@@ -361,10 +316,10 @@ Item {
                     Layout.fillWidth: true
 
                     mainText: "Unit"
-                    subText: "A"
+                    subText: Uart_bridge["ch" + functionPage.initialChannel + "_CurrentUnit"]
                     subTextColor: "#9A6AB0"
 
-                    enclick: !Uart_bridge.isRemote
+                    enclick: functionPage.enclick
                     onClicked: {
                         subText = Uart_bridge.setChannel_CurrentUnit(
                                     functionPage.initialChannel)
@@ -379,7 +334,7 @@ Item {
                     subText: modeStatus ? "static" : "dynamic"
                     subTextColor: "#9A6AB0"
 
-                    enclick: !Uart_bridge.isRemote
+                    enclick: functionPage.enclick
                     onClicked: {
                         modeStatus = !modeStatus
                         Uart_bridge.setChannel_Batterymode(
@@ -393,7 +348,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.preferredWidth: 99
-                enclick: !Uart_bridge.isRemote
+                enclick: functionPage.enclick
 
                 onEntervalue: {
                     switch (settingPage.currentsetmodel) {
@@ -433,16 +388,15 @@ Item {
 
     MouseArea {
         id: bottomEdgeSwipe
+        enabled: functionPage.enclick
         anchors.bottom: parent.bottom
-        anchors.left: parent.left
-        anchors.right: parent.right
+        width: parent.width
         height: 36
-        property real startY: 0
 
+        property real startY: 0
         onPressed: startY = mouseY
         onReleased: {
-            var delta = startY - mouseY
-            if (delta > 108) {
+            if (startY - mouseY > 81) {
                 backRequested()
             }
         }
@@ -450,16 +404,15 @@ Item {
 
     MouseArea {
         id: topEdgeSwipe
+        enabled: functionPage.enclick
         anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
+        width: parent.width
         height: 36
-        property real startY: 0
 
+        property real startY: 0
         onPressed: startY = mouseY
         onReleased: {
-            var delta = mouseY - startY
-            if (delta > 108) {
+            if (mouseY - startY > 81) {
                 backRequested()
             }
         }

@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
         engine.addImportPath(QStringLiteral("qrc:/qml"));
         engine.rootContext()->setContextProperty("Uart_bridge", GuiBridge_share.get());
 
-        const QUrl url(QStringLiteral("qrc:/qml/main.qml"));   //main.qml   Component/test.qml
+        const QUrl url(QStringLiteral("qrc:/qml/Component/test.qml"));   //main.qml   Component/test.qml
         QObject::connect(&engine, &QQmlApplicationEngine::objectCreated, &app, [url](QObject *obj, const QUrl &objUrl) {
             if (!obj && url == objUrl){
                 qCWarning(application) << "Object not exist and the URL matches.!";
@@ -120,8 +120,10 @@ int main(int argc, char *argv[])
             QObject::connect(GuiBridge_share.get(),qml_signal[config.channel-1],channel.get(),&UartChannelManager::writeFrame,Qt::QueuedConnection);
             QObject::connect(Scpi_share.get(),scpi_signal[config.channel-1],channel.get(),&UartChannelManager::writeFrame,Qt::QueuedConnection);
 
-            QObject::connect(canServer.get(),can_signal[config.channel-1],channel.get(),&UartChannelManager::writeFrame,Qt::QueuedConnection);
-            QObject::connect(channel.get(),&UartChannelManager::to_CanServer,canServer.get(),&CanServerManager::sendFrame,Qt::QueuedConnection);
+            if (ConfigManager::s_enableCANServer){
+                QObject::connect(canServer.get(),can_signal[config.channel-1],channel.get(),&UartChannelManager::writeFrame,Qt::QueuedConnection);
+                QObject::connect(channel.get(),&UartChannelManager::to_CanServer,canServer.get(),&CanServerManager::sendFrame,Qt::QueuedConnection);
+            }
 
             Channel_list.push_back(std::move(channel)); // move set <channel> can move
         }
