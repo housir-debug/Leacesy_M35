@@ -11,23 +11,15 @@ Item {
     signal unlock
 
     implicitWidth: 360
-    implicitHeight: 90
+    implicitHeight: 81
 
     Rectangle {
         id: backgroundRect
-        anchors.fill: parent
         radius: height / 2
+        anchors.fill: parent
+        border.color: "#E0E0E0"
+        border.width: 6.4
         color: "#d4dbe0"
-
-        layer.enabled: true
-        layer.effect: DropShadow {
-            transparentBorder: true
-            color: Qt.rgba(0, 0, 0, 0.66)
-            radius: 18
-            samples: 16
-            horizontalOffset: 0
-            verticalOffset: 0
-        }
 
         Rectangle {
             anchors.fill: parent
@@ -35,12 +27,12 @@ Item {
 
             gradient: Gradient {
                 GradientStop {
-                    position: 0.0
+                    position: 0.18
                     color: Qt.rgba(0, 0, 0, 0.36)
                 }
                 GradientStop {
-                    position: 1.0
-                    color: Qt.rgba(255, 255, 255, 0.36)
+                    position: 0.81
+                    color: Qt.rgba(180, 180, 180, 0.36)
                 }
             }
         }
@@ -66,19 +58,10 @@ Item {
                 id: sliderRect
                 radius: width / 2
                 anchors.fill: parent
-                color: Qt.rgba(9, 9, 9, 0.18)
+                color: "transparent"
+
                 border.color: Qt.rgba(240, 240, 240, 0.6)
                 border.width: 1.8
-
-                layer.enabled: true
-                layer.effect: DropShadow {
-                    transparentBorder: true
-                    color: Qt.rgba(240, 240, 240, 0.9)
-                    radius: 18
-                    samples: 24
-                    horizontalOffset: 0
-                    verticalOffset: 0
-                }
 
                 Rectangle {
                     anchors.fill: parent
@@ -86,7 +69,7 @@ Item {
                     gradient: Gradient {
                         GradientStop {
                             position: 0.0
-                            color: Qt.rgba(0, 0, 0, 0.18)
+                            color: Qt.rgba(9, 9, 9, 0.18)
                         }
                         GradientStop {
                             position: 1.0
@@ -100,7 +83,7 @@ Item {
                 width: 24
                 height: 24
                 anchors.centerIn: parent
-                source: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1024 1024'><path fill='%237a858a' d='M800 960H224c-52.8 0-96-43.2-96-96V480c0-52.8 43.2-96 96-96h576c52.8 0 96 43.2 96 96v384c0 52.8-43.2 96-96 96zM224 448c-17.6 0-32 14.4-32 32v384c0 17.6 14.4 32 32 32h576c17.6 0 32-14.4 32-32V480c0-17.6-14.4-32-32-32H224z m528-32c-17.6 0-32-14.4-32-32V272c0-115.2-92.8-208-208-208s-208 92.8-208 208v112c0 17.6-14.4 32-32 32s-32-14.4-32-32V272C240 121.6 361.6 0 512 0s272 121.6 272 272v112c0 17.6-14.4 32-32 32z'/></svg>"
+                source: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1024 1024'><path fill='%237a858a' stroke='%237a858a' stroke-width='36' d='M800 960H224c-52.8 0-96-43.2-96-96V480c0-52.8 43.2-96 96-96h576c52.8 0 96 43.2 96 96v384c0 52.8-43.2 96-96 96zM224 448c-17.6 0-32 14.4-32 32v384c0 17.6 14.4 32 32 32h576c17.6 0 32-14.4 32-32V480c0-17.6-14.4-32-32-32H224z m528-32c-17.6 0-32-14.4-32-32V272c0-115.2-92.8-208-208-208s-208 92.8-208 208v112c0 17.6-14.4 32-32 32s-32-14.4-32-32V272C240 121.6 361.6 0 512 0s272 121.6 272 272v112c0 17.6-14.4 32-32 32z'/></svg>"
                 fillMode: Image.PreserveAspectFit
             }
         }
@@ -135,3 +118,10 @@ Item {
         }
     }
 }
+
+/*##^##
+Designer {
+    D{i:0;formeditorColor:"#ffffff"}
+}
+##^##*/
+
