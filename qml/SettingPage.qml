@@ -37,7 +37,7 @@ Item {
 
                     mainText: "LAN-IP"
                     subText: Uart_bridge.IPaddress
-                    pressed: settingPage.currentsetmodel === 1
+                    selected: settingPage.currentsetmodel === 1
 
                     enclick: settingPage.enclick
                     onClicked: {
@@ -51,7 +51,7 @@ Item {
 
                     mainText: "GPIB-ID"
                     subText: Uart_bridge.GPIBid
-                    pressed: settingPage.currentsetmodel === 2
+                    selected: settingPage.currentsetmodel === 2
 
                     enclick: settingPage.enclick
                     onClicked: {
@@ -65,7 +65,7 @@ Item {
 
                     mainText: "CAN-ID"
                     subText: Uart_bridge.CANid
-                    pressed: settingPage.currentsetmodel === 3
+                    selected: settingPage.currentsetmodel === 3
 
                     enclick: settingPage.enclick
                     onClicked: {
@@ -76,15 +76,17 @@ Item {
                 SetBox {
                     Layout.fillHeight: true
                     Layout.fillWidth: true
-                    property bool output: false
 
                     mainText: "All"
+                    property bool output: false
                     subText: output ? "OFF" : "ON"
-                    subTextColor: output ? "#B06A6A" : "#8CAF6A"
+                    subTextColor: output ? "#C06A6A" : "#8CCF6A"
 
                     enclick: settingPage.enclick
                     onClicked: {
                         output = !output
+                        keyinput.text = ""
+                        settingPage.currentsetmodel = 4
                         Uart_bridge.setChannel_Output(0, output)
                     }
                 }
@@ -94,7 +96,7 @@ Item {
 
                     mainText: "LAN-SM"
                     subText: Uart_bridge.SM
-                    pressed: settingPage.currentsetmodel === 5
+                    selected: settingPage.currentsetmodel === 5
 
                     enclick: settingPage.enclick
                     onClicked: {
@@ -108,13 +110,14 @@ Item {
                     Layout.fillWidth: true
 
                     mainText: "All-SOC"
-                    subText: "100.00 %"
-                    pressed: settingPage.currentsetmodel === 6
+                    subText: text + " %"
+                    property string text: "100.00"
+                    selected: settingPage.currentsetmodel === 6
 
                     enclick: settingPage.enclick
                     onClicked: {
                         settingPage.currentsetmodel = 6
-                        keyinput.text = subText
+                        keyinput.text = text
                     }
                 }
                 SetBox {
@@ -122,14 +125,15 @@ Item {
                     Layout.fillHeight: true
                     Layout.fillWidth: true
 
-                    mainText: "All-Ah"
-                    subText: "0.00"
-                    pressed: settingPage.currentsetmodel === 7
+                    mainText: "All-Capacity"
+                    subText: text + " Ah"
+                    property string text: "0.00"
+                    selected: settingPage.currentsetmodel === 7
 
                     enclick: settingPage.enclick
                     onClicked: {
                         settingPage.currentsetmodel = 7
-                        keyinput.text = subText
+                        keyinput.text = text
                     }
                 }
                 SetBox {
@@ -142,6 +146,8 @@ Item {
 
                     enclick: settingPage.enclick
                     onClicked: {
+                        keyinput.text = ""
+                        settingPage.currentsetmodel = 8
                         subText = Uart_bridge.setChannel_BatteryModel(0)
                     }
                 }
@@ -152,13 +158,14 @@ Item {
                     Layout.fillWidth: true
 
                     mainText: "All-CV"
-                    subText: "0.000 V"
-                    pressed: settingPage.currentsetmodel === 9
+                    subText: text + " V"
+                    property string text: "0.000"
+                    selected: settingPage.currentsetmodel === 9
 
                     enclick: settingPage.enclick
                     onClicked: {
                         settingPage.currentsetmodel = 9
-                        keyinput.text = subText
+                        keyinput.text = text
                     }
                 }
                 SetBox {
@@ -167,13 +174,14 @@ Item {
                     Layout.fillWidth: true
 
                     mainText: "All-CC"
-                    subText: "0.000 A"
-                    pressed: settingPage.currentsetmodel === 10
+                    subText: text + " A"
+                    property string text: "1.000"
+                    selected: settingPage.currentsetmodel === 10
 
                     enclick: settingPage.enclick
                     onClicked: {
                         settingPage.currentsetmodel = 10
-                        keyinput.text = subText
+                        keyinput.text = text
                     }
                 }
                 SetBox {
@@ -182,13 +190,14 @@ Item {
                     Layout.fillWidth: true
 
                     mainText: "All-OVP"
-                    subText: "0.000 V"
-                    pressed: settingPage.currentsetmodel === 11
+                    subText: text + " V"
+                    property string text: "8.000"
+                    selected: settingPage.currentsetmodel === 11
 
                     enclick: settingPage.enclick
                     onClicked: {
                         settingPage.currentsetmodel = 11
-                        keyinput.text = subText
+                        keyinput.text = text
                     }
                 }
                 SetBox {
@@ -201,6 +210,8 @@ Item {
 
                     enclick: settingPage.enclick
                     onClicked: {
+                        keyinput.text = ""
+                        settingPage.currentsetmodel = 12
                         subText = Uart_bridge.setChannel_CurrentUnit(0)
                     }
                 }
@@ -233,31 +244,32 @@ Item {
                         break
                     case 6:
                         // A-InitSOC
-                        initsoc.subText = value + " %"
+                        initsoc.text = value
                         Uart_bridge.setChannel_InitSOC(0, value)
                         break
                     case 7:
                         // A-Capacity
-                        capacity.subText = value
+                        capacity.text = value
                         Uart_bridge.setChannel_Capacity(0, value)
                         break
                     case 9:
                         // A-CV
-                        cv.subText = value + " V"
+                        cv.text = value
                         Uart_bridge.setChannel_Setstatus(0, 0, value)
                         break
                     case 10:
                         // A-CC
-                        cc.subText = value + " A"
+                        cc.text = value
                         Uart_bridge.setChannel_Setstatus(0, 1, value)
                         break
                     case 11:
                         // A-OVP
-                        ovp.subText = value + " V"
+                        ovp.text = value
                         Uart_bridge.setChannel_Setstatus(0, 3, value)
                         break
                     default:
-                        console.log("Unknown model:", model)
+                        console.log("Unknown mode:",
+                                    settingPage.currentsetmodel)
                         return
                     }
                 }
@@ -270,7 +282,7 @@ Item {
         enabled: settingPage.enclick
         anchors.bottom: parent.bottom
         width: parent.width
-        height: 36
+        height: 18
 
         property real startY: 0
         onPressed: startY = mouseY
@@ -286,7 +298,7 @@ Item {
         enabled: settingPage.enclick
         anchors.top: parent.top
         width: parent.width
-        height: 36
+        height: 18
 
         property real startY: 0
         onPressed: startY = mouseY

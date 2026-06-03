@@ -23,6 +23,8 @@ class ConfigManager {
 public:
     static bool init(const QString &configDir);
     static bool setConfigValue(const QString &key, const QVariant &value);
+    static bool refresh_interfaces(const QString& ip, const QString& netmask);
+    static bool getNetworkConfig();
     static QSettings* s_settings;
 
     static QString s_manufacturer;

@@ -13,6 +13,7 @@
         <file>qml/BatteryHomePage.qml</file>
         <file>qml/Component/Unlock.qml</file>
         <file>qml/Component/SimpleCard.qml</file>
+        <file>qml/Component/test.png</file>
     </qresource>
     <qresource prefix="/web">
         <file>web/index.html</file>

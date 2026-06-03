@@ -101,7 +101,7 @@ const QVector<Command> UartChannelManager::m_initCommands = {
     {0x04, 0x0f, QByteArray::fromHex("01")},// set measure average =1
     {0x02, 0x00, QByteArray::fromHex("00 00 00 00")},// set cv =0
     {0x02, 0x01, QByteArray::fromHex("3f 80 00 00")},// set cc =1
-    {0x04, 0x1f, QByteArray::fromHex("ff ff ff ff")},// set relarge, not vaild parameter
+    //{0x04, 0x1f, QByteArray::fromHex("ff ff ff ff")},// set relarge, not vaild parameter
     {0x02, 0x03, QByteArray::fromHex("41 00 00 00")},// set ovp =8
     {0x04, 0x1d, QByteArray::fromHex("00 01")},// set Output impedance step =1
     {0x02, 0x02, QByteArray::fromHex("00 00 00 00")},// set Output impedance =0 -> cv model

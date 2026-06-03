@@ -7,6 +7,7 @@ Item {
     id: root
 
     property bool enclick: true
+    property bool selected: false
     property string mainText: "main"
     property string subText: "sub"
     property color mainTextColor: "#C0C0C0"
@@ -33,7 +34,7 @@ Item {
         radius: 18 * root.scaleFactor
         border.width: 1.8 * root.scaleFactor
         border.color: root.pressed ? "#4A9EFF" : "#2E4A6F"
-        color: root.pressed ? "#1E3A5F" : "#0A1929"
+        color: root.selected ? "#1E3A5F" : "#0A1929" //root.pressed
 
         Rectangle {
             anchors.fill: parent

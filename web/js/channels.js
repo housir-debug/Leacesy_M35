@@ -14,7 +14,7 @@ class ChannelMonitor {
 
     async loadChannels() {
         try {
-            const response = await fetch('/api/channels');
+            const response = await fetch('/api/channels')
             const data = await response.json();
             this.channels.clear();
             data.channels.forEach(ch => {

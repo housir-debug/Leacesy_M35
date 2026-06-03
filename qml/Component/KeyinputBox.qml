@@ -45,6 +45,7 @@ Item {
                 font.pixelSize: 18 * root.scaleFactor
                 inputMethodHints: Qt.ImhNone //Qt.ImhDigitsOnly
                 echoMode: TextInput.Normal
+                focus: false
 
                 color: "#E0E0E0"
                 selectionColor: "#1A6ECF"
@@ -53,11 +54,11 @@ Item {
                 background: Rectangle {
                     radius: 9 * root.scaleFactor
                     color: "#102B40"
-                    border.width: defaultField.activeFocus ? 1.8 : 0.9
-                    border.color: defaultField.activeFocus ? "#1A6ECF" : "#1E3A5F"
+                    border.width: defaultField.text.length > 0 ? 1.8 : 0.9
+                    border.color: defaultField.text.length > 0 ? "#1A6ECF" : "#1E3A5F"
 
                     layer {
-                        enabled: defaultField.activeFocus
+                        enabled: defaultField.text.length > 0
                         effect: DropShadow {
                             transparentBorder: true
                             color: Qt.rgba(0.24, 0.63, 0.90, 0.3)

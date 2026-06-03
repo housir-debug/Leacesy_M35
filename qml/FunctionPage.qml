@@ -229,12 +229,12 @@ Item {
 
                     mainText: "CV"
                     subText: Uart_bridge["ch" + functionPage.initialChannel + "_cv"] + " V"
-                    pressed: functionPage.currentsetmodel === 1
+                    selected: functionPage.currentsetmodel === 1
 
                     enclick: functionPage.enclick
                     onClicked: {
                         functionPage.currentsetmodel = 1
-                        keyinput.text = subText
+                        keyinput.text = Uart_bridge["ch" + functionPage.initialChannel + "_cv"]
                     }
                 }
                 SetBox {
@@ -244,12 +244,13 @@ Item {
 
                     mainText: "SOC"
                     subText: Uart_bridge["ch" + functionPage.initialChannel + "_CurrentSOC"] + " %"
-                    pressed: functionPage.currentsetmodel === 2
+                    selected: functionPage.currentsetmodel === 2
 
                     enclick: functionPage.enclick
                     onClicked: {
                         functionPage.currentsetmodel = 2
-                        keyinput.text = subText
+                        keyinput.text = Uart_bridge["ch" + functionPage.initialChannel
+                                                    + "_CurrentSOC"]
                     }
                 }
                 SetBox {
@@ -259,12 +260,12 @@ Item {
 
                     mainText: "CC"
                     subText: Uart_bridge["ch" + functionPage.initialChannel + "_cc"] + " A"
-                    pressed: functionPage.currentsetmodel === 3
+                    selected: functionPage.currentsetmodel === 3
 
                     enclick: functionPage.enclick
                     onClicked: {
                         functionPage.currentsetmodel = 3
-                        keyinput.text = subText
+                        keyinput.text = Uart_bridge["ch" + functionPage.initialChannel + "_cc"]
                     }
                 }
                 SetBox {
@@ -272,14 +273,15 @@ Item {
                     Layout.fillHeight: true
                     Layout.fillWidth: true
 
-                    mainText: "Ah"
-                    subText: Uart_bridge["ch" + functionPage.initialChannel + "_CapacityAH"] + ""
-                    pressed: functionPage.currentsetmodel === 4
+                    mainText: "Capacity"
+                    subText: Uart_bridge["ch" + functionPage.initialChannel + "_CapacityAH"] + " Ah"
+                    selected: functionPage.currentsetmodel === 4
 
                     enclick: functionPage.enclick
                     onClicked: {
                         functionPage.currentsetmodel = 4
-                        keyinput.text = subText
+                        keyinput.text = Uart_bridge["ch" + functionPage.initialChannel
+                                                    + "_CapacityAH"]
                     }
                 }
                 SetBox {
@@ -289,12 +291,12 @@ Item {
 
                     mainText: "OVP"
                     subText: Uart_bridge["ch" + functionPage.initialChannel + "_ovp"] + " V"
-                    pressed: functionPage.currentsetmodel === 5
+                    selected: functionPage.currentsetmodel === 5
 
                     enclick: functionPage.enclick
                     onClicked: {
                         functionPage.currentsetmodel = 5
-                        keyinput.text = subText
+                        keyinput.text = Uart_bridge["ch" + functionPage.initialChannel + "_ovp"]
                     }
                 }
                 SetBox {
@@ -307,6 +309,7 @@ Item {
 
                     enclick: functionPage.enclick
                     onClicked: {
+                        functionPage.currentsetmodel = 6
                         subText = Uart_bridge.setChannel_BatteryModel(
                                     functionPage.initialChannel)
                     }
@@ -321,6 +324,7 @@ Item {
 
                     enclick: functionPage.enclick
                     onClicked: {
+                        functionPage.currentsetmodel = 7
                         subText = Uart_bridge.setChannel_CurrentUnit(
                                     functionPage.initialChannel)
                     }
@@ -337,6 +341,7 @@ Item {
                     enclick: functionPage.enclick
                     onClicked: {
                         modeStatus = !modeStatus
+                        functionPage.currentsetmodel = 8
                         Uart_bridge.setChannel_Batterymode(
                                     functionPage.initialChannel, modeStatus)
                     }
@@ -351,7 +356,7 @@ Item {
                 enclick: functionPage.enclick
 
                 onEntervalue: {
-                    switch (settingPage.currentsetmodel) {
+                    switch (functionPage.currentsetmodel) {
                     case 1:
                         // CV
                         Uart_bridge.setChannel_Setstatus(
@@ -378,7 +383,8 @@ Item {
                                     functionPage.initialChannel, 3, value)
                         break
                     default:
-                        console.log("Unknown model:", model)
+                        console.log("Unknown mode:",
+                                    functionPage.currentsetmodel)
                         return
                     }
                 }
@@ -391,7 +397,7 @@ Item {
         enabled: functionPage.enclick
         anchors.bottom: parent.bottom
         width: parent.width
-        height: 36
+        height: 18
 
         property real startY: 0
         onPressed: startY = mouseY
@@ -407,7 +413,7 @@ Item {
         enabled: functionPage.enclick
         anchors.top: parent.top
         width: parent.width
-        height: 36
+        height: 18
 
         property real startY: 0
         onPressed: startY = mouseY

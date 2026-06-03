@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
         engine.addImportPath(QStringLiteral("qrc:/qml"));
         engine.rootContext()->setContextProperty("Uart_bridge", GuiBridge_share.get());
 
-        const QUrl url(QStringLiteral("qrc:/qml/Component/test.qml"));   //main.qml   Component/test.qml
+        const QUrl url(QStringLiteral("qrc:/qml/main.qml"));   //main.qml   Component/test.qml
         QObject::connect(&engine, &QQmlApplicationEngine::objectCreated, &app, [url](QObject *obj, const QUrl &objUrl) {
             if (!obj && url == objUrl){
                 qCWarning(application) << "Object not exist and the URL matches.!";
@@ -87,9 +87,7 @@ int main(int argc, char *argv[])
         GuiBridge_share->load_BatteryModel();
     }
 
-    // can channel create
-    /* Can channel and Uart channel .There can only be one.*/
-
+    // CAN Server create
     std::unique_ptr<CanServerManager> canServer;
     if (ConfigManager::s_enableCANServer){
         canServer = std::make_unique<CanServerManager>();
@@ -102,7 +100,10 @@ int main(int argc, char *argv[])
         QObject::connect(GuiBridge_share.get(),&GuiBridge::to_CANid,canServer.get(),&CanServerManager::change_canid,Qt::QueuedConnection);
     }
 
-    // SCPI parser uart channel create and LAN / UART Server create
+    // can channel create
+    /*Not necessary for the time being.*/
+
+    // SCPI parser and uart channel create
     std::shared_ptr<ScpiManager> Scpi_share = std::make_shared<ScpiManager>();
     std::vector<std::unique_ptr<UartChannelManager>> Channel_list;
     if (ConfigManager::s_enableUartMess){
@@ -129,6 +130,7 @@ int main(int argc, char *argv[])
         }
     }
 
+    // LAN Server create
     std::unique_ptr<WebServerManager> webServer;
     if (ConfigManager::s_enableWEBServer){
         webServer = std::make_unique<WebServerManager>();
@@ -152,6 +154,7 @@ int main(int argc, char *argv[])
         }
     }
 
+    // UART Server create
     std::unique_ptr<UartServerManager> uartServer;
     if (ConfigManager::s_enableUARTServer){
         uartServer = std::make_unique<UartServerManager>();
@@ -164,7 +167,9 @@ int main(int argc, char *argv[])
     }
 
     // GPIB server create
-    //QTimer::singleShot(9000, &app, &QGuiApplication::quit); // 9000ms
+    /*Not necessary for the time being.*/
+
+    //QTimer::singleShot(9000, &app, &QGuiApplication::quit); // 9s
     return app.exec();
 }
 

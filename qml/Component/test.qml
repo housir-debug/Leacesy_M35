@@ -4,6 +4,7 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 
 ApplicationWindow {
+    //Window {
     id: mainWindow
     //width: Screen.desktopAvailableWidth
     //height: Screen.desktopAvailableHeight
@@ -17,12 +18,18 @@ ApplicationWindow {
         color: "#0d1b2a"
 
         Rectangle {
-            width: 9
-            height: 9
+            width: 36
+            height: 36
             radius: height / 2
             //color: "#0000FF"
             anchors.centerIn: parent
         }
+
+
+        /*Image {
+            id: name
+            source: "test.png"
+        }*/
 
 
         /*DigitalCard {

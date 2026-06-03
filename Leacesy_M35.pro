@@ -1,6 +1,7 @@
 QT += quick quickcontrols2 core serialport websockets
 
 CONFIG += c++14
+CONFIG -= qtquickcompiler
 
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
@@ -56,5 +57,4 @@ QML_DESIGNER_IMPORT_PATH += $$PWD/qml
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /root/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
-
 

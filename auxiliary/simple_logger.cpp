@@ -92,17 +92,19 @@ void loggermanage(const QString &loglevel,const QString &parentPath) {
     if (loglevel == "debug"){rules = "*.debug=true\n*.info=true\n*.warning=true";}
     else if (loglevel == "warning") {rules = "*.debug=false\n*.info=false\n*.warning=true";}
     else if (loglevel == "release") {rules = "*.debug=false\n*.info=false\n*.warning=false";}
-    else if (loglevel == "selfdefine"){
+    else if (loglevel == "ryan"){
         rules = "LOG:.debug=false\n"
                 "CAN:.debug=false\n"
-                "WEB:.debug=true\n"
-                "TCP:.debug=true\n"
-                "SCPI:.debug=true\n"
+                "WEB:.debug=false\n"
+                "TCP:.debug=false\n"
+                "SCPI:.debug=false\n"
                 "LIBTRIPC:.debug=false\n"
                 "UART_CHANNEL:.debug=true\n"
                 "UART_BRIDGE:.debug=false\n"
                 "UART_SERVER:.debug=false\n"
-                "*.info=true\n"
+                "qt.quick.touch.debug=true\n"
+                "qt.qpa.input.debug=true\n"
+                //"*.info=true\n"
                 "*.warning=true";
     }else {rules = "";}
     QLoggingCategory::setFilterRules(rules);

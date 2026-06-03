@@ -6,10 +6,6 @@ import Component 1.0
 
 ApplicationWindow {
     id: mainWindow
-    //width: Screen.desktopAvailableWidth
-    //height: Screen.desktopAvailableHeight
-    width: Screen.desktopAvailableHeight
-    height: Screen.desktopAvailableWidth
     visibility: "FullScreen"
     color: "#0d1b2a" //"#0a0f1a"
     visible: true
@@ -87,11 +83,11 @@ ApplicationWindow {
         FunctionPage {
             id: function_page
             enclick: Uart_bridge.reface === 0
-            backgroundcolor: mainWindow.color
             initialChannel: mainWindow.functionChannel
+            backgroundcolor: mainWindow.color
 
             onBackRequested: {
-                if (homePageModel === 0) {
+                if (mainWindow.homePageModel === 0) {
                     stackLayout.currentIndex = 0 // to digitalmain_page
                 } else {
                     stackLayout.currentIndex = 1 // to batterymain_page
@@ -102,9 +98,8 @@ ApplicationWindow {
 
     Rectangle {
         z: 100
-        id: remoteOverlay
+        color: "#90000000"
         anchors.fill: parent
-        color: "#90000000" //"#FF000000" // Translucent or black
         visible: Uart_bridge.reface !== 0
 
         Image {
@@ -117,24 +112,12 @@ ApplicationWindow {
             source: "qrc:/web/web/icon/leacesyicon.png"
         }
 
-        Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            text: "Remote Mode - Double tap to Exit"
-            anchors.top: logoImage.bottom
-            font.pixelSize: 18
-            color: "#FFD700" //yellow or "red"
-            styleColor: "#000000"
-            style: Text.Raised
-            font.bold: true
-            opacity: 0.81
-        }
-
-        MouseArea {
-            anchors.fill: parent
+        Unlock {
             enabled: Uart_bridge.reface !== 0
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.bottom
 
-            onDoubleClicked: {
-                // default 200ms
+            onUnlock: {
                 Uart_bridge.update_remotemodel(0)
             }
         }

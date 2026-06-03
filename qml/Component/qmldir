@@ -5,3 +5,4 @@ SimpleCard         1.0 SimpleCard.qml
 SetBox             1.0 SetBox.qml
 SetBoxGroup        1.0 SetBoxGroup.qml
 KeyinputBox        1.0 KeyinputBox.qml
+Unlock             1.0 Unlock.qml

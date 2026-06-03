@@ -139,7 +139,6 @@ public:
     //Q_INVOKABLE And C++
     Q_INVOKABLE void update_remotemodel(quint8 reface);
     Q_INVOKABLE void update_Configuration(int model,const QString& val);
-    void refresh_interfaces(const QString& ip, const QString& netmask);
 
     // qml procress
     Q_INVOKABLE QVariantList getActiveChannels();
