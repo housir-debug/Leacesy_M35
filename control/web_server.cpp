@@ -200,36 +200,14 @@ void WebServerManager::setupRoutes()
     // -----------------------------------------------------------------------
 
     m_webRoutes["scpi_command"] = [this](QWebSocket* socket, const QJsonObject& obj) {
-        if (m_qmlbridge->m_remoteStatus.load()==4){
-            QByteArray cmd = (obj["command"].toString()+"\n").toUtf8();
-            qCDebug(web)<<"[setupRoutes]:SCPI command received:" << cmd;
-            QByteArray res = m_scpiManager->processCommand(cmd);
+        QByteArray cmd = (obj["command"].toString()+"\n").toUtf8();
+        qCDebug(web)<<"[setupRoutes]:SCPI command received:" << cmd;
+        QByteArray res = m_scpiManager->processCommand(cmd);
 
-            if (!res.isEmpty()){
-                QJsonObject response;
-                response["type"] = "scpi_response";
-                response["result"] = QString::fromUtf8(res);
-                socket->sendTextMessage(QJsonDocument(response).toJson());
-            }
-        }
-        else if (m_qmlbridge->m_remoteStatus.load()==0){
-            m_qmlbridge->update_remotemodel(4);
-            QByteArray cmd = (obj["command"].toString()+"\n").toUtf8();
-            qCDebug(web)<<"[setupRoutes]:SCPI command received:" << cmd;
-            QByteArray res = m_scpiManager->processCommand(cmd);
-
-            if (!res.isEmpty()){
-                QJsonObject response;
-                response["type"] = "scpi_response";
-                response["result"] = QString::fromUtf8(res);
-                socket->sendTextMessage(QJsonDocument(response).toJson());
-            }
-        }
-        else{
+        if (!res.isEmpty()){
             QJsonObject response;
             response["type"] = "scpi_response";
-            response["result"] = "Other interfaces of the instrument are currently in operation";
-            qCDebug(web)<<"[setupRoutes]:Currently in an alternative remote mode";
+            response["result"] = QString::fromUtf8(res);
             socket->sendTextMessage(QJsonDocument(response).toJson());
         }
     };
@@ -248,6 +226,7 @@ void WebServerManager::setupRoutes()
 
         QJsonObject response;
         if (addModelFromNetwork(modelName,modelData)) {
+            m_qmlbridge->load_BatteryModel();
             response = getModelsInfo();
             response["type"] = "model_sync";
             socket->sendTextMessage(QJsonDocument(response).toJson());
@@ -263,6 +242,7 @@ void WebServerManager::setupRoutes()
         QString modelName = obj["name"].toString();
 
         if (m_BatteryManager->removeModel(modelName)) {
+            m_qmlbridge->load_BatteryModel();
             response = getModelsInfo();
             response["type"] = "model_sync";
             socket->sendTextMessage(QJsonDocument(response).toJson());
@@ -360,7 +340,21 @@ void WebServerManager::onWsTextMessageReceived(QWebSocket *socket,const QString 
         QJsonObject obj = doc.object();
         QString type = obj["type"].toString();
         if (m_webRoutes.contains(type)) {
-            m_webRoutes[type](socket,obj);
+            if (m_qmlbridge->m_remoteStatus.load()==4){
+                m_webRoutes[type](socket,obj);
+            }
+            else if (m_qmlbridge->m_remoteStatus.load()==0){
+                m_qmlbridge->update_remotemodel(4);
+                m_webRoutes[type](socket,obj);
+            }
+            else{
+                QJsonObject response;
+                response["type"] = "scpi_response";
+                response["result"] = "Other interfaces of the instrument are currently in operation";
+                qCDebug(web)<<"[setupRoutes]:Currently in an alternative remote mode";
+                socket->sendTextMessage(QJsonDocument(response).toJson());
+            }
+
             return;
         }
         qCWarning(web)<<"[onWsTextMessageReceived]: request route method not exist!";

@@ -71,6 +71,7 @@ float BatteryModel::interpolate(float soc,bool isocv) const {
     float y2 = isocv ? p2.ocv : p2.imp;
 
     float ad = (y2 - y1) * (soc - p1.soc) / (p2.soc - p1.soc);
+    //qCDebug(battery)<<"[interpolate]:"<<y1 + ad;
     return y1 + ad;
 }
 
@@ -90,18 +91,23 @@ bool BatteryModelManager::loadAllModels() {
     QStringList filters = {"*.csv", "*.CSV"};
     QFileInfoList fileList = modelDir.entryInfoList(filters, QDir::Files);
 
-    for (const auto &fileInfo : qAsConst(fileList)) {
-        auto model = parseCSV(fileInfo.absoluteFilePath());
-        if (!model) {
-            qCWarning(battery)<<"[loadAllModels]:Interrupted loading, failed load the file: "<< fileInfo.fileName();
-            m_models.clear();
-            return false;
+    if (!fileList.isEmpty()) {
+        for (const auto &fileInfo : qAsConst(fileList)) {
+            auto model = parseCSV(fileInfo.absoluteFilePath());
+            if (!model) {
+                qCWarning(battery)<<"[loadAllModels]:Interrupted loading, failed load the file: "<< fileInfo.fileName();
+                m_models.clear();
+                return false;
+            }
+
+            m_models[model->name] = model;
         }
 
-        m_models[model->name] = model;
+        return true;
     }
 
-    return true;
+    qCWarning(battery)<<"[loadAllModels]:No model file exists.";
+    return false;
 }
 
 bool BatteryModelManager::loadModel(const QString &modelName) {
@@ -177,11 +183,11 @@ QSharedPointer<BatteryModel> BatteryModelManager::parseCSV(const QString &filePa
                 BatteryDataPoint point;
 
                 point.soc = columns[socCol].toFloat();
-                if (0.0f <= point.soc <= 100.0f) {
+                if (0.0f <= point.soc && point.soc <= 100.0f) {
                     point.ocv = columns[ocvCol].toFloat();
-                    if (0.0f <= point.ocv <= 6.0f) {
+                    if (0.0f <= point.ocv && point.ocv <= 6.0f) {
                         point.imp = columns[esrCol].toFloat();
-                        if (0.0f <= point.imp <= 1.0f) {
+                        if (0.0f <= point.imp && point.imp <= 1.0f) {
                             model->data_points.append(point);
                             continue; // access next line
                         }

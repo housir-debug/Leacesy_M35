@@ -2,6 +2,7 @@
 #include <QNetworkInterface>
 #include <QFile>
 
+Q_LOGGING_CATEGORY(config, "CONFIG:")
 QSettings* ConfigManager::s_settings = nullptr;
 
 std::vector<UartConfig> configs = {
@@ -43,25 +44,12 @@ std::vector<UartConfig> configs = {
 };
 
 // log config
-QString ConfigManager::s_loglevel = "release";
 bool ConfigManager::s_enablelogfile = false;
-
-// global variable
-QString ConfigManager::s_manufacturer = "Leacesy";
-QString ConfigManager::s_model = "66004";
-QString ConfigManager::s_serialNumber = "SN-12306";
-QString ConfigManager::s_firmwareVersion = "1.0.0";
-QString ConfigManager::s_hardwareVersion = "1.0.0";
-
-QString ConfigManager::s_IP = "192.168.137.36";
-QString ConfigManager::s_SM = "255.255.255.0";
-QString ConfigManager::s_GPIBid = "0";
-QString ConfigManager::s_CANid = "0";
+QString ConfigManager::s_loglevel = "release";
 
 // channel switch
 bool ConfigManager::s_enableUartMess = true;
 bool ConfigManager::s_enableCanMess = true;
-
 // control switch
 bool ConfigManager::s_enableLANServer = true;
 bool ConfigManager::s_enableWEBServer = false;
@@ -69,7 +57,21 @@ bool ConfigManager::s_enableCANServer = true;
 bool ConfigManager::s_enableUARTServer = true;
 bool ConfigManager::s_enableDisplay = true;
 
-//-------------------------------------------------------------
+// global variable - Internal fixation
+QString ConfigManager::s_firmwareVersion = "1.0.0";
+QString ConfigManager::s_hardwareVersion = "1.0.0";
+QString ConfigManager::s_manufacturer = "Leacesy";
+// global variable - System reading
+QString ConfigManager::s_IP = "192.168.137.36";
+QString ConfigManager::s_SM = "255.255.255.0";
+
+// global variable - config reading
+QString ConfigManager::s_serialNumber = "SN-12306";
+QString ConfigManager::s_model = "66004";
+QString ConfigManager::s_GPIBid = "0";
+QString ConfigManager::s_CANid = "0";
+
+//---------------------------------------------------------------------------------
 
 bool ConfigManager::init(const QString &configDir)
 {
@@ -82,17 +84,9 @@ bool ConfigManager::init(const QString &configDir)
             s_loglevel = s_settings->value("Logger/logLevel").toString();
             s_enablelogfile = s_settings->value("Logger/EnablelogFile").toBool();
 
-            // global variable
-            s_model = s_settings->value("Device/Model").toString();
-            s_serialNumber = s_settings->value("Device/SerialNumber").toString();
-
-            s_GPIBid = s_settings->value("Device/GPIBID").toString();
-            s_CANid = s_settings->value("Device/CANID").toString();
-
             // channel switch
             s_enableUartMess = s_settings->value("Channel/EnableUartMess").toBool();
             s_enableCanMess = s_settings->value("Channel/EnableCanMess").toBool();
-
             // control switch
             s_enableLANServer = s_settings->value("Control/EnableLANServer").toBool();
             s_enableWEBServer = s_settings->value("Control/EnableWEBServer").toBool();
@@ -100,10 +94,17 @@ bool ConfigManager::init(const QString &configDir)
             s_enableUARTServer = s_settings->value("Control/EnableUARTServer").toBool();
             s_enableDisplay = s_settings->value("Control/EnableDisplay").toBool();
 
+            // global variable
+            s_serialNumber = s_settings->value("Device/SerialNumber").toString();
+            s_model = s_settings->value("Device/Model").toString();
+            s_GPIBid = s_settings->value("Device/GPIBID").toString();
+            s_CANid = s_settings->value("Device/CANID").toString();
+
             return true;
         }
-    }
 
+        qCWarning(config) << "[init]:Cannot open config file for writing";
+    }
     return false;
 }
 
@@ -117,8 +118,9 @@ bool ConfigManager::setConfigValue(const QString &key, const QVariant &value)
             // s_settings->sync(); // Write immediately to the file
             return true;
         }
-    }
 
+        qCWarning(config) << "[setConfigValue]:config new value invalue.";
+    }
     return false;
 }
 
@@ -135,6 +137,8 @@ bool ConfigManager::getNetworkConfig() {
                 return true;
             }
         }
+
+        qCWarning(config) << "[getNetworkConfig]:reading IP&SM failed!";
     }
     return false;
 }
@@ -158,14 +162,11 @@ bool ConfigManager::refresh_interfaces(const QString& ip, const QString& netmask
 
         QString restartCmd = "/etc/init.d/S37network restart";
         if (system(restartCmd.toStdString().c_str()) == 0) {
-            qDebug() << "CONFIG:[refresh_interfaces]:Network changed successfully to:" << ip << "/" << netmask;
+            qCWarning(config) << "[refresh_interfaces]:Network changed successfully to:" << ip << "/" << netmask;
             return true;
         }
-
-        qWarning() << "CONFIG:[refresh_interfaces]:Failed to restart network service";
-        return false;
     }
 
-    qWarning() << "CONFIG:[refresh_interfaces]:Cannot open interfaces file for writing";
+    qCWarning(config) << "[refresh_interfaces]:Cannot open interfaces file for writing";
     return false;
 }

@@ -37,14 +37,14 @@ GuiBridge::GuiBridge(QObject *parent) : QObject(parent) {
 }
 
 void GuiBridge::load_BatteryModel(){
-    if (m_modelManager && m_modelManager->getAvailableModels().isEmpty()) {
+    if (m_modelManager) {
         QTimer::singleShot(0, this, [this]() {
             if (m_modelManager->loadAllModels()) {
                 m_currentModelList = m_modelManager->getAvailableModels();
                 if (!m_currentModelList.isEmpty()) {
                     #define CHANNEL(n) \
                     mCH##n##_batteryModel = m_currentModelList[0]; \
-                    mCH##n##_activeModel = m_modelManager->getModel(m_currentModelList[0]); \
+                    mCH##n##_activeModel = m_modelManager->getModel(mCH##n##_batteryModel); \
                     emit CH##n##_BatteryModelChanged();
                     CHANNEL_COUNT
                     #undef CHANNEL
@@ -52,8 +52,35 @@ void GuiBridge::load_BatteryModel(){
     }
 }
 
+// ============================  Internal trigger function =============================
 
-// ============================  C++ for qml engine =============================
+void GuiBridge::update_SoftVer(int ch,const QString &ver){
+    switch(ch) {
+        #define CHANNEL(n) \
+        case n: \
+            mCH##n##_sv = ver; \
+            emit CH##n##_svChanged(); \
+            return;/*qCDebug(uart_bridge) << "Channel" << n << "SV updated to:" << ver;*/
+
+        CHANNEL_COUNT
+        #undef CHANNEL
+        default: return;
+    }
+}
+
+void GuiBridge::update_HardVer(int ch,const QString &ver){
+    switch(ch) {
+        #define CHANNEL(n) \
+        case n: \
+            mCH##n##_hv = ver; \
+            emit CH##n##_hvChanged(); \
+            return;/*qCDebug(uart_bridge) << "Channel" << n << "HV updated to:" << ver;*/
+
+        CHANNEL_COUNT
+        #undef CHANNEL
+        default: return;
+    }
+}
 
 void GuiBridge::update_Voltage(int ch,float voltage){
     switch(ch) {
@@ -61,33 +88,23 @@ void GuiBridge::update_Voltage(int ch,float voltage){
             case n: \
                 mCH##n##_Voltage.store(voltage); \
                 emit CH##n##_VoltageChanged(); \
-                qCDebug(uart_bridge) << "Channel" << n << "voltage updated to:" << voltage; \
                 \
-                if(mCH##n##_activebattery.load()){\
-                    quint32 ocvint; \
+                if(mCH##n##_enablebattery.load()){\
                     float newocv = mCH##n##_activeModel->getOCV(mCH##n##_currentSOC); \
-                    memcpy(&ocvint, &newocv, sizeof(float)); \
-                    ocvint = qToBigEndian(ocvint); \
-                    QByteArray Status_buffer(reinterpret_cast<const char*>(&ocvint), sizeof(quint32)); \
-                    to_Channel(ch,0x02, 0x00, Status_buffer); \
-                    mCH##n##_cv.store(newocv); \
-                    emit CH##n##_cvChanged(); \
+                    QByteArray ocvbuffer(reinterpret_cast<const char*>(&newocv), sizeof(float)); \
+                    std::reverse(ocvbuffer.begin(), ocvbuffer.end()); \
+                    to_Channel(ch,0x02, 0x00, ocvbuffer); \
                     \
-                    quint32 esrint; \
                     float newesr = mCH##n##_activeModel->getESR(mCH##n##_currentSOC); \
-                    memcpy(&esrint, &newesr, sizeof(float)); \
-                    esrint = qToBigEndian(esrint); \
-                    QByteArray Statusub_buffer(reinterpret_cast<const char*>(&esrint), sizeof(quint32)); \
-                    to_Channel(ch,0x02, 0x02, Statusub_buffer); \
-                    mCH##n##_imp.store(esrint); \
-                    emit CH##n##_impChanged(); \
+                    QByteArray esrbuffer(reinterpret_cast<const char*>(&newesr), sizeof(float)); \
+                    std::reverse(esrbuffer.begin(), esrbuffer.end()); \
+                    to_Channel(ch,0x02, 0x02, esrbuffer); \
                     \
                     if (mCH##n##_activeModel->isOver(mCH##n##_currentSOC)){ \
-                        mCH##n##_activebattery.store(false); \
-                        mCH##n##_timerStarted.store(false); \
+                        mCH##n##_enablebattery.store(false); \
                     } \
                 } \
-                return;
+                return;/*qCDebug(uart_bridge) << "Channel" << n << "voltage updated to:" << voltage;*/
         CHANNEL_COUNT
         #undef CHANNEL
         default: return;
@@ -100,22 +117,14 @@ void GuiBridge::update_CurrentAndUnit(int ch,float current){
     switch(ch) {
         #define CHANNEL(n) \
             case n: { \
-                mCH##n##_Current.store((qAbs(current) < 1e-4) ? current * 1000.0f : current); \
-                emit CH##n##_CurrentChanged(); \
-                qCDebug(uart_bridge) << "Channel" << n << "current updated to:" << current; \
-                \
                 if (mCH##n##_CurrentUnit != newUnit) { \
                     mCH##n##_CurrentUnit = newUnit; \
                     emit CH##n##_CurrentUnitChanged(); \
                 } \
+                mCH##n##_Current.store((qAbs(current) < 1e-4) ? current * 1000.0f : current); \
+                emit CH##n##_CurrentChanged(); \
                 \
-                if(mCH##n##_activebattery.load()){\
-                    if (!mCH##n##_timerStarted.load()){ \
-                        mCH##n##_timerStarted.store(true); \
-                        mCH##n##_integralTimer.restart(); \
-                        return; \
-                    } \
-                    \
+                if(mCH##n##_enablebattery.load()){\
                     qint64 elapsedMs = mCH##n##_integralTimer.elapsed();\
                     float deltaTimeHours = elapsedMs / 3600000.0f; \
                     float capacityAH = mCH##n##_capacityAH.load(); \
@@ -133,10 +142,11 @@ void GuiBridge::update_CurrentAndUnit(int ch,float current){
                         mCH##n##_currentSOC.store(currentsoc+deltaSOC); \
                         mCH##n##_integralTimer.restart(); \
                     } \
+                    \
                     emit CH##n##_CurrentSOCChanged(); \
                 }\
                 return; \
-            }
+            }/*qCDebug(uart_bridge) << "Channel" << n << "current updated to:" << current;*/
         CHANNEL_COUNT
         #undef CHANNEL
         default: return;
@@ -188,20 +198,6 @@ void GuiBridge::update_Cc(int ch,float cc){
     }
 }
 
-void GuiBridge::update_Imp(int ch,float imp){
-    switch(ch) {
-        #define CHANNEL(n) \
-            case n: \
-                mCH##n##_imp.store(imp); \
-                emit CH##n##_impChanged(); \
-                return;
-
-        CHANNEL_COUNT
-        #undef CHANNEL
-        default: return;
-    }
-}
-
 void GuiBridge::update_Ovp(int ch,float ovp){
     switch(ch) {
         #define CHANNEL(n) \
@@ -230,29 +226,13 @@ void GuiBridge::update_IsOutput(int ch,bool status){
     }
 }
 
-void GuiBridge::update_SoftVer(int ch,const QString &ver){
+void GuiBridge::update_Imp(int ch,float imp){
     switch(ch) {
         #define CHANNEL(n) \
-            case n: \
-                mCH##n##_sv = ver; \
-                emit CH##n##_svChanged(); \
-                qCDebug(uart_bridge) << "Channel" << n << "SV updated to:" << ver; \
-                return;
-
-        CHANNEL_COUNT
-        #undef CHANNEL
-        default: return;
-    }
-}
-
-void GuiBridge::update_HardVer(int ch,const QString &ver){
-    switch(ch) {
-        #define CHANNEL(n) \
-            case n: \
-                mCH##n##_hv = ver; \
-                emit CH##n##_hvChanged(); \
-                qCDebug(uart_bridge) << "Channel" << n << "HV updated to:" << ver; \
-                return;
+        case n: \
+            mCH##n##_imp.store(imp); \
+            emit CH##n##_impChanged(); \
+            return;
 
         CHANNEL_COUNT
         #undef CHANNEL
@@ -291,64 +271,35 @@ void GuiBridge::update_Configuration(int model,const QString& val){
         }
         case 2:{
             // GPIB
-            m_GPIBid = val;
-            emit gpibId_Changed();
-            ConfigManager::setConfigValue("Device/GPIBID",val);
-            emit to_GPIBid(val);
+            //m_GPIBid = val;
+            //emit gpibId_Changed();
+            //ConfigManager::setConfigValue("Device/GPIBID",val);
+            //emit to_GPIBid(val);
             return;
         }
         case 3:{
             // can
             m_CANid = val;
-            emit canId_Changed();
-            ConfigManager::setConfigValue("Device/CANID",val);
             emit to_CANid(val);
+            emit canId_Changed();
+            ConfigManager::s_CANid = val;
+            ConfigManager::setConfigValue("Device/CANID",val);
             return;
         }
     }
 }
 
-
-
-// =========================== Q_INVOKABLE ===========================
-
-QVariantList GuiBridge::getActiveChannels()
-{
-    QVariantList channels;
-    #define CHANNEL(n) if(mCH##n##_sv == "0.0.0.0"){channels.append(n);}
-    CHANNEL_COUNT
-    #undef CHANNEL
-
-    return channels;
-}
-
-void GuiBridge::setChannel_Output(int channel,bool switchs){
-    quint8 func = switchs ? 0x01 : 0x00;
-    qCDebug(uart_bridge) << "setChannel_Output - channel:" << channel << "switch:" << switchs;
-    return to_Channel(channel,0x01, func, "");
-}
-
-void GuiBridge::setChannel_Setstatus(int channel,int model,const QString& val){
-    // model: 0 - CV ; 1 - CC ; 3 - OVP;
-    quint32 intValue;
-    float value = val.toFloat();
-    memcpy(&intValue, &value, sizeof(float));
-    intValue = qToBigEndian(intValue);
-    QByteArray Status_buffer(reinterpret_cast<const char*>(&intValue), sizeof(quint32));
-
-    return to_Channel(channel,0x02, model, Status_buffer);
-}
+// =========================== Screen trigger function ===========================
 
 QString GuiBridge::setChannel_CurrentUnit(int channel){
+    quint8 unitCode; QString unit;
     static int step = 0;
-    QString unit;
-    quint8 unitCode;
 
     switch (step) {
-        case 0:  unitCode = 0x01;unit = "mA";   break;
-        case 1:  unitCode = 0x10;unit = "Auto"; break;
-        case 2:  unitCode = 0x00;unit = "A";    break;
-        default: unitCode = 0x00;unit = "A";    break;
+    case 0:  unitCode = 0x01;unit = "mA";   break;
+    case 1:  unitCode = 0x10;unit = "Auto"; break;
+    case 2:  unitCode = 0x00;unit = "A";    break;
+    default: unitCode = 0x00;unit = "A";    break;
     }
     step = (step + 1) % 3;
 
@@ -360,42 +311,52 @@ QString GuiBridge::setChannel_CurrentUnit(int channel){
     return unit;
 }
 
+void GuiBridge::setChannel_Output(int channel,bool switchs){
+    quint8 func = switchs ? 0x01 : 0x00;
+    qCDebug(uart_bridge) << "setChannel_Output - channel:" << channel << "switch:" << switchs;
+    return to_Channel(channel,0x01, func, "");
+}
+
+void GuiBridge::setChannel_Setstatus(int channel,int model,const QString& val){
+    // model: 0 - CV ; 1 - CC ; 3 - OVP;
+    float value = val.toFloat();
+    QByteArray buffer(reinterpret_cast<const char*>(&value), sizeof(float));
+    std::reverse(buffer.begin(), buffer.end()); // big-endian order
+
+    return to_Channel(channel,0x02, model, buffer);
+}
+
 void GuiBridge::setChannel_BatteryOutput(int channel,bool switchs){
+    if (m_currentModelList.isEmpty()) {return;}
+    //if (QSysInfo::ByteOrder == QSysInfo::LittleEndian) {}
+
     switch(channel) {
         #define CHANNEL(n) \
             case n:{ \
                 if (mCH##n##_batterystaticmode){ \
-                    quint32 ocvint; \
                     float newocv = mCH##n##_activeModel->getOCV(mCH##n##_currentSOC); \
-                    memcpy(&ocvint, &newocv, sizeof(float)); \
-                    ocvint = qToBigEndian(ocvint); \
-                    QByteArray Status_buffer(reinterpret_cast<const char*>(&ocvint), sizeof(quint32)); \
-                    to_Channel(channel,0x02, 0x00, Status_buffer); \
-                    mCH##n##_cv.store(newocv); \
-                    emit CH##n##_cvChanged(); \
+                    QByteArray ocvbuffer(reinterpret_cast<const char*>(&newocv), sizeof(float)); \
+                    std::reverse(ocvbuffer.begin(), ocvbuffer.end()); \
+                    to_Channel(channel,0x02, 0x00, ocvbuffer); \
                     \
-                    quint32 esrint; \
                     float newesr = mCH##n##_activeModel->getESR(mCH##n##_currentSOC); \
-                    memcpy(&esrint, &newesr, sizeof(float)); \
-                    esrint = qToBigEndian(esrint); \
-                    QByteArray Statusub_buffer(reinterpret_cast<const char*>(&esrint), sizeof(quint32)); \
-                    to_Channel(channel,0x02, 0x02, Statusub_buffer); \
-                    mCH##n##_imp.store(esrint); \
-                    emit CH##n##_impChanged(); \
+                    QByteArray esrbuffer(reinterpret_cast<const char*>(&newesr), sizeof(float)); \
+                    std::reverse(esrbuffer.begin(), esrbuffer.end()); \
+                    to_Channel(channel,0x02, 0x02, esrbuffer); \
+                    \
                 } else{ \
-                    mCH##n##_activebattery.store(switchs); \
-                    mCH##n##_timerStarted.store(false); \
+                    mCH##n##_enablebattery.store(switchs); \
                 } \
-                \
                 setChannel_Output(channel,switchs); \
+                mCH##n##_integralTimer.restart(); \
                 return; \
-            }
+            }/*qCDebug(uart_bridge)<<"newesr"<<newesr<<",mCH##n##_imp"<<mCH##n##_imp;*/
         CHANNEL_COUNT
         #undef CHANNEL
         default:
             qCWarning(uart_bridge) << "Invalid channel:" << channel;
             return;
-    }
+        }
 }
 
 void GuiBridge::setChannel_InitSOC(int channel,const QString& val){
@@ -404,8 +365,8 @@ void GuiBridge::setChannel_InitSOC(int channel,const QString& val){
     // All channel
     if (channel == 0) {
         #define CHANNEL(n)  \
-        mCH##n##_currentSOC.store(value); \
-        emit CH##n##_CurrentSOCChanged();
+            mCH##n##_currentSOC.store(value); \
+            emit CH##n##_CurrentSOCChanged();
         CHANNEL_COUNT
         #undef CHANNEL
         return;
@@ -433,8 +394,8 @@ void GuiBridge::setChannel_Capacity(int channel,const QString& val){
     // All channel
     if (channel == 0) {
         #define CHANNEL(n)  \
-        mCH##n##_capacityAH.store(value); \
-        emit CH##n##_CapacityAHChanged();
+            mCH##n##_capacityAH.store(value); \
+            emit CH##n##_CapacityAHChanged();
         CHANNEL_COUNT
         #undef CHANNEL
         return;
@@ -453,19 +414,38 @@ void GuiBridge::setChannel_Capacity(int channel,const QString& val){
             qCWarning(uart_bridge) << "Invalid channel:" << channel;
             return;
     }
+}
 
+void GuiBridge::setChannel_Batterymode(int channel,bool staticmode){
+    if (channel == 0) {
+        #define CHANNEL(n) mCH##n##_batterystaticmode.store(staticmode);
+        CHANNEL_COUNT
+        #undef CHANNEL
+        return;
+    }
+
+    switch(channel) {
+        #define CHANNEL(n) \
+            case n:{ \
+                mCH##n##_batterystaticmode.store(staticmode); \
+                return; \
+            }
+        CHANNEL_COUNT
+        #undef CHANNEL
+        default:
+            qCWarning(uart_bridge) << "Invalid channel:" << channel;
+            return;
+    }
 }
 
 QString GuiBridge::setChannel_BatteryModel(int channel){
-    if (m_currentModelList.isEmpty()) return "";
+    if (m_currentModelList.isEmpty()) {return "";}
+
     static int currentIndex = 0;
-    //int mCH##n##currentIndex = m_currentModelList.indexOf(mCH##n##_batteryMode);
-    //int mCH##n##nextIndex = (mCH##n##currentIndex + 1) % m_currentModelList.size();
-    //                mCH##n##_batteryMode =  m_currentModelList[mCH##n##nextIndex];
+    currentIndex = (currentIndex + 1) % m_currentModelList.size();
 
     if (channel == 0) {
         #define CHANNEL(n)  \
-        currentIndex = (currentIndex + 1) % m_currentModelList.size(); \
         mCH##n##_batteryModel =  m_currentModelList[currentIndex]; \
         mCH##n##_activeModel = m_modelManager->getModel(mCH##n##_batteryModel); \
         emit CH##n##_BatteryModelChanged();
@@ -478,7 +458,6 @@ QString GuiBridge::setChannel_BatteryModel(int channel){
     switch(channel) {
         #define CHANNEL(n) \
             case n:{ \
-                currentIndex = (currentIndex + 1) % m_currentModelList.size(); \
                 mCH##n##_batteryModel =  m_currentModelList[currentIndex]; \
                 mCH##n##_activeModel = m_modelManager->getModel(mCH##n##_batteryModel); \
                 emit CH##n##_BatteryModelChanged(); \
@@ -492,19 +471,14 @@ QString GuiBridge::setChannel_BatteryModel(int channel){
     }
 }
 
-void GuiBridge::setChannel_Batterymode(int channel,bool staticmode){
-    switch(channel) {
-        #define CHANNEL(n) \
-            case n:{ \
-                mCH##n##_batterystaticmode.store(staticmode); \
-                return; \
-            }
-        CHANNEL_COUNT
-        #undef CHANNEL
-        default:
-            qCWarning(uart_bridge) << "Invalid channel:" << channel;
-            return;
-    }
+QVariantList GuiBridge::getActiveChannels()
+{
+    QVariantList channels;
+    #define CHANNEL(n) if(mCH##n##_sv == "0.0.0.0"){channels.append(n);}
+    CHANNEL_COUNT
+    #undef CHANNEL
+
+    return channels;
 }
 
 void GuiBridge::to_Channel(int channel,quint8 cmd,quint8 func,const QByteArray& param){

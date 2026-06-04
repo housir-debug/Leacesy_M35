@@ -310,7 +310,7 @@ Item {
                     enclick: functionPage.enclick
                     onClicked: {
                         functionPage.currentsetmodel = 6
-                        subText = Uart_bridge.setChannel_BatteryModel(
+                        Uart_bridge.setChannel_BatteryModel(
                                     functionPage.initialChannel)
                     }
                 }
@@ -325,7 +325,7 @@ Item {
                     enclick: functionPage.enclick
                     onClicked: {
                         functionPage.currentsetmodel = 7
-                        subText = Uart_bridge.setChannel_CurrentUnit(
+                        Uart_bridge.setChannel_CurrentUnit(
                                     functionPage.initialChannel)
                     }
                 }

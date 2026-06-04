@@ -2,6 +2,9 @@
 #include <QSerialPort>
 #include <QSettings>
 #include <QString>
+#include <QLoggingCategory>
+
+Q_DECLARE_LOGGING_CATEGORY(config)
 
 struct UartConfig {
     QString port;

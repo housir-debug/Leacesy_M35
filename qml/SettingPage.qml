@@ -111,7 +111,7 @@ Item {
 
                     mainText: "All-SOC"
                     subText: text + " %"
-                    property string text: "100.00"
+                    property string text: Uart_bridge.ch1_CurrentSOC + ""
                     selected: settingPage.currentsetmodel === 6
 
                     enclick: settingPage.enclick
@@ -127,7 +127,7 @@ Item {
 
                     mainText: "All-Capacity"
                     subText: text + " Ah"
-                    property string text: "0.00"
+                    property string text: Uart_bridge.ch1_CapacityAH + ""
                     selected: settingPage.currentsetmodel === 7
 
                     enclick: settingPage.enclick
@@ -141,7 +141,7 @@ Item {
                     Layout.fillWidth: true
 
                     mainText: "All-Model"
-                    subText: "Lithium"
+                    subText: Uart_bridge.ch1_BatteryModel // only init value
                     subTextColor: "#6AA8B0"
 
                     enclick: settingPage.enclick
@@ -159,7 +159,7 @@ Item {
 
                     mainText: "All-CV"
                     subText: text + " V"
-                    property string text: "0.000"
+                    property string text: Uart_bridge.ch1_cv + ""
                     selected: settingPage.currentsetmodel === 9
 
                     enclick: settingPage.enclick
@@ -175,7 +175,7 @@ Item {
 
                     mainText: "All-CC"
                     subText: text + " A"
-                    property string text: "1.000"
+                    property string text: Uart_bridge.ch1_cc + "" // only init value
                     selected: settingPage.currentsetmodel === 10
 
                     enclick: settingPage.enclick
@@ -191,7 +191,7 @@ Item {
 
                     mainText: "All-OVP"
                     subText: text + " V"
-                    property string text: "8.000"
+                    property string text: Uart_bridge.ch1_ovp + ""
                     selected: settingPage.currentsetmodel === 11
 
                     enclick: settingPage.enclick
@@ -205,7 +205,7 @@ Item {
                     Layout.fillWidth: true
 
                     mainText: "All-Unit"
-                    subText: "A"
+                    subText: Uart_bridge.ch1_CurrentUnit // only init value
                     subTextColor: "#9A6AB0"
 
                     enclick: settingPage.enclick

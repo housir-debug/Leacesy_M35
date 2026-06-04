@@ -89,28 +89,24 @@ namespace {
 
 void loggermanage(const QString &loglevel,const QString &parentPath) {
     QString rules;
-    if (loglevel == "debug"){rules = "*.debug=true\n*.info=true\n*.warning=true";}
-    else if (loglevel == "warning") {rules = "*.debug=false\n*.info=false\n*.warning=true";}
-    else if (loglevel == "release") {rules = "*.debug=false\n*.info=false\n*.warning=false";}
-    else if (loglevel == "ryan"){
-        rules = "LOG:.debug=false\n"
-                "CAN:.debug=false\n"
-                "WEB:.debug=false\n"
-                "TCP:.debug=false\n"
-                "SCPI:.debug=false\n"
-                "LIBTRIPC:.debug=false\n"
+    if (loglevel == "ryan"){
+        rules = "LOG:.debug=false\nCONFIG:.debug=false\n"
+                "SCPI:.debug=false\nLIBTRIPC:.debug=false\n"
+                "CAN:.debug=false\nWEB:.debug=false\nTCP:.debug=false\n"
+                "UART_BRIDGE:.debug=false\nUART_SERVER:.debug=false\n"
                 "UART_CHANNEL:.debug=true\n"
-                "UART_BRIDGE:.debug=false\n"
-                "UART_SERVER:.debug=false\n"
                 "qt.quick.touch.debug=true\n"
                 "qt.qpa.input.debug=true\n"
                 //"*.info=true\n"
-                "*.warning=true";
-    }else {rules = "";}
+                "*.warning=true";}
+    else if (loglevel == "debug")   {rules = "*.debug=true\n*.info=true\n*.warning=true";}
+    else if (loglevel == "warning") {rules = "*.debug=false\n*.info=false\n*.warning=true";}
+    else if (loglevel == "release") {rules = "*.debug=false\n*.info=false\n*.warning=false";}
+    else {qCDebug(log) << "[loggermanage]:No configured print rules.";}
     QLoggingCategory::setFilterRules(rules);
 
-    qCDebug(log) << "[loggermanage]:loglevel loaded And configfile reading normal" ;
     if (!ConfigManager::s_enablelogfile){return;}
+    qCDebug(log) << "[loggermanage]:Enable log file monitoring.";
 
     // Enable log files
     auto& data = getLoggerData();

@@ -133,6 +133,7 @@ void UartChannelManager::startLoopbackTest()
 }
 
 void UartChannelManager::writeFrame(quint8 cmd, quint8 func, const QByteArray& param,bool isScpi) {
+    m_waitingForRes.store(true);
     quint8 length = 4 + param.size();  //  Command+Function+Channel+CheckSum  + Parameter
     quint8 checksum = length + cmd + func + m_channel; // The check code is taken from the lowest 8 bits.
     for (char byte : param) {checksum += static_cast<quint8>(byte);}
@@ -153,6 +154,14 @@ void UartChannelManager::writeFrame(quint8 cmd, quint8 func, const QByteArray& p
     m_serialPort->write(m_responsebuffer);
     if (isScpi){m_scpiCommand = (static_cast<quint16>(cmd) << 8) | func;}
     qCDebug(uart_channel)<<"[writeFrame]:Channel_"<<m_channel<<" Send: "<<m_responsebuffer.toHex(' ');
+
+    for (int i = 0; i < 18; i++) {
+        if (!m_waitingForRes.load()) {
+            return;
+        }
+
+        QThread::msleep(1); // 1ms total 18ms
+    }
 }
 
 void UartChannelManager::handleReadyRead()
@@ -176,6 +185,7 @@ void UartChannelManager::handleReadyRead()
                     for (char byte : qAsConst(m_readparam)) {Checksum += static_cast<quint8>(byte);}
 
                     if(static_cast<quint8>(m_readbuffer[lengthB + 2]) == Checksum){
+                        m_waitingForRes.store(false);
                         switch (cmd) {
                             case 0x01:handleOutputcmd          (func);break;
                             case 0x02:handleSettingcmd         (func);break;
